@@ -5,12 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Careva+ Home Health Care | Trusted Nursing &amp; Caregiving at Home</title>
 <meta name="description" content="Careva+ provides compassionate, professional home health care — trained nurses, caretakers, elderly care, post-surgery recovery and physiotherapy, delivered in the comfort of your home." />
-<meta name="theme-color" content="#0f766e" />
+<meta name="theme-color" content="#06234f" />
 
 <!-- Social preview -->
 <meta property="og:title" content="Careva+ Home Health Care" />
 <meta property="og:description" content="Compassionate, reliable and professional medical support at home." />
 <meta property="og:type" content="website" />
+<meta property="og:image" content="assets/careva-logo.png" />
 
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -20,16 +21,23 @@
 </head>
 <body>
 
+<!-- Preloader -->
+<div class="preloader" id="preloader">
+  <div class="preloader-inner">
+    <img src="assets/careva-logo.png" alt="Careva+ Home Health Care" />
+    <div class="loader-track"><span class="loader-bar"></span></div>
+  </div>
+</div>
+
+<div class="scroll-progress" id="scrollProgress" aria-hidden="true"></div>
+
 <a class="skip-link" href="#main">Skip to content</a>
 
 <!-- ───────────────────────── HEADER ───────────────────────── -->
 <header class="site-header" id="siteHeader">
   <div class="container header-inner">
-    <a href="#top" class="brand" aria-label="Careva+ home">
-      <span class="brand-mark" aria-hidden="true">
-        <svg viewBox="0 0 24 24" width="22" height="22"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
-      </span>
-      <span class="brand-text">Careva<span class="brand-plus">+</span></span>
+    <a href="#top" class="brand" aria-label="Careva+ Home Health Care — home">
+      <img class="brand-logo" src="assets/careva-logo.png" alt="Careva+ Home Health Care" width="1200" height="421" />
     </a>
 
     <nav class="nav" id="nav" aria-label="Main">
@@ -52,8 +60,11 @@
 <!-- ───────────────────────── HERO ───────────────────────── -->
 <section class="hero" id="top">
   <div class="hero-bg" aria-hidden="true"></div>
+  <span class="orb orb-1" aria-hidden="true"></span>
+  <span class="orb orb-2" aria-hidden="true"></span>
+  <span class="orb orb-3" aria-hidden="true"></span>
   <div class="container hero-inner">
-    <div class="hero-copy reveal">
+    <div class="hero-copy hero-anim">
       <p class="eyebrow"><span class="pulse-dot" aria-hidden="true"></span> Available 24 / 7 · Trained &amp; verified staff</p>
       <h1>Hospital-quality care,<br /><em>in the comfort of home.</em></h1>
       <p class="lead">
@@ -63,7 +74,7 @@
       </p>
       <div class="hero-actions">
         <a href="#contact" class="btn btn-primary btn-lg">Request care today</a>
-        <a href="#services" class="btn btn-ghost btn-lg">Explore services</a>
+        <a href="#services" class="btn btn-navy btn-lg">Explore services</a>
       </div>
       <ul class="hero-trust">
         <li><svg class="ico" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg> Background-verified caregivers</li>
@@ -72,7 +83,7 @@
       </ul>
     </div>
 
-    <aside class="hero-card reveal" aria-label="Quick enquiry">
+    <aside class="hero-card" aria-label="Quick enquiry">
       <h2 class="hero-card-title">Talk to a care advisor</h2>
       <p class="hero-card-sub">Tell us what you need. We respond within 30 minutes.</p>
       <form class="quick-form" data-form="quick">
@@ -325,7 +336,9 @@
 <footer class="site-footer">
   <div class="container footer-grid">
     <div>
-      <a href="#top" class="brand brand-light"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></span><span class="brand-text">Careva<span class="brand-plus">+</span></span></a>
+      <a href="#top" class="brand" aria-label="Careva+ home">
+        <img class="footer-logo" src="assets/careva-logo-light.png" alt="Careva+ Home Health Care" />
+      </a>
       <p class="footer-blurb">Compassionate, reliable and professional medical support at home — backed by a smart, AI-assisted care CRM.</p>
     </div>
     <div><h4>Services</h4><ul><li><a href="#services">Nursing at home</a></li><li><a href="#services">Elderly care</a></li><li><a href="#services">Post-surgery care</a></li><li><a href="#services">Physiotherapy</a></li></ul></div>
