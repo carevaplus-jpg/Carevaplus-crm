@@ -491,7 +491,9 @@ textarea { resize: vertical; }
     background: #fff; border-bottom: 1px solid var(--line); box-shadow: var(--shadow-md);
     max-height: 0; overflow: hidden; transition: max-height .4s var(--ease-out);
   }
-  .nav.open { max-height: 440px; }
+  /* Tall enough for every link plus the Call button, and scrollable on short
+     screens — a fixed cap clipped the Call button, which is the main action. */
+  .nav.open { max-height: 80vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
   .nav > a:not(.btn) { padding: 15px 24px; border-bottom: 1px solid var(--line); }
   .nav > a:not(.btn)::after { display: none; }
   .nav-cta { margin: 16px 24px 20px; border-bottom: 0 !important; justify-content: center; }
@@ -812,6 +814,9 @@ textarea { resize: vertical; }
   @keyframes underline { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 }
 
+/* the skip link moves focus here; no ring for pointer users */
+main:focus { outline: none; }
+
 
 /* ---- single-file build: logos embedded as backgrounds ---- */
 .brand-logo, .footer-logo, .preloader-logo {
@@ -861,7 +866,7 @@ textarea { resize: vertical; }
   </div>
 </header>
 
-<main id="main">
+<main id="main" tabindex="-1">
 <section class="route" id="route-home" data-title="Careva+ Home Health Care, Salem | Nursing &amp; Caregiving at Home">
 
 
@@ -907,6 +912,8 @@ textarea { resize: vertical; }
             <option>Post-surgery recovery</option>
             <option>Physiotherapy</option>
             <option>Mother &amp; newborn care</option>
+            <option>Palliative / critical care</option>
+            <option>Medical equipment rental</option>
             <option>Not sure — please advise</option>
           </select>
         </label>
@@ -1687,6 +1694,8 @@ textarea { resize: vertical; }
         <li><a href="#/services/elderly">Elderly care</a></li>
         <li><a href="#/services/post-surgery">Post-surgery care</a></li>
         <li><a href="#/services/physiotherapy">Physiotherapy</a></li>
+        <li><a href="#/services/mother-baby">Mother &amp; newborn care</a></li>
+        <li><a href="#/services/palliative">Palliative &amp; critical care</a></li>
         <li><a href="#/services/equipment">Equipment rental</a></li>
       </ul>
     </div>
@@ -1743,6 +1752,17 @@ window.CAREVA_CONFIG = {
 
   var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+  /* Work queued here runs once the preloader is out of the way, so counters
+     and similar effects are actually seen rather than finishing behind it. */
+  var pageReady = false;
+  var readyQueue = [];
+  var whenReady = function (fn) { pageReady ? fn() : readyQueue.push(fn); };
+  var markReady = function () {
+    if (pageReady) return;
+    pageReady = true;
+    readyQueue.splice(0).forEach(function (fn) { fn(); });
+  };
+
   /* ============================================================
      Preloader — lifts away once the page (and logo) has loaded
      ============================================================ */
@@ -1750,11 +1770,13 @@ window.CAREVA_CONFIG = {
   if (preloader) {
     if (reduced) {
       preloader.remove();
+      markReady();
     } else {
       document.body.classList.add("loading");
       var dismiss = function () {
         preloader.classList.add("done");
         document.body.classList.remove("loading");
+        markReady();
         setTimeout(function () {
           if (preloader.parentNode) preloader.remove();
         }, 1100);
@@ -1771,7 +1793,24 @@ window.CAREVA_CONFIG = {
     }
   }
 
+  /* ---- skip link: move focus into the content ----
+     Relying on fragment navigation alone leaves focus on <body> in several
+     browsers, and writes "#main" into the address bar, which the router and
+     the back button both have to work around. */
+  var skip = document.querySelector(".skip-link");
+  var mainEl = document.getElementById("main");
+  if (skip && mainEl) {
+    skip.addEventListener("click", function (e) {
+      e.preventDefault();
+      mainEl.setAttribute("tabindex", "-1");
+      mainEl.focus({ preventScroll: true });
+      window.scrollTo({ top: 0, behavior: "instant" });
+    });
+  }
+
   /* ---- current year in footer ---- */
+  if (!preloader) markReady();
+
   var yearEl = document.getElementById("year");
   if (yearEl) yearEl.textContent = new Date().getFullYear();
 
@@ -1872,6 +1911,8 @@ window.CAREVA_CONFIG = {
      ============================================================ */
   var counters = document.querySelectorAll("[data-count]");
   var runCounter = function (el) {
+    if (el.dataset.counted) return;          // guard against a second start
+    el.dataset.counted = "1";
     var target = parseInt(el.getAttribute("data-count"), 10);
     if (reduced) { el.textContent = target; return; }
     var duration = 1300;
@@ -1882,7 +1923,7 @@ window.CAREVA_CONFIG = {
       el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
       if (p < 1) requestAnimationFrame(step);
     };
-    requestAnimationFrame(step);
+    whenReady(function () { requestAnimationFrame(step); });
   };
   if ("IntersectionObserver" in window) {
     var cio = new IntersectionObserver(
@@ -1948,15 +1989,14 @@ window.CAREVA_CONFIG = {
   var STORE_KEY = "carevaEnquiries";
   var served = location.protocol === "http:" || location.protocol === "https:";
 
-  var backup = function (data) {
-    try {
-      var list = JSON.parse(localStorage.getItem(STORE_KEY)) || [];
-      list.push(data);
-      localStorage.setItem(STORE_KEY, JSON.stringify(list));
-    } catch (err) {
-      /* private mode or blocked storage — delivery does not depend on this */
-    }
-  };
+  /* Enquiries are NOT kept in the browser. They contain patient health
+     details, and a shared or family device would leave them readable by the
+     next person with no expiry. Any previously stored copies are cleared. */
+  try {
+    localStorage.removeItem(STORE_KEY);
+  } catch (err) {
+    /* storage blocked — nothing to clear */
+  }
 
   var LABELS = {
     name: "Name", phone: "Phone", email: "Email", service: "Service",
@@ -2043,7 +2083,6 @@ window.CAREVA_CONFIG = {
       clearFallback();
       data.source = form.getAttribute("data-form");
       data.receivedAt = new Date().toISOString();
-      backup(data);
 
       // Opened as a local file, or no endpoint configured: skip the request
       // that cannot succeed and go straight to the options that can.
@@ -2108,9 +2147,15 @@ window.CAREVA_CONFIG = {
     routes.forEach(function (r) { ids[r.id.replace("route-", "")] = r; });
     var current = null;
 
+    function isRouteHash(hash) {
+      return /^#\//.test(hash || "");
+    }
+
     function parse() {
-      var raw = (location.hash || "").replace(/^#\/?/, "");
-      var bits = raw.split("/").filter(Boolean);
+      // Only "#/slug" is navigation. "#main" (the skip link) and any other
+      // plain anchor belongs to the browser, not to the router.
+      if (!isRouteHash(location.hash)) return null;
+      var bits = location.hash.replace(/^#\//, "").split("/").filter(Boolean);
       var slug = bits[0] && ids[bits[0]] ? bits[0] : "home";
       return { slug: slug, anchor: bits[1] || "" };
     }
@@ -2147,8 +2192,8 @@ window.CAREVA_CONFIG = {
         reveal(next);
 
         var target = anchor && next.querySelector("#" + CSS.escape(anchor));
-        if (target) target.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
-        else window.scrollTo({ top: 0, behavior: "auto" });
+        if (target) target.scrollIntoView({ behavior: reduced ? "instant" : "smooth", block: "start" });
+        else window.scrollTo({ top: 0, behavior: "instant" });
       };
 
       if (!animate || reduced || !current || current === next) return finish();
@@ -2164,11 +2209,24 @@ window.CAREVA_CONFIG = {
 
     window.addEventListener("hashchange", function () {
       var r = parse();
-      show(r.slug, r.anchor, true);
+      if (r) show(r.slug, r.anchor, true);     // ignore plain anchors
+    });
+
+    // Clicking a link to the route already on screen fires no hashchange, so
+    // scroll to its target here instead of leaving the click dead.
+    document.addEventListener("click", function (e) {
+      var a = e.target.closest && e.target.closest('a[href^="#/"]');
+      if (!a) return;
+      var href = a.getAttribute("href");
+      if (href !== location.hash) return;      // hashchange will handle it
+      var bits = href.replace(/^#\//, "").split("/").filter(Boolean);
+      if (!bits[0] || !ids[bits[0]]) return;
+      e.preventDefault();
+      show(bits[0], bits[1] || "", false);
     });
 
     var first = parse();
-    show(first.slug, first.anchor, false);
+    show(first ? first.slug : "home", first ? first.anchor : "", false);
   })();
 
 </script>

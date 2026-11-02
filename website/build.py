@@ -98,7 +98,7 @@ def header(active):
   </div>
 </header>
 
-<main id="main">
+<main id="main" tabindex="-1">
 """
 
 
@@ -157,6 +157,8 @@ def footer():
         <li><a href="services.html#elderly">Elderly care</a></li>
         <li><a href="services.html#post-surgery">Post-surgery care</a></li>
         <li><a href="services.html#physiotherapy">Physiotherapy</a></li>
+        <li><a href="services.html#mother-baby">Mother &amp; newborn care</a></li>
+        <li><a href="services.html#palliative">Palliative &amp; critical care</a></li>
         <li><a href="services.html#equipment">Equipment rental</a></li>
       </ul>
     </div>
@@ -355,6 +357,8 @@ def home():
             <option>Post-surgery recovery</option>
             <option>Physiotherapy</option>
             <option>Mother &amp; newborn care</option>
+            <option>Palliative / critical care</option>
+            <option>Medical equipment rental</option>
             <option>Not sure — please advise</option>
           </select>
         </label>

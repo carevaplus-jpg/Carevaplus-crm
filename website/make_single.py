@@ -131,9 +131,15 @@ def main():
     routes.forEach(function (r) { ids[r.id.replace("route-", "")] = r; });
     var current = null;
 
+    function isRouteHash(hash) {
+      return /^#\\//.test(hash || "");
+    }
+
     function parse() {
-      var raw = (location.hash || "").replace(/^#\\/?/, "");
-      var bits = raw.split("/").filter(Boolean);
+      // Only "#/slug" is navigation. "#main" (the skip link) and any other
+      // plain anchor belongs to the browser, not to the router.
+      if (!isRouteHash(location.hash)) return null;
+      var bits = location.hash.replace(/^#\\//, "").split("/").filter(Boolean);
       var slug = bits[0] && ids[bits[0]] ? bits[0] : "home";
       return { slug: slug, anchor: bits[1] || "" };
     }
@@ -170,8 +176,8 @@ def main():
         reveal(next);
 
         var target = anchor && next.querySelector("#" + CSS.escape(anchor));
-        if (target) target.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
-        else window.scrollTo({ top: 0, behavior: "auto" });
+        if (target) target.scrollIntoView({ behavior: reduced ? "instant" : "smooth", block: "start" });
+        else window.scrollTo({ top: 0, behavior: "instant" });
       };
 
       if (!animate || reduced || !current || current === next) return finish();
@@ -187,11 +193,24 @@ def main():
 
     window.addEventListener("hashchange", function () {
       var r = parse();
-      show(r.slug, r.anchor, true);
+      if (r) show(r.slug, r.anchor, true);     // ignore plain anchors
+    });
+
+    // Clicking a link to the route already on screen fires no hashchange, so
+    // scroll to its target here instead of leaving the click dead.
+    document.addEventListener("click", function (e) {
+      var a = e.target.closest && e.target.closest('a[href^="#/"]');
+      if (!a) return;
+      var href = a.getAttribute("href");
+      if (href !== location.hash) return;      // hashchange will handle it
+      var bits = href.replace(/^#\\//, "").split("/").filter(Boolean);
+      if (!bits[0] || !ids[bits[0]]) return;
+      e.preventDefault();
+      show(bits[0], bits[1] || "", false);
     });
 
     var first = parse();
-    show(first.slug, first.anchor, false);
+    show(first ? first.slug : "home", first ? first.anchor : "", false);
   })();
 """
 
@@ -258,7 +277,7 @@ def main():
 
 {header}
 
-<main id="main">
+<main id="main" tabindex="-1">
 {routes_html}
 </main>
 

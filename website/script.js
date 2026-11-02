@@ -4,6 +4,17 @@
 
   var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+  /* Work queued here runs once the preloader is out of the way, so counters
+     and similar effects are actually seen rather than finishing behind it. */
+  var pageReady = false;
+  var readyQueue = [];
+  var whenReady = function (fn) { pageReady ? fn() : readyQueue.push(fn); };
+  var markReady = function () {
+    if (pageReady) return;
+    pageReady = true;
+    readyQueue.splice(0).forEach(function (fn) { fn(); });
+  };
+
   /* ============================================================
      Preloader — lifts away once the page (and logo) has loaded
      ============================================================ */
@@ -11,11 +22,13 @@
   if (preloader) {
     if (reduced) {
       preloader.remove();
+      markReady();
     } else {
       document.body.classList.add("loading");
       var dismiss = function () {
         preloader.classList.add("done");
         document.body.classList.remove("loading");
+        markReady();
         setTimeout(function () {
           if (preloader.parentNode) preloader.remove();
         }, 1100);
@@ -32,7 +45,24 @@
     }
   }
 
+  /* ---- skip link: move focus into the content ----
+     Relying on fragment navigation alone leaves focus on <body> in several
+     browsers, and writes "#main" into the address bar, which the router and
+     the back button both have to work around. */
+  var skip = document.querySelector(".skip-link");
+  var mainEl = document.getElementById("main");
+  if (skip && mainEl) {
+    skip.addEventListener("click", function (e) {
+      e.preventDefault();
+      mainEl.setAttribute("tabindex", "-1");
+      mainEl.focus({ preventScroll: true });
+      window.scrollTo({ top: 0, behavior: "instant" });
+    });
+  }
+
   /* ---- current year in footer ---- */
+  if (!preloader) markReady();
+
   var yearEl = document.getElementById("year");
   if (yearEl) yearEl.textContent = new Date().getFullYear();
 
@@ -117,6 +147,8 @@
      ============================================================ */
   var counters = document.querySelectorAll("[data-count]");
   var runCounter = function (el) {
+    if (el.dataset.counted) return;          // guard against a second start
+    el.dataset.counted = "1";
     var target = parseInt(el.getAttribute("data-count"), 10);
     if (reduced) { el.textContent = target; return; }
     var duration = 1300;
@@ -127,7 +159,7 @@
       el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
       if (p < 1) requestAnimationFrame(step);
     };
-    requestAnimationFrame(step);
+    whenReady(function () { requestAnimationFrame(step); });
   };
   if ("IntersectionObserver" in window) {
     var cio = new IntersectionObserver(
@@ -193,15 +225,14 @@
   var STORE_KEY = "carevaEnquiries";
   var served = location.protocol === "http:" || location.protocol === "https:";
 
-  var backup = function (data) {
-    try {
-      var list = JSON.parse(localStorage.getItem(STORE_KEY)) || [];
-      list.push(data);
-      localStorage.setItem(STORE_KEY, JSON.stringify(list));
-    } catch (err) {
-      /* private mode or blocked storage — delivery does not depend on this */
-    }
-  };
+  /* Enquiries are NOT kept in the browser. They contain patient health
+     details, and a shared or family device would leave them readable by the
+     next person with no expiry. Any previously stored copies are cleared. */
+  try {
+    localStorage.removeItem(STORE_KEY);
+  } catch (err) {
+    /* storage blocked — nothing to clear */
+  }
 
   var LABELS = {
     name: "Name", phone: "Phone", email: "Email", service: "Service",
@@ -288,7 +319,6 @@
       clearFallback();
       data.source = form.getAttribute("data-form");
       data.receivedAt = new Date().toISOString();
-      backup(data);
 
       // Opened as a local file, or no endpoint configured: skip the request
       // that cannot succeed and go straight to the options that can.

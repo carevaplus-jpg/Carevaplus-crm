@@ -476,7 +476,9 @@ textarea { resize: vertical; }
     background: #fff; border-bottom: 1px solid var(--line); box-shadow: var(--shadow-md);
     max-height: 0; overflow: hidden; transition: max-height .4s var(--ease-out);
   }
-  .nav.open { max-height: 440px; }
+  /* Tall enough for every link plus the Call button, and scrollable on short
+     screens — a fixed cap clipped the Call button, which is the main action. */
+  .nav.open { max-height: 80vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
   .nav > a:not(.btn) { padding: 15px 24px; border-bottom: 1px solid var(--line); }
   .nav > a:not(.btn)::after { display: none; }
   .nav-cta { margin: 16px 24px 20px; border-bottom: 0 !important; justify-content: center; }
@@ -796,3 +798,6 @@ textarea { resize: vertical; }
   .nav > a:not(.btn).active::after { animation: underline .5s var(--ease-out) both; }
   @keyframes underline { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 }
+
+/* the skip link moves focus here; no ring for pointer users */
+main:focus { outline: none; }

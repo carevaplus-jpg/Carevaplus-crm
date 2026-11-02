@@ -493,7 +493,9 @@ textarea { resize: vertical; }
     background: #fff; border-bottom: 1px solid var(--line); box-shadow: var(--shadow-md);
     max-height: 0; overflow: hidden; transition: max-height .4s var(--ease-out);
   }
-  .nav.open { max-height: 440px; }
+  /* Tall enough for every link plus the Call button, and scrollable on short
+     screens — a fixed cap clipped the Call button, which is the main action. */
+  .nav.open { max-height: 80vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
   .nav > a:not(.btn) { padding: 15px 24px; border-bottom: 1px solid var(--line); }
   .nav > a:not(.btn)::after { display: none; }
   .nav-cta { margin: 16px 24px 20px; border-bottom: 0 !important; justify-content: center; }
@@ -814,6 +816,9 @@ textarea { resize: vertical; }
   @keyframes underline { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 }
 
+/* the skip link moves focus here; no ring for pointer users */
+main:focus { outline: none; }
+
 
 /* ---- standalone build: logos embedded as backgrounds ---- */
 .brand-logo, .footer-logo, .preloader-logo {
@@ -863,7 +868,7 @@ textarea { resize: vertical; }
   </div>
 </header>
 
-<main id="main">
+<main id="main" tabindex="-1">
 
 <section class="hero">
   <div class="hero-bg" aria-hidden="true"></div>
@@ -907,6 +912,8 @@ textarea { resize: vertical; }
             <option>Post-surgery recovery</option>
             <option>Physiotherapy</option>
             <option>Mother &amp; newborn care</option>
+            <option>Palliative / critical care</option>
+            <option>Medical equipment rental</option>
             <option>Not sure — please advise</option>
           </select>
         </label>
@@ -1075,6 +1082,8 @@ textarea { resize: vertical; }
         <li><a href="services.html#elderly">Elderly care</a></li>
         <li><a href="services.html#post-surgery">Post-surgery care</a></li>
         <li><a href="services.html#physiotherapy">Physiotherapy</a></li>
+        <li><a href="services.html#mother-baby">Mother &amp; newborn care</a></li>
+        <li><a href="services.html#palliative">Palliative &amp; critical care</a></li>
         <li><a href="services.html#equipment">Equipment rental</a></li>
       </ul>
     </div>
@@ -1131,6 +1140,17 @@ textarea { resize: vertical; }
 
   var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+  /* Work queued here runs once the preloader is out of the way, so counters
+     and similar effects are actually seen rather than finishing behind it. */
+  var pageReady = false;
+  var readyQueue = [];
+  var whenReady = function (fn) { pageReady ? fn() : readyQueue.push(fn); };
+  var markReady = function () {
+    if (pageReady) return;
+    pageReady = true;
+    readyQueue.splice(0).forEach(function (fn) { fn(); });
+  };
+
   /* ============================================================
      Preloader — lifts away once the page (and logo) has loaded
      ============================================================ */
@@ -1138,11 +1158,13 @@ textarea { resize: vertical; }
   if (preloader) {
     if (reduced) {
       preloader.remove();
+      markReady();
     } else {
       document.body.classList.add("loading");
       var dismiss = function () {
         preloader.classList.add("done");
         document.body.classList.remove("loading");
+        markReady();
         setTimeout(function () {
           if (preloader.parentNode) preloader.remove();
         }, 1100);
@@ -1159,7 +1181,24 @@ textarea { resize: vertical; }
     }
   }
 
+  /* ---- skip link: move focus into the content ----
+     Relying on fragment navigation alone leaves focus on <body> in several
+     browsers, and writes "#main" into the address bar, which the router and
+     the back button both have to work around. */
+  var skip = document.querySelector(".skip-link");
+  var mainEl = document.getElementById("main");
+  if (skip && mainEl) {
+    skip.addEventListener("click", function (e) {
+      e.preventDefault();
+      mainEl.setAttribute("tabindex", "-1");
+      mainEl.focus({ preventScroll: true });
+      window.scrollTo({ top: 0, behavior: "instant" });
+    });
+  }
+
   /* ---- current year in footer ---- */
+  if (!preloader) markReady();
+
   var yearEl = document.getElementById("year");
   if (yearEl) yearEl.textContent = new Date().getFullYear();
 
@@ -1244,6 +1283,8 @@ textarea { resize: vertical; }
      ============================================================ */
   var counters = document.querySelectorAll("[data-count]");
   var runCounter = function (el) {
+    if (el.dataset.counted) return;          // guard against a second start
+    el.dataset.counted = "1";
     var target = parseInt(el.getAttribute("data-count"), 10);
     if (reduced) { el.textContent = target; return; }
     var duration = 1300;
@@ -1254,7 +1295,7 @@ textarea { resize: vertical; }
       el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
       if (p < 1) requestAnimationFrame(step);
     };
-    requestAnimationFrame(step);
+    whenReady(function () { requestAnimationFrame(step); });
   };
   if ("IntersectionObserver" in window) {
     var cio = new IntersectionObserver(
@@ -1320,15 +1361,14 @@ textarea { resize: vertical; }
   var STORE_KEY = "carevaEnquiries";
   var served = location.protocol === "http:" || location.protocol === "https:";
 
-  var backup = function (data) {
-    try {
-      var list = JSON.parse(localStorage.getItem(STORE_KEY)) || [];
-      list.push(data);
-      localStorage.setItem(STORE_KEY, JSON.stringify(list));
-    } catch (err) {
-      /* private mode or blocked storage — delivery does not depend on this */
-    }
-  };
+  /* Enquiries are NOT kept in the browser. They contain patient health
+     details, and a shared or family device would leave them readable by the
+     next person with no expiry. Any previously stored copies are cleared. */
+  try {
+    localStorage.removeItem(STORE_KEY);
+  } catch (err) {
+    /* storage blocked — nothing to clear */
+  }
 
   var LABELS = {
     name: "Name", phone: "Phone", email: "Email", service: "Service",
@@ -1415,7 +1455,6 @@ textarea { resize: vertical; }
       clearFallback();
       data.source = form.getAttribute("data-form");
       data.receivedAt = new Date().toISOString();
-      backup(data);
 
       // Opened as a local file, or no endpoint configured: skip the request
       // that cannot succeed and go straight to the options that can.
