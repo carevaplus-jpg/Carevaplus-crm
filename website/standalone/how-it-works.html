@@ -738,6 +738,82 @@ textarea { resize: vertical; }
 /* disabled submit button while sending */
 .btn:disabled { opacity: .72; cursor: wait; transform: none !important; }
 
+/* ============================================================
+   SEND OPTIONS — shown when email cannot be posted directly
+   ============================================================ */
+.send-options {
+  display: grid; gap: 10px; margin-top: 16px; padding: 18px;
+  border-radius: 14px; border: 1.5px solid var(--green-100);
+  background: linear-gradient(140deg, var(--green-50), var(--blue-50));
+  opacity: 0; transform: translateY(10px);
+}
+.send-options.is-open { animation: sendIn .45s var(--ease-out) forwards; }
+@keyframes sendIn { to { opacity: 1; transform: none; } }
+.send-options-title { margin: 0 0 4px; font-size: .9rem; font-weight: 700; color: var(--ink); }
+.send-options-note { margin: 6px 0 0; font-size: .78rem; line-height: 1.5; color: var(--muted); }
+.send-options .btn { animation: riseIn .45s var(--ease-out) both; }
+.send-options .btn:nth-of-type(1) { animation-delay: .06s; }
+.send-options .btn:nth-of-type(2) { animation-delay: .13s; }
+.send-options .btn:nth-of-type(3) { animation-delay: .20s; }
+
+/* ============================================================
+   SINGLE-FILE BUILD — animated routing between pages
+   ============================================================ */
+.route { display: none; }
+.route.is-active { display: block; animation: routeIn .55s var(--ease-out) both; }
+@keyframes routeIn {
+  from { opacity: 0; transform: translateY(22px) scale(.995); filter: blur(3px); }
+  to   { opacity: 1; transform: none; filter: blur(0); }
+}
+.route.is-leaving { display: block; animation: routeOut .22s var(--ease-soft) both; }
+@keyframes routeOut {
+  to { opacity: 0; transform: translateY(-14px) scale(.995); filter: blur(3px); }
+}
+
+/* sliver that sweeps the top of the page while a route changes */
+.route-bar {
+  position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 95;
+  background: linear-gradient(90deg, var(--blue-500), var(--green-500), var(--red-500));
+  transform: scaleX(0); transform-origin: 0 50%; opacity: 0;
+}
+.route-bar.is-busy { animation: routeBar .7s var(--ease-out) forwards; }
+@keyframes routeBar {
+  0%   { transform: scaleX(0);   opacity: 1; }
+  70%  { transform: scaleX(.85); opacity: 1; }
+  100% { transform: scaleX(1);   opacity: 0; }
+}
+
+/* ============================================================
+   EXTRA MOTION
+   ============================================================ */
+@media (prefers-reduced-motion: no-preference) {
+  .hero-card { animation: cardIn 1s var(--ease-out) .35s both; }
+
+  /* the gradient in the hero headline drifts */
+  .hero-copy h1 em { background-size: 220% 100%; animation: sheen 9s ease-in-out infinite; }
+  @keyframes sheen { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+
+  /* service icons settle in with a soft pop */
+  .card.visible .card-ico { animation: popIn .6s var(--ease-out) both; }
+  @keyframes popIn { from { transform: scale(.78) rotate(-10deg); opacity: 0; } to { transform: none; opacity: 1; } }
+
+  /* step and timeline markers draw a ring as they appear */
+  .step.visible .step-num, .tl-item.visible .tl-dot { animation: ringIn .7s var(--ease-out) both; }
+  @keyframes ringIn {
+    from { transform: scale(.6); box-shadow: 0 0 0 0 var(--green-50); opacity: 0; }
+    to   { transform: none;      box-shadow: 0 0 0 6px var(--green-50); opacity: 1; }
+  }
+
+  /* area chips cascade */
+  .chips .chip { animation: riseIn .5s var(--ease-out) both; }
+  .chips .chip:nth-child(n+7)  { animation-delay: .06s; }
+  .chips .chip:nth-child(n+13) { animation-delay: .12s; }
+
+  /* nav underline sweeps in on the active page */
+  .nav > a:not(.btn).active::after { animation: underline .5s var(--ease-out) both; }
+  @keyframes underline { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+}
+
 
 /* ---- standalone build: logos embedded as backgrounds ---- */
 .brand-logo, .footer-logo, .preloader-logo {
@@ -909,6 +985,7 @@ textarea { resize: vertical; }
   window.CAREVA_CONFIG = {
     endpoint: "https://formsubmit.co/ajax/info@carevaplus.com",
     email: "info@carevaplus.com",
+    whatsapp: "https://wa.me/919655508881",
     phone: "+91 96555 08881",
     phoneTel: "+919655508881"
   };
@@ -1064,9 +1141,20 @@ textarea { resize: vertical; }
   /* ============================================================
      Active link highlighting as sections pass under the header
      ============================================================ */
-  var navLinks = Array.prototype.slice.call(nav.querySelectorAll('a[href^="#"]'));
+  // Only plain "#section-id" links point at an element. Hash-route links such
+  // as "#/services" are navigation, not selectors, and must be skipped — and
+  // any unknown id simply yields no section.
+  var navLinks = Array.prototype.slice
+    .call(nav.querySelectorAll('a[href^="#"]'))
+    .filter(function (a) { return /^#[A-Za-z][\w-]*$/.test(a.getAttribute("href")); });
   var sections = navLinks
-    .map(function (a) { return document.querySelector(a.getAttribute("href")); })
+    .map(function (a) {
+      try {
+        return document.querySelector(a.getAttribute("href"));
+      } catch (err) {
+        return null;
+      }
+    })
     .filter(Boolean);
 
   if (sections.length && "IntersectionObserver" in window) {
@@ -1085,13 +1173,18 @@ textarea { resize: vertical; }
   }
 
   /* ============================================================
-     Forms — submitted to FormSubmit, which emails the care team.
-     Config comes from window.CAREVA_CONFIG (written by build.py).
-     Every enquiry is also kept in localStorage as a local backup, so
-     nothing is lost if the network call fails.
+     Forms
+
+     Over http(s) the enquiry is POSTed to FormSubmit, which emails the
+     care team. FormSubmit refuses submissions from pages opened as local
+     files, and it also refuses until the address has been confirmed, so
+     in either case the form falls back to handing the visitor a ready-made
+     WhatsApp or email message containing everything they typed. Nothing is
+     ever lost, and nothing has to be retyped.
      ============================================================ */
   var CFG = window.CAREVA_CONFIG || {};
   var STORE_KEY = "carevaEnquiries";
+  var served = location.protocol === "http:" || location.protocol === "https:";
 
   var backup = function (data) {
     try {
@@ -1099,14 +1192,55 @@ textarea { resize: vertical; }
       list.push(data);
       localStorage.setItem(STORE_KEY, JSON.stringify(list));
     } catch (err) {
-      /* private mode or blocked storage — the network call still carries it */
+      /* private mode or blocked storage — delivery does not depend on this */
     }
   };
 
-  var callUs = function () {
-    return CFG.phone
-      ? " Please call us on " + CFG.phone + " instead."
-      : " Please call our helpline instead.";
+  var LABELS = {
+    name: "Name", phone: "Phone", email: "Email", service: "Service",
+    duration: "Duration", area: "Area", message: "Details"
+  };
+
+  var compose = function (data) {
+    var lines = ["New care enquiry from the Careva+ website", ""];
+    Object.keys(LABELS).forEach(function (key) {
+      if (data[key]) lines.push(LABELS[key] + ": " + data[key]);
+    });
+    return lines.join("\n");
+  };
+
+  /* Render WhatsApp / email buttons pre-filled with the enquiry. */
+  var offerFallback = function (form, note, data, reason) {
+    var text = compose(data);
+    var box = form.querySelector("[data-fallback]");
+    if (!box) {
+      box = document.createElement("div");
+      box.setAttribute("data-fallback", "");
+      box.className = "send-options";
+      note.parentNode.insertBefore(box, note.nextSibling);
+    }
+
+    var wa = CFG.whatsapp
+      ? '<a class="btn btn-whatsapp btn-block" target="_blank" rel="noopener" href="' +
+        CFG.whatsapp + "?text=" + encodeURIComponent(text) + '">Send on WhatsApp</a>'
+      : "";
+    var mail = CFG.email
+      ? '<a class="btn btn-navy btn-block" href="mailto:' + CFG.email +
+        "?subject=" + encodeURIComponent("New care enquiry from the website") +
+        "&body=" + encodeURIComponent(text) + '">Send by email</a>'
+      : "";
+    var call = CFG.phoneTel
+      ? '<a class="btn btn-ghost btn-block" href="tel:' + CFG.phoneTel + '">Call ' +
+        (CFG.phone || "us") + "</a>"
+      : "";
+
+    box.innerHTML =
+      '<p class="send-options-title">Your enquiry is ready — choose how to send it:</p>' +
+      wa + mail + call +
+      '<p class="send-options-note">' + reason + "</p>";
+    box.classList.remove("is-open");
+    void box.offsetWidth;          // restart the entrance animation
+    box.classList.add("is-open");
   };
 
   document.querySelectorAll("[data-form]").forEach(function (form) {
@@ -1118,11 +1252,14 @@ textarea { resize: vertical; }
       note.textContent = message;
       note.className = "form-note " + kind;
     };
-
     var busy = function (on) {
       if (!button) return;
       button.disabled = on;
       button.textContent = on ? "Sending…" : buttonText;
+    };
+    var clearFallback = function () {
+      var box = form.querySelector("[data-fallback]");
+      if (box) box.remove();
     };
 
     form.addEventListener("submit", function (e) {
@@ -1134,26 +1271,29 @@ textarea { resize: vertical; }
         data[key] = typeof value === "string" ? value.trim() : value;
       });
 
-      // Bots fill the hidden field; humans never see it.
-      if (data._honey) return;
+      if (data._honey) return;                       // bots only
 
       if (!data.name || !data.phone) {
         say("Please enter your name and phone number.", "err");
         return;
       }
 
+      clearFallback();
       data.source = form.getAttribute("data-form");
       data.receivedAt = new Date().toISOString();
-      fd.set("Page", document.title);
-      fd.set("Submitted at", new Date().toLocaleString());
-
       backup(data);
 
-      if (!CFG.endpoint) {
-        say("Thank you, " + data.name.split(" ")[0] + "." + callUs(), "ok");
-        form.reset();
+      // Opened as a local file, or no endpoint configured: skip the request
+      // that cannot succeed and go straight to the options that can.
+      if (!served || !CFG.endpoint) {
+        say("Almost there, " + data.name.split(" ")[0] + ".", "ok");
+        offerFallback(form, note, data,
+          "This page is open from a file on your device, so it cannot send email by itself. Any option above sends your details straight to our care team.");
         return;
       }
+
+      fd.set("Page", document.title);
+      fd.set("Submitted at", new Date().toLocaleString());
 
       busy(true);
       say("", "");
@@ -1167,24 +1307,20 @@ textarea { resize: vertical; }
           return res.json().catch(function () { return {}; });
         })
         .then(function (body) {
-          var ok = body && String(body.success) === "true";
-          if (ok) {
-            say(
-              "Thank you, " + data.name.split(" ")[0] +
-                ". Your request has reached our care team — an advisor will call you shortly.",
-              "ok"
-            );
+          if (body && String(body.success) === "true") {
+            say("Thank you, " + data.name.split(" ")[0] +
+                ". Your request has reached our care team — an advisor will call you shortly.", "ok");
             form.reset();
-          } else {
-            // Most common cause: the address has not been activated yet.
-            say(
-              (body && body.message ? body.message + " " : "We could not send your request just now.") + callUs(),
-              "err"
-            );
+            return;
           }
+          say("Almost there, " + data.name.split(" ")[0] + ".", "ok");
+          offerFallback(form, note, data,
+            "Our email service could not accept this request just now. Any option above reaches us immediately.");
         })
         .catch(function () {
-          say("We could not reach our server — your connection may be offline." + callUs(), "err");
+          say("Almost there, " + data.name.split(" ")[0] + ".", "ok");
+          offerFallback(form, note, data,
+            "We could not reach our server — your connection may be offline. Any option above reaches us immediately.");
         })
         .then(function () {
           busy(false);

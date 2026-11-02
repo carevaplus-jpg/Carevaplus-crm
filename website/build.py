@@ -201,6 +201,7 @@ def footer():
   window.CAREVA_CONFIG = {{
     endpoint: "{FORM_ENDPOINT}",
     email: "{EMAIL}",
+    whatsapp: "{WHATSAPP}",
     phone: "{PHONE_DISPLAY}",
     phoneTel: "{PHONE_TEL}"
   }};

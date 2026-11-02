@@ -148,9 +148,20 @@
   /* ============================================================
      Active link highlighting as sections pass under the header
      ============================================================ */
-  var navLinks = Array.prototype.slice.call(nav.querySelectorAll('a[href^="#"]'));
+  // Only plain "#section-id" links point at an element. Hash-route links such
+  // as "#/services" are navigation, not selectors, and must be skipped — and
+  // any unknown id simply yields no section.
+  var navLinks = Array.prototype.slice
+    .call(nav.querySelectorAll('a[href^="#"]'))
+    .filter(function (a) { return /^#[A-Za-z][\w-]*$/.test(a.getAttribute("href")); });
   var sections = navLinks
-    .map(function (a) { return document.querySelector(a.getAttribute("href")); })
+    .map(function (a) {
+      try {
+        return document.querySelector(a.getAttribute("href"));
+      } catch (err) {
+        return null;
+      }
+    })
     .filter(Boolean);
 
   if (sections.length && "IntersectionObserver" in window) {
@@ -169,13 +180,18 @@
   }
 
   /* ============================================================
-     Forms — submitted to FormSubmit, which emails the care team.
-     Config comes from window.CAREVA_CONFIG (written by build.py).
-     Every enquiry is also kept in localStorage as a local backup, so
-     nothing is lost if the network call fails.
+     Forms
+
+     Over http(s) the enquiry is POSTed to FormSubmit, which emails the
+     care team. FormSubmit refuses submissions from pages opened as local
+     files, and it also refuses until the address has been confirmed, so
+     in either case the form falls back to handing the visitor a ready-made
+     WhatsApp or email message containing everything they typed. Nothing is
+     ever lost, and nothing has to be retyped.
      ============================================================ */
   var CFG = window.CAREVA_CONFIG || {};
   var STORE_KEY = "carevaEnquiries";
+  var served = location.protocol === "http:" || location.protocol === "https:";
 
   var backup = function (data) {
     try {
@@ -183,14 +199,55 @@
       list.push(data);
       localStorage.setItem(STORE_KEY, JSON.stringify(list));
     } catch (err) {
-      /* private mode or blocked storage — the network call still carries it */
+      /* private mode or blocked storage — delivery does not depend on this */
     }
   };
 
-  var callUs = function () {
-    return CFG.phone
-      ? " Please call us on " + CFG.phone + " instead."
-      : " Please call our helpline instead.";
+  var LABELS = {
+    name: "Name", phone: "Phone", email: "Email", service: "Service",
+    duration: "Duration", area: "Area", message: "Details"
+  };
+
+  var compose = function (data) {
+    var lines = ["New care enquiry from the Careva+ website", ""];
+    Object.keys(LABELS).forEach(function (key) {
+      if (data[key]) lines.push(LABELS[key] + ": " + data[key]);
+    });
+    return lines.join("\n");
+  };
+
+  /* Render WhatsApp / email buttons pre-filled with the enquiry. */
+  var offerFallback = function (form, note, data, reason) {
+    var text = compose(data);
+    var box = form.querySelector("[data-fallback]");
+    if (!box) {
+      box = document.createElement("div");
+      box.setAttribute("data-fallback", "");
+      box.className = "send-options";
+      note.parentNode.insertBefore(box, note.nextSibling);
+    }
+
+    var wa = CFG.whatsapp
+      ? '<a class="btn btn-whatsapp btn-block" target="_blank" rel="noopener" href="' +
+        CFG.whatsapp + "?text=" + encodeURIComponent(text) + '">Send on WhatsApp</a>'
+      : "";
+    var mail = CFG.email
+      ? '<a class="btn btn-navy btn-block" href="mailto:' + CFG.email +
+        "?subject=" + encodeURIComponent("New care enquiry from the website") +
+        "&body=" + encodeURIComponent(text) + '">Send by email</a>'
+      : "";
+    var call = CFG.phoneTel
+      ? '<a class="btn btn-ghost btn-block" href="tel:' + CFG.phoneTel + '">Call ' +
+        (CFG.phone || "us") + "</a>"
+      : "";
+
+    box.innerHTML =
+      '<p class="send-options-title">Your enquiry is ready — choose how to send it:</p>' +
+      wa + mail + call +
+      '<p class="send-options-note">' + reason + "</p>";
+    box.classList.remove("is-open");
+    void box.offsetWidth;          // restart the entrance animation
+    box.classList.add("is-open");
   };
 
   document.querySelectorAll("[data-form]").forEach(function (form) {
@@ -202,11 +259,14 @@
       note.textContent = message;
       note.className = "form-note " + kind;
     };
-
     var busy = function (on) {
       if (!button) return;
       button.disabled = on;
       button.textContent = on ? "Sending…" : buttonText;
+    };
+    var clearFallback = function () {
+      var box = form.querySelector("[data-fallback]");
+      if (box) box.remove();
     };
 
     form.addEventListener("submit", function (e) {
@@ -218,26 +278,29 @@
         data[key] = typeof value === "string" ? value.trim() : value;
       });
 
-      // Bots fill the hidden field; humans never see it.
-      if (data._honey) return;
+      if (data._honey) return;                       // bots only
 
       if (!data.name || !data.phone) {
         say("Please enter your name and phone number.", "err");
         return;
       }
 
+      clearFallback();
       data.source = form.getAttribute("data-form");
       data.receivedAt = new Date().toISOString();
-      fd.set("Page", document.title);
-      fd.set("Submitted at", new Date().toLocaleString());
-
       backup(data);
 
-      if (!CFG.endpoint) {
-        say("Thank you, " + data.name.split(" ")[0] + "." + callUs(), "ok");
-        form.reset();
+      // Opened as a local file, or no endpoint configured: skip the request
+      // that cannot succeed and go straight to the options that can.
+      if (!served || !CFG.endpoint) {
+        say("Almost there, " + data.name.split(" ")[0] + ".", "ok");
+        offerFallback(form, note, data,
+          "This page is open from a file on your device, so it cannot send email by itself. Any option above sends your details straight to our care team.");
         return;
       }
+
+      fd.set("Page", document.title);
+      fd.set("Submitted at", new Date().toLocaleString());
 
       busy(true);
       say("", "");
@@ -251,24 +314,20 @@
           return res.json().catch(function () { return {}; });
         })
         .then(function (body) {
-          var ok = body && String(body.success) === "true";
-          if (ok) {
-            say(
-              "Thank you, " + data.name.split(" ")[0] +
-                ". Your request has reached our care team — an advisor will call you shortly.",
-              "ok"
-            );
+          if (body && String(body.success) === "true") {
+            say("Thank you, " + data.name.split(" ")[0] +
+                ". Your request has reached our care team — an advisor will call you shortly.", "ok");
             form.reset();
-          } else {
-            // Most common cause: the address has not been activated yet.
-            say(
-              (body && body.message ? body.message + " " : "We could not send your request just now.") + callUs(),
-              "err"
-            );
+            return;
           }
+          say("Almost there, " + data.name.split(" ")[0] + ".", "ok");
+          offerFallback(form, note, data,
+            "Our email service could not accept this request just now. Any option above reaches us immediately.");
         })
         .catch(function () {
-          say("We could not reach our server — your connection may be offline." + callUs(), "err");
+          say("Almost there, " + data.name.split(" ")[0] + ".", "ok");
+          offerFallback(form, note, data,
+            "We could not reach our server — your connection may be offline. Any option above reaches us immediately.");
         })
         .then(function () {
           busy(false);

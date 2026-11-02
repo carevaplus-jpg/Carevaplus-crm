@@ -52,6 +52,17 @@ Open `index.html` in any browser, or serve the folder:
 cd website && python3 -m http.server 4180
 ```
 
+### Single file — the whole site in one document
+
+`careva-plus-website.html` contains all eight pages as hash routes
+(`#/services`, `#/contact`), with animated transitions between them, plus the
+stylesheet, script and logos embedded. One file, nothing beside it, works from
+a desktop or an email attachment. Rebuild with:
+
+```bash
+python3 build.py && python3 make_single.py
+```
+
 ### Standalone copies — for sharing
 
 `standalone/` holds a copy of every page with the stylesheet, script and logos
@@ -70,9 +81,11 @@ logo instead of repeating them in every page.
 ```
 website/
 ├── build.py       page generator — edit content and details here
+├── make_single.py      builds careva-plus-website.html (whole site, one file)
 ├── make_standalone.py  builds standalone/ (self-contained copies)
 ├── index.html …   8 generated pages
 ├── standalone/    the same 8 pages, each self-contained
+├── careva-plus-website.html   the whole site as one routed file
 ├── styles.css     design system, animations, responsive layout
 ├── script.js      preloader, nav, scroll reveals, counters, forms
 └── assets/
@@ -91,9 +104,15 @@ green (`--green-*`) for calls to action, and red (`--red-500`) sparingly.
 ## Animations
 
 Logo preloader with curtain lift · gradient scroll-progress bar · staggered hero
-entrance · drifting colour orbs · cascading reveal-on-scroll · counting
-statistics · nav underline with active-page highlight · button sheen · card
-accent bars and icon tilts.
+entrance · drifting colour orbs · a slow sheen across the headline gradient ·
+cascading reveal-on-scroll · counting statistics · popping service icons ·
+ring-in step and timeline markers · cascading area chips · nav underline with
+active-page highlight · button sheen · card accent bars and icon tilts · and,
+in the single-file build, an animated route transition with a sweeping
+progress sliver.
+
+Note: the hero enquiry card deliberately does **not** float on a loop. An
+element people type into should not drift under the cursor.
 
 All motion is disabled under `prefers-reduced-motion`, and the preloader has a
 4-second hard fallback so the page can never stay hidden.
@@ -104,18 +123,31 @@ Both forms (home page and contact page) POST to **FormSubmit**, which forwards
 each enquiry as an email to `info@carevaplus.com`. The endpoint is set by
 `FORM_ENDPOINT` at the top of `build.py`.
 
-### One-time activation — required
+### FormSubmit cannot work from a local file
 
-FormSubmit will not deliver anything until the address is confirmed:
+FormSubmit rejects submissions from pages opened as files ("Make sure you open
+this page through a web server"). This is their restriction and cannot be
+patched around — a `file://` page has no origin they will accept.
 
-1. Put the site online (the forms cannot reach FormSubmit from a `file://` page).
+So the form detects it. When the page is **not** served over http(s), it skips
+the request that cannot succeed and instead hands the visitor a ready-made
+message containing everything they typed, as three buttons:
+
+- **Send on WhatsApp** — opens WhatsApp with the enquiry pre-filled
+- **Send by email** — opens their mail app addressed to `info@carevaplus.com`
+- **Call +91 96555 08881**
+
+The same options appear if a hosted submission fails for any reason, so an
+enquiry is never lost and nothing has to be retyped.
+
+### One-time activation — required for automatic email
+
+1. Put the site online.
 2. Submit the form once.
 3. FormSubmit emails `info@carevaplus.com` a confirmation link. Click it.
-4. From then on every enquiry arrives in that inbox.
+4. From then on every enquiry arrives in that inbox automatically.
 
-Until step 3 is done, visitors see FormSubmit's "confirm your email" message
-followed by a prompt to call the helpline instead — so no enquiry is silently
-lost.
+Before step 3, hosted submissions fall back to the three buttons above.
 
 ### Optional: hide the address
 

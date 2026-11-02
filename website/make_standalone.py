@@ -15,7 +15,10 @@ import base64, pathlib, re
 
 SRC = pathlib.Path(__file__).parent
 OUT = SRC / "standalone"
-PAGES = sorted(p.name for p in SRC.glob("*.html"))
+# Only the generated site pages — not the single-file bundle, which is already
+# self-contained and would match this glob.
+BUNDLE = "careva-plus-website.html"
+PAGES = sorted(p.name for p in SRC.glob("*.html") if p.name != BUNDLE)
 
 
 def data_uri(rel):
@@ -71,7 +74,8 @@ def main():
 
         # Nothing may still point at a sibling file — only links to other pages
         # (optionally with a #fragment) are allowed to remain.
-        leftover = re.findall(r'(?:src|href)="(?!data:|#|tel:|mailto:|https?:)([^"]+)"', html)
+        markup = re.sub(r"<script\b.*?</script>", "", html, flags=re.S)
+        leftover = re.findall(r'(?:src|href)="(?!data:|#|tel:|mailto:|https?:)([^"]+)"', markup)
         external = [x for x in leftover if not x.split("#")[0].endswith(".html")]
         assert not external, (name, external)
 
