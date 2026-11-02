@@ -89,6 +89,7 @@ website/
 ├── styles.css     design system, animations, responsive layout
 ├── script.js      preloader, nav, scroll reveals, counters, forms
 └── assets/
+    ├── photos/        photography, each at two widths in WebP + JPEG
     ├── careva-logo.png        full logo, transparent background
     ├── careva-logo-light.png  white wordmark, for dark backgrounds
     ├── careva-mark.png        icon only, square
@@ -181,9 +182,25 @@ containing `success: "true"` as delivered.
 3. **Check the service-area lists** in `build.py` and remove anywhere you don't
    actually cover.
 
+## Photography
+
+`assets/photos/` holds five AI-generated photographs, each emitted at two widths
+in both WebP and JPEG and served through `<picture>` with `srcset`, so a phone
+downloads roughly a third of what a desktop does. The single-file and standalone
+builds embed the smaller variant instead.
+
+These are illustrative images, not photographs of actual Careva+ staff or
+patients. Do not caption them as real team members or clients. Replacing them
+with real photographs of your own team, with their consent, will always
+outperform them. `IMAGE-PROMPTS.md` tracks which slots are filled.
+
+Hero text contrast was measured against the rendered pixels rather than
+estimated: every string over the photo meets WCAG AA. Three colours were
+darkened to get there — see the comments in `styles.css`.
+
 ## Notes
 
-- No stock photography; all icons are inline SVG and all visuals are CSS.
+- All icons are inline SVG; no icon fonts or image sprites.
 - There are no customer testimonials. Add them only once you have real,
   permitted quotes from real clients.
 - Responsive from 360px up, keyboard accessible, with a skip link and visible

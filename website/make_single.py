@@ -33,6 +33,38 @@ ROUTES = [
 PAGE_TO_ROUTE = {page: slug for slug, page in ROUTES}
 
 
+
+PHOTO_VARIANT = {"hero": "-640"}          # which size to embed; others use -560
+
+
+def inline_photos(html, src_dir):
+    """Embed photo files as data URIs.
+
+    The <picture> wrapper is kept because the stylesheet targets it; only its
+    <source> elements are dropped and the <img> is pointed at an embedded copy.
+    The small variant is used — embedding full-size images would multiply the
+    file size for no visible gain at the sizes these are displayed.
+    """
+    def one(block):
+        inner = block.group(0)
+        if "assets/photos/" not in inner:
+            return inner
+        inner = re.sub(r"<source[^>]*>", "", inner)
+        m = re.search(r'src="assets/photos/([a-z0-9\-]+)\.jpg"', inner)
+        if not m:
+            return inner
+        name = m.group(1)
+        variant = PHOTO_VARIANT.get(name, "-560")
+        path = src_dir / "assets" / "photos" / f"{name}{variant}.webp"
+        if not path.exists():
+            path = src_dir / "assets" / "photos" / f"{name}.webp"
+        uri = "data:image/webp;base64," + base64.b64encode(path.read_bytes()).decode()
+        inner = re.sub(r'\s(?:srcset|sizes)="[^"]*"', "", inner)
+        inner = re.sub(r'src="assets/photos/[^"]*"', f'src="{uri}"', inner)
+        return inner
+
+    return re.sub(r"<picture[^>]*>.*?</picture>", one, html, flags=re.S)
+
 def data_uri(rel):
     return "data:image/png;base64," + base64.b64encode((SRC / rel).read_bytes()).decode()
 
@@ -108,6 +140,7 @@ def main():
     footer = re.sub(r'<picture class="footer-pic">.*?</picture>',
                     f'<span class="footer-logo" {label}></span>', footer, flags=re.S)
 
+    pages = {k: {**v, 'main': inline_photos(v['main'], SRC)} for k, v in pages.items()}
     routes_html = "\n".join(
         '<section class="route" id="route-%s" data-title="%s">\n%s\n</section>'
         % (slug, pages[slug]["title"].replace('"', "&quot;"), pages[slug]["main"])

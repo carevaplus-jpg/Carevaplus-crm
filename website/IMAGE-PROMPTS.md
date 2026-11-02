@@ -2,6 +2,24 @@
 
 Generate these in ChatGPT, send them back, and they get wired into the site.
 
+## Status
+
+**Done and live on the site (5):**
+
+| Image | Where it is used |
+|---|---|
+| Nurse checking blood pressure | Home page hero, and the WhatsApp/Facebook share preview |
+| Nurse walking with elderly man | Services → Elderly &amp; attendant care |
+| Physiotherapy with resistance band | Services → Physiotherapy |
+| Bedside with family member | Services → Palliative &amp; critical care |
+| Nurse leaving for a visit | Careers page |
+
+**Still worth generating (6):** the about-page team shot, and service photos
+for nursing care, post-surgery recovery, mother &amp; newborn care, equipment
+rental, and the assessment scene. Those services currently show the
+gradient-and-icon panel, which looks fine — the photos are an upgrade, not a
+gap.
+
 ## How to use this
 
 1. **Paste the style block at the end of every prompt.** It is what makes the

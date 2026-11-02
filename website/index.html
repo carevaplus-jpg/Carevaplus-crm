@@ -102,11 +102,19 @@
 
 <main id="main" tabindex="-1">
 
-<section class="hero">
+<section class="hero has-hero-photo">
   <div class="hero-bg" aria-hidden="true"></div>
-  <span class="orb orb-1" aria-hidden="true"></span>
+  <div class="hero-photo" aria-hidden="true">
+    <picture>
+      <source type="image/webp" sizes="(max-width: 820px) 100vw, 60vw"
+              srcset="assets/photos/hero-640.webp 640w, assets/photos/hero-1000.webp 1000w, assets/photos/hero.webp 1536w" />
+      <img src="assets/photos/hero.jpg" alt="" fetchpriority="high" decoding="async"
+           sizes="(max-width: 820px) 100vw, 60vw"
+           srcset="assets/photos/hero-640.jpg 640w, assets/photos/hero-1000.jpg 1000w, assets/photos/hero.jpg 1536w" />
+    </picture>
+  </div>
+  <div class="hero-scrim" aria-hidden="true"></div>
   <span class="orb orb-2" aria-hidden="true"></span>
-  <span class="orb orb-3" aria-hidden="true"></span>
   <div class="container hero-inner">
     <div class="hero-copy hero-anim">
       <p class="eyebrow"><span class="pulse-dot" aria-hidden="true"></span> Serving Salem &amp; nearby · Available 24 / 7</p>

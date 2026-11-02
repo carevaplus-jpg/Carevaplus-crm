@@ -65,13 +65,15 @@ def seo_tags(title, description, page):
                 "and Twitter tags. -->")
     base = SITE_URL.rstrip("/")
     url = base + "/" + ("" if page == "index.html" else page)
-    img = base + "/assets/careva-logo.png"
+    img = base + "/assets/photos/hero.jpg"   # a photo previews far better than a logo
     return f"""<link rel="canonical" href="{url}" />
 <meta property="og:url" content="{url}" />
 <meta property="og:site_name" content="Careva+ Home Health Care" />
 <meta property="og:locale" content="en_IN" />
 <meta property="og:image" content="{img}" />
-<meta property="og:image:alt" content="Careva+ Home Health Care, Salem" />
+<meta property="og:image:alt" content="A Careva+ nurse checking an elderly patient at home in Salem" />
+<meta property="og:image:width" content="1536" />
+<meta property="og:image:height" content="1024" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="{title}" />
 <meta name="twitter:description" content="{description}" />
@@ -384,6 +386,29 @@ ENQUIRY_FORM = """
 </form>
 """
 
+# slug -> (photo basename, alt text). Services without a photo keep the
+# gradient-and-icon panel, which occupies the same space.
+PHOTOS = {
+    "elderly": ("elderly-care", "Careva+ home care attendant helping an elderly man walk at home in Salem"),
+    "physiotherapy": ("physiotherapy", "Careva+ physiotherapist guiding a home exercise session in Salem"),
+    "palliative": ("palliative", "Careva+ nurse sitting with a patient and family member at home in Salem"),
+}
+
+
+def photo(basename, alt, sizes, classes="", loading="lazy"):
+    """Responsive <picture>: WebP with a JPEG fallback."""
+    b = basename
+    return (
+        f'<picture class="{classes}">'
+        f'<source type="image/webp" sizes="{sizes}" '
+        f'srcset="assets/photos/{b}-560.webp 560w, assets/photos/{b}.webp 900w" />'
+        f'<img src="assets/photos/{b}.jpg" alt="{alt}" loading="{loading}" decoding="async" '
+        f'sizes="{sizes}" '
+        f'srcset="assets/photos/{b}-560.jpg 560w, assets/photos/{b}.jpg 900w" />'
+        f'</picture>'
+    )
+
+
 SERVICES = [
     ("nursing", "Nursing care at home",
      "Injections, IV therapy, catheter &amp; Ryle's tube care, wound dressing and vitals monitoring by qualified GNM/ANM nurses.",
@@ -435,11 +460,19 @@ def service_cards(limit=None, link_more=True):
 
 def home():
     return f"""
-<section class="hero">
+<section class="hero has-hero-photo">
   <div class="hero-bg" aria-hidden="true"></div>
-  <span class="orb orb-1" aria-hidden="true"></span>
+  <div class="hero-photo" aria-hidden="true">
+    <picture>
+      <source type="image/webp" sizes="(max-width: 820px) 100vw, 60vw"
+              srcset="assets/photos/hero-640.webp 640w, assets/photos/hero-1000.webp 1000w, assets/photos/hero.webp 1536w" />
+      <img src="assets/photos/hero.jpg" alt="" fetchpriority="high" decoding="async"
+           sizes="(max-width: 820px) 100vw, 60vw"
+           srcset="assets/photos/hero-640.jpg 640w, assets/photos/hero-1000.jpg 1000w, assets/photos/hero.jpg 1536w" />
+    </picture>
+  </div>
+  <div class="hero-scrim" aria-hidden="true"></div>
   <span class="orb orb-2" aria-hidden="true"></span>
-  <span class="orb orb-3" aria-hidden="true"></span>
   <div class="container hero-inner">
     <div class="hero-copy hero-anim">
       <p class="eyebrow"><span class="pulse-dot" aria-hidden="true"></span> Serving Salem &amp; nearby · Available 24 / 7</p>
@@ -582,11 +615,18 @@ def services_page():
     blocks = []
     for i, (slug, name, desc, ticks, icon) in enumerate(SERVICES):
         tick_html = "".join(f"<li>{t}</li>" for t in ticks)
-        blocks.append(f"""  <article class="detail-row reveal{' detail-alt' if i % 2 else ''}" id="{slug}">
-    <div class="detail-visual" aria-hidden="true">
-      <span class="detail-ico"><svg viewBox="0 0 24 24">{icon}</svg></span>
-      <span class="detail-index">{i + 1:02d}</span>
-    </div>
+        if slug in PHOTOS:
+            base, alt = PHOTOS[slug]
+            visual = ('<div class="detail-visual has-photo">'
+                      + photo(base, alt, "(max-width: 1024px) 100vw, 340px", "detail-photo")
+                      + f'<span class="detail-index">{i + 1:02d}</span></div>')
+        else:
+            visual = (f'<div class="detail-visual" aria-hidden="true">'
+                      f'<span class="detail-ico"><svg viewBox="0 0 24 24">{icon}</svg></span>'
+                      f'<span class="detail-index">{i + 1:02d}</span></div>')
+        has_photo = ' detail-has-photo' if slug in PHOTOS else ''
+        blocks.append(f"""  <article class="detail-row reveal{' detail-alt' if i % 2 else ''}{has_photo}" id="{slug}">
+    {visual}
     <div class="detail-body">
       <h2>{name}</h2>
       <p>{desc}</p>
@@ -802,6 +842,16 @@ def careers_page():
         <a href="{WHATSAPP}" class="btn btn-whatsapp" target="_blank" rel="noopener">Apply on WhatsApp</a>
       </div>
     </div>
+    <aside class="reveal">
+      <figure class="framed-photo">
+        {photo('careers', 'A Careva+ home nurse leaving for a patient visit in Salem', '(max-width: 1024px) 100vw, 420px')}
+      </figure>
+    </aside>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container narrow">
     <aside class="info-card reveal">
       <h3>Before you apply</h3>
       <p class="pledge-intro">Please keep these ready — it speeds up the process considerably.</p>

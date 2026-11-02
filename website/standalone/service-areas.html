@@ -33,7 +33,7 @@
   --blue-100: #dceefb;
   --blue-50:  #f1f8fe;
 
-  --green-700: #3c8a19;
+  --green-700: #38801a;   /* 4.92:1 on white — the eyebrow needs 4.5 */
   --green-600: #55a520;
   --green-500: #76bf2a;
   --green-400: #8cc63f;
@@ -236,7 +236,9 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 @keyframes drift2 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(52px, -34px) scale(1.07); } }
 
 .hero-inner { display: grid; grid-template-columns: 1.08fr .92fr; gap: 56px; align-items: center; padding-bottom: 92px; }
-.hero-copy h1 em { font-style: normal; background: linear-gradient(100deg, var(--navy-700), var(--blue-500) 48%, var(--green-600)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+/* Darker stops than the brand mid-tones: this text crosses the hero photo,
+   where blue-500 measured 2.49:1 and green-600 1.83:1 against 3.0 required. */
+.hero-copy h1 em { font-style: normal; background: linear-gradient(100deg, var(--navy-700), #1a6cb5 48%, #2f6e14); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .lead { font-size: 1.12rem; max-width: 36rem; }
 .hero-actions { display: flex; flex-wrap: wrap; gap: 14px; margin: 28px 0 30px; }
 .hero-trust { display: flex; flex-wrap: wrap; gap: 10px 26px; font-size: .92rem; }
@@ -824,6 +826,82 @@ main:focus { outline: none; }
 .brand-pic, .footer-pic { display: block; line-height: 0; }
 .preloader-pic { display: block; }
 .preloader-pic img { width: min(300px, 62vw); display: block; margin: 0 auto 26px; animation: logoIn 1s var(--ease-out) both; }
+
+/* ============================================================
+   PHOTOGRAPHY
+   ============================================================ */
+
+/* ---- hero photo ----
+   The photo sits behind the hero on the right; a scrim fades it out under
+   the headline so the text keeps full contrast against near-white. */
+.hero-photo {
+  position: absolute; inset: 0 0 0 auto; width: 58%; z-index: -2;
+  overflow: hidden;
+  /* fade the photo's own left edge so it blends instead of showing a seam */
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 22%);
+          mask-image: linear-gradient(to right, transparent 0%, #000 22%);
+}
+.hero-photo picture, .hero-photo img {
+  display: block; width: 100%; height: 100%; object-fit: cover; object-position: 72% 30%;
+}
+.hero-scrim {
+  position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    linear-gradient(100deg,
+      #ffffff 0%, #ffffff 40%, rgba(255,255,255,.95) 48%,
+      rgba(255,255,255,.66) 55%, rgba(255,255,255,.16) 66%, rgba(255,255,255,0) 78%),
+    linear-gradient(to top, rgba(255,255,255,.92), rgba(255,255,255,0) 28%);
+}
+.has-hero-photo .hero-bg { opacity: .55; }
+/* the lead's right edge crosses the photo; --body measured 4.13:1 there */
+.has-hero-photo .lead { color: #3a4e66; }
+.has-hero-photo .orb-2 { opacity: .32; }
+
+/* ---- photo inside a service detail row ---- */
+.detail-visual.has-photo {
+  padding: 0; border: 0; background: none; height: auto; overflow: hidden;
+  border-radius: 16px; display: block; box-shadow: var(--shadow-sm);
+}
+.detail-photo, .detail-photo img {
+  display: block; width: 100%; border-radius: 16px;
+}
+/* height:100% against an auto-height parent collapsed the image */
+.detail-photo img { height: auto; object-fit: cover; aspect-ratio: 4 / 3; transition: transform .6s var(--ease-out); }
+/* a photo deserves more room than the icon panel */
+.detail-row.detail-has-photo { grid-template-columns: 340px 1fr; }
+.detail-row:hover .detail-photo img { transform: scale(1.04); }
+.detail-visual.has-photo .detail-index {
+  top: 8px; right: 12px; color: #fff; text-shadow: 0 2px 8px rgba(6,35,79,.6);
+}
+
+/* ---- a framed standalone photo ---- */
+.framed-photo { margin: 0; border-radius: 20px; overflow: hidden; box-shadow: var(--shadow-md); }
+.framed-photo picture, .framed-photo img { display: block; width: 100%; }
+.framed-photo img { object-fit: cover; aspect-ratio: 4 / 3; }
+
+@media (max-width: 1024px) {
+  .detail-photo img { aspect-ratio: 16 / 9; }
+}
+@media (max-width: 820px) {
+  /* on phones the photo becomes a band above the copy, not a side wash */
+  .hero-photo { position: relative; width: 100%; height: 240px; inset: auto; margin-bottom: -18px;
+                -webkit-mask-image: none; mask-image: none; }
+  .hero-photo img { object-position: 58% 38%; }
+  .hero-scrim {
+    background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,.1) 55%, #ffffff 88%);
+    inset: 0 0 auto 0; height: 248px;
+  }
+  .has-hero-photo { padding-top: 0; }
+  .has-hero-photo .hero-inner { padding-top: 18px; }
+}
+@media (max-width: 1024px) {
+  .detail-row.detail-has-photo { grid-template-columns: 1fr; }
+}
+
+/* a single centred column, for a lone card that would otherwise sit in a
+   two-column grid with an empty half beside it */
+.container.narrow { max-width: 760px; }
+.container.narrow .info-card { position: static; }
 
 
 /* ---- standalone build: logos embedded as backgrounds ---- */
