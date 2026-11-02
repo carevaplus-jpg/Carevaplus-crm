@@ -84,7 +84,7 @@ def header(active):
 <header class="site-header" id="siteHeader">
   <div class="container header-inner">
     <a href="index.html" class="brand" aria-label="Careva+ Home Health Care — home">
-      <img class="brand-logo" src="assets/careva-logo.png" alt="Careva+ Home Health Care" width="1200" height="421" />
+      <img class="brand-logo" src="assets/careva-logo.png" alt="Careva+ Home Health Care" width="600" height="210" />
     </a>
 
     <nav class="nav" id="nav" aria-label="Main">

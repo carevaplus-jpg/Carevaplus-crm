@@ -42,18 +42,37 @@ but the next `build.py` run will overwrite it.
 
 ## Run it
 
+**Keep every file in this folder together.** `index.html` loads `styles.css`,
+`script.js` and `assets/` from alongside it — open the HTML on its own and you
+get unstyled text with broken images.
+
 Open `index.html` in any browser, or serve the folder:
 
 ```bash
 cd website && python3 -m http.server 4180
 ```
 
+### Standalone copies — for sharing
+
+`standalone/` holds a copy of every page with the stylesheet, script and logos
+embedded inside each file. Those render correctly even as a lone file, so they
+are the ones to email or copy to a USB stick. Regenerate them after any change:
+
+```bash
+python3 build.py && python3 make_standalone.py
+```
+
+Serve the normal pages for real hosting — they share one cached stylesheet and
+logo instead of repeating them in every page.
+
 ## Files
 
 ```
 website/
 ├── build.py       page generator — edit content and details here
+├── make_standalone.py  builds standalone/ (self-contained copies)
 ├── index.html …   8 generated pages
+├── standalone/    the same 8 pages, each self-contained
 ├── styles.css     design system, animations, responsive layout
 ├── script.js      preloader, nav, scroll reveals, counters, forms
 └── assets/
