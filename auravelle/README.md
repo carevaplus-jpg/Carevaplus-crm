@@ -8,7 +8,7 @@ JavaScript — no frameworks, no build tooling, no dependencies.
 
 | File | Page |
 |---|---|
-| `index.html` | Home — parallax hero, brand story, the four actives, ritual, FAQ |
+| `index.html` | Home — hero with price, trust strip, pack cards, the four actives, usage, FAQ |
 | `kojiba.html` | Product — gallery, pack selection, cart, formulation panels |
 | `about.html` | Auravelle's story and company details |
 | `faq.html` | Eight questions |
@@ -75,26 +75,31 @@ Lines are kept in `localStorage` under `auravelle.cart.v1`, so a bag survives a
 reload and works offline. It stores **only product choices** — never a name,
 address or payment detail.
 
-## Parallax
+## Design
 
-Every `[data-depth]` element inside a `[data-parallax-root]` section is
-translated against scroll, by a fraction of how far its section has crossed the
-viewport. Positions are read and written once per frame inside
-`requestAnimationFrame`, and off-screen sections are skipped, so scrolling stays
-smooth. `data-depth` is the strength: `0.04` is a barely-there drift, `0.26` is
-pronounced.
+A marketplace-style storefront, built for buying rather than browsing: a launch
+promo bar, a navy header with search and a bag, a nav strip, a trust strip, pack
+cards, and a three-column product page — gallery and spec table, plus a sticky
+buy box with **Add to bag**, **Buy now** and a PIN-code check. Pack prices show
+a percentage off against MRP and follow the selected pack.
 
-Everything stops under `prefers-reduced-motion` — parallax transforms are
-cleared and reveals render immediately.
+Colours: navy chrome, marketplace blue for links and focus, amber for the main
+action and orange for Buy now. Auravelle's gold survives in the logo and the
+brand name. Reveals are kept short and subtle, and stop under
+`prefers-reduced-motion`.
 
 ## PWA
 
-- `manifest.webmanifest` — standalone display, brand cream theme, 192/512 icons
-  plus a maskable variant with a safe zone.
+- `manifest.webmanifest` — standalone display, 192/512 icons plus a maskable
+  variant with a safe zone.
 - `sw.js` — shell files cached on install and served cache-first; pages are
   network-first with a cache fallback, then `offline.html`.
 - An install bar appears when the browser offers `beforeinstallprompt`,
   dismissible for the session.
+- **Bump `VERSION` at the top of `sw.js` whenever `styles.css` or `app.js`
+  change.** The shell is served cache-first, so without a new version name
+  returning visitors would keep the old design. A version bump makes the new
+  worker delete the old caches — verified by upgrading a real v1 install to v2.
 
 Verified: manifest parses, all icons load at their declared sizes, the worker
 activates, 12 shell files cache, a visited page works fully offline with images,
@@ -117,3 +122,18 @@ The product shots are crops of the supplied carton dieline and the packaging
 mockup. The mockup is only 524 × 364, so the hero shot is soft at large sizes —
 a higher-resolution render, or real product photography, would noticeably
 improve the home and product pages.
+
+## Standalone pages
+
+`python3 build.py && python3 make_standalone.py` writes `standalone/`: the same
+pages with the stylesheet, script and images embedded, so a page renders
+correctly even as a lone file. Use these for sharing; serve the normal pages for
+hosting. The manifest and service worker are omitted from them because the PWA
+needs http(s).
+
+## Not claimed on the site
+
+The carton does not say anything about free delivery, cash on delivery, courier
+coverage or stock, so the site says none of it. Delivery copy is limited to
+"our team confirms delivery time and charges before dispatch". Add real policies
+to `build.py` once you have decided them.

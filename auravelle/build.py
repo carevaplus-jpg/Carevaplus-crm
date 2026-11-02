@@ -457,8 +457,11 @@ def pack_cards():
         strike = f"<s>{money(v['mrp'])}</s>" if save > 0 else ""
         out.append(f"""      <article class="pack-card" data-reveal>
         {tag}
-        <img src="assets/kojiba-pack-480.jpg" width="625" height="676" loading="lazy" decoding="async"
-             alt="{PRODUCT} {v['name']} — {v['qty']} × {WEIGHT}" />
+        <div class="pack-art stack-{min(v['qty'], 4) - 1 if v['qty'] > 1 else 0}">
+          <img src="assets/kojiba-pack-480.jpg" width="625" height="676" loading="lazy" decoding="async"
+               alt="{PRODUCT} {v['name']} — {v['qty']} × {WEIGHT}" />
+          <span class="pack-count">× {v['qty']}</span>
+        </div>
         <h3>{v['name']}</h3>
         <p class="pack-meta">{v['qty']} × {WEIGHT} bar{'s' if v['qty'] > 1 else ''}</p>
         <p class="pack-price"><b>{money(v['price'])}</b> {strike} {off}</p>
@@ -498,7 +501,7 @@ def home():
       <p class="eyebrow" data-rise="1" style="color:var(--amber-500)">{BRAND_FULL}</p>
       <h1 data-rise="2"><span class="script">{PRODUCT}</span><span class="h1-sub">{SUBTITLE}</span></h1>
       <div class="price-flash" data-rise="3">
-        <b>{money(MRP)}</b><s>{money(MRP)} MRP</s><em>75 g bar</em>
+        <b>{money(MRP)}</b><span>MRP · incl. all taxes</span><em>{WEIGHT} bar</em>
       </div>
       <p class="lead" data-rise="4">{FORMULA}. Save up to {best_pct}% when you buy a multi-pack.</p>
       <div class="hero-actions" data-rise="5">

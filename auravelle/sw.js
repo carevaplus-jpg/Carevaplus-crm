@@ -3,7 +3,7 @@
    instantly and keeps working offline. Pages are network-first with a cache
    fallback, so content stays fresh while still being available offline. */
 
-var VERSION = "auravelle-v1";
+var VERSION = "auravelle-v2";   // bump whenever styles.css or app.js change
 var SHELL = VERSION + "-shell";
 var PAGES = VERSION + "-pages";
 
@@ -14,6 +14,7 @@ var SHELL_FILES = [
   "offline.html",
   "assets/icon-192.png",
   "assets/icon-512.png",
+  "assets/mark.png",
   "assets/kojiba-pack-480.webp",
   "assets/kojiba-pack-800.webp",
   "assets/kojiba-scene-400.webp",

@@ -512,3 +512,35 @@ textarea { resize: vertical; }
 /* the two purchase buttons need a gap between them */
 .variants .btn + .btn { margin-top: 10px; }
 .variants .btn-lg { padding-block: 14px; }
+
+
+/* ---- hero price chip ---- */
+.price-flash span { font-size: .8rem; color: #a9bde3; }
+
+/* ---- pack art: a stack of cartons that grows with the pack size ----
+   One image plus offset cards behind it, so the page does not carry
+   several copies of the same picture. */
+.pack-art { position: relative; margin: 6px 14px 14px 6px; }
+.pack-art img { position: relative; z-index: 3; }
+.pack-art::before, .pack-art::after {
+  content: ""; position: absolute; inset: 0; border-radius: var(--r-md);
+  background: linear-gradient(135deg, #f6e4bd, #e8c170); border: 1px solid #d9b765;
+  opacity: 0; transition: transform .25s var(--ease);
+}
+.pack-art.stack-1::before { opacity: 1; transform: translate(9px, 9px); z-index: 2; }
+.pack-art.stack-2::before { opacity: 1; transform: translate(9px, 9px); z-index: 2; }
+.pack-art.stack-2::after  { opacity: 1; transform: translate(18px, 18px); z-index: 1; }
+.pack-art.stack-3::before { opacity: 1; transform: translate(9px, 9px); z-index: 2; }
+.pack-art.stack-3::after  { opacity: 1; transform: translate(18px, 18px); z-index: 1; }
+.pack-card:hover .pack-art.stack-1::before { transform: translate(12px, 12px); }
+.pack-card:hover .pack-art.stack-2::before, .pack-card:hover .pack-art.stack-3::before { transform: translate(12px, 12px); }
+.pack-card:hover .pack-art.stack-2::after, .pack-card:hover .pack-art.stack-3::after { transform: translate(24px, 24px); }
+.pack-count {
+  position: absolute; left: 10px; bottom: 10px; z-index: 4; background: var(--navy-900); color: #fff;
+  font-size: .8rem; font-weight: 700; border-radius: 999px; padding: 3px 11px;
+}
+.pack-art.stack-0 .pack-count { display: none; }
+
+/* the tag must sit above the carton art, not under it */
+.pack-tag { z-index: 6; }
+.pack-card .pack-art { margin-top: 22px; }
