@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-IN">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -9,6 +9,7 @@
 <meta property="og:title" content="Careva+ Home Health Care, Salem | Nursing &amp; Caregiving at Home" />
 <meta property="og:description" content="Careva+ provides trained nurses, care attendants and physiotherapists at home across Salem. 24/7 helpline, verified staff, free assessment." />
 <meta property="og:type" content="website" />
+<!-- Set SITE_URL in build.py to emit canonical, Open Graph and Twitter tags. -->
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -819,6 +820,11 @@ textarea { resize: vertical; }
 /* the skip link moves focus here; no ring for pointer users */
 main:focus { outline: none; }
 
+/* <picture> wrappers around the logos must not disturb the flex layout */
+.brand-pic, .footer-pic { display: block; line-height: 0; }
+.preloader-pic { display: block; }
+.preloader-pic img { width: min(300px, 62vw); display: block; margin: 0 auto 26px; animation: logoIn 1s var(--ease-out) both; }
+
 
 /* ---- standalone build: logos embedded as backgrounds ---- */
 .brand-logo, .footer-logo, .preloader-logo {
@@ -832,6 +838,49 @@ main:focus { outline: none; }
 
 </style>
 <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAV5ElEQVR42u16aZBd1XXut/Y+053v7XlSt6TWgCSEEWIWIAlQDBiDU6FlY0ISbMAPnFcZZJs4VXbThNgQO2D7UWCw4zI4L8G6JMaA/PBAUCMZjBASoAFJLalb6nm4t4c7nWnvlR8txXE5MsiGeu+l+vt397m1z1lrf2vcC5jDHOYwhznMYQ5zmMMc5vD/AAidnYKZ6b+viMzUsZklOln8x1pnp0Dni8av/K+zU/z3EryTRcdmlv95acOmJ2L4T2uPAua1N3+t9adf+lI1nWTE+065913wTgHcDXSRBoC2tZ3ptuuuv2ZiaPS8KlM9uf2+a1+df/GfLfXPvfpOVdV4NVl2c0oE5caxvX/a/cCN37+hY7PMZjeq/w8VwISOrEB2ozIAZDZ+a011++I/jLe0/X4hlzf86fzV9//9hl2fvvHb96slq++UrcsihlQg5YGjCRh7Xs6tevTzC57J/bx44jP5/fhK432RvWOzRJYUZaGW3vjgRcfiC75Y3z7/qvoVy3Ck55ieeHnHymefv+PQDbdku+mci9ZE0ilIXQml0AKSiamsuK29et/F167Bs/T87H7vDwuM90f4jepDH7ojs6t53b1HYg13rFreSm0LUkGvDxkcfvve8vN37P/YrU9uC8+4cE26IerboTZhkMEkIQ0gWWMAjTXc/0rbOQCex/La942p760COl800LU+bN34jTWvNSz6bj41b9HKeskr251wIBo11Gv7SsaWXV9uv/mhTaMtZ14Si8NPxoTlBRLSZtTVCFRXC6QzBoYHQf1SNr3fLuq9CzVrZ4VvufGhmwqNy/6tVN26qDktw0uWZ2jAjEMqQVOH+3/w1zVdqlTV9gUkU7oxHpqxpES0WmL5UgPt8wTSDsPQQDHngsvTwfutAOO9o/36sLnja384lZz/PSOaYIFA/d4ZdcbhMIqKECgPTcM9MvCvX2m59yqjbVnKScdUfaokrAyQSgERAyh5jEqg4ZWBobfHEExOHAIAbN36G0i31lh3imfr13Ur0G92nr+7Ajo6JLIb1YqP3nfxUKr1CTOa0KWKi4uabTmpDRyZ0Ugmpcwd6INzfP9+ff45n83Mq+W8AqdTEdSlCUM+MDitUXA1fJfhT/uy8OZepMKh7TkwYd3dGt3/9eu71neHXf8XGUDILufO2zujD08nvhvGqkloX8cgZG3Sxo4ctLKk4EPHqTI+4qe8/mLZXHNmIm1TMV8SccfE4SngSF6DXAb7DAhTFfb2CQweeO3mNTVvd/2MGF2/fooEYFlHh3XLzZWblrRUOZ7v+ZKYhDQhYcILA334yNQPPn/TlklmEJ2CCb+VAjZzh9yIrMa6TonurvC7g50f86qrFovQC11fGasaDT40RXqo5Mml4RG3BhX7QDQTLouLyEsB1ZQ8jTgpGAo4PEgIiwJEBGJC5diALu/ZJdOV0Xu6uh4IV2z8xhonbe94/bFP/dIfdEKgC/ro9mcb5G2t32lbHIfvExzLhCEsCABRcxHGJrgXwIvZbIcAsup3VwCDSEjeSCc269jPBKAYqD9S5QLDSVBCsIaMiJ4jEzI5su356rroVHHVlR91Bgbc/ul+hIG2h4aLOLcmpJxvYXpGIiY0wukCSn2DvndswIrlD/5j708eeK71ur+5ckzjC2OP3b6OcDsB9Cun6LouFyrl0shk3g5DzY4lySIJQUpX2ykRcVT4XkUBIgCLrr7Kuv2bbdsefelDf4cNG2LIZtUHO26p9QN1ti7mSU1PcNpQ4vD+nnLdvqc/UxfB1lzT8g/H51dTIml4uYlciDCwvZEJpNwCXjkwA318AIU3Dqj8q29pt/eYZYy88ezwlntuPvfarvMq9WduJifCAsToyIpfS2ErQKiUodk0NCwDsAyGZQCOwZCGr8r0XvkA1gwi+qnXfpFR/fHrnM8+/JmF6+9cjPUTx6rqIZBSKgjt8qTh9o9sX4bhew+v/NBGs675E01nZFgJQFfK+YbqqDns+umVYhK73iirkYkQEcEGgySmBuBMHfnS2E/v+8LSP/n2nQeMui83L25PTu0cPKgBWoF9sqMTDHRiK7aKrZ3rEPn6/SJgBTdkKAUYBgECYAYYGkpVqLMTYnIyKzo7f+kDuu4Gn4wOp+kDQiqWalVP//7wstULzr1t4OwvZrsj/1s0BFpqZYiJg99f3Gg/vK/1+sdE/cKlC1oCPewKTXlfzgyP7iuLllg8Ysrp8RyOTcOIGQSaGXHl1ND3kwM7v2WuvtZq+cyPu8dl3SWLq0lX3BldzI3tJYCR7fJnvX0XAGiaDQtlL4ig7DEYAkYoAAFoASgmaFJ+Vxc0AP2roeP0GUBE4EWXXF0bBOF8BWnEzFHdnsl8UtU+262DDUK4Q88sqLG/saf68i0luza9IZkPD5fTRilmaEyVKBzofc6ft+JCX9ty4GhvORKWf1Yb5re0i+n9k8uvmj++5pq7Z1J1V06zg6XhiIrGHeo93CvaUNxe17k2vWJBY7PjFRUsC4EORZVj6JdfGWgK9SHRO+qisdqE9AXYBGwQWCcx7UaaPvXI5c22EFJqW5URBQAMTB0ob/n8nsl3rYC1nZDdXQi9xgPrI+lyvDYeV45FVJMUVU5qYEVloPyL+RnvsYHMxT8sOHXpM2MF5VY1GTk3xrYSwtvzi/KFue5tO63FD+rxA1+8YOb1J+nsK+r6Yus+3NvadpdoXrDQ1TZkIa8vwAxKnkX7J6WIFAaOHXjha7ujK2uf8uzdfzDtkxIMKSVQ1oS2iwGKuNjT58MNmRY3EQALWrEoGgO45KzUP/FKVgRJLJi1KupkzBE9x9t2bcGeS5iZ3o0CqHsrIElCi4lNLfUBmlMtEJI04BGzW3WxxZt2R5d904/W1kTcnKpO1sodR4pAZTIMWZvOoR3f/NG2H/ZtvP7373yZV63es+S2fwiTTZdGFrWjalEVzHJRNU8PU10ti8OVOHqFESbdnAgnB59iaAS+bDg8WEChyLBtQErAMADTAKQQiNjAwcEAfsBY3KSRjFgYKu9GxJSWFARBBIaGp0NAWtA0PwMAUhIb7/b0l99S+xeVyNj55y5NK0MqGSodTkyVaKpS6j+aWtocpGpWVgpTwbLmmHm4dxSlaQ5iiZRJvS/vG91yz6a6q+5a9UxQ+1VqXnI56hfB9wO9KBXotsljMkpK5pIx7A4jqIiQkwlLzLyyw4sMbn8YIAQh+2EoQJoZejYE0AnLFhJQmiAVo28sxFRJYWGDQkuVA4AYTCeaHgKBMjSXlMiXc+FsANTvYAIds8Kv/58rLu6Z6rl/5QKo+Y2OmKiMoTbSjteP7EVLLGJMFAp3uF6UHYIwhI3BkWJoRxMmjr5ycEPxx+te2HDXX8zYTff58XqLnLhq0AVaUGuK2MyUmKhKYyqWRCUEWLmwrEhQ2nfQkkff/Fr/nu1HAQM6UOy5BN+fbZZKg8CaofUJ70YMIsAiwlQJeKPXR++IQlOVSY0ZA1FHAAx4gSYlNJVdl97ZCc5mW+rKT1/c1DO166l4xjfXrU7qsfI0LYzGsL+/JN86Os5JcY4/7hdW+QWbMk1Vsn+8EOhy0TRzh166Uv/i48/LCx7wnPqbXTuNqAG1ujUuNQR6iiYmCxJ2royIXZ4VStpBOHTMUq/+YMc14fjdj69da6B7W8hKa9uGMoRUhgkYBkNKgmkypBAyCDWIGOAToZABL2QMT3tqsuxxVcJAOibgmELDUIKlUiebYcYpc/z9oM7OzdYTPbf+i464jZetjqii8iQqGlAJ/s4LByhUGDMrS1wOy2nTzbPHSVUcHDFjldHsCnvwr/6PPuepUMYuhDDC+dUR2Zxx5PHjYxjkBOyEgGMwtE9cmhEaWpHI95jGkZ+/slT0X/949+Mu1sIgCJRnwujQUZIUGpIkZoWVDM1A+yKCGdEIQ4AMgAPANAiOJBw+SFJIQDODhIKERirJkJUwRZjNF4xTUF8gS2rzTX/+t65ZuvC85WZYCrUxmA9xdjqBx5/Lc9+4T5mE2TswEdXaAKQk3x0YtKO5ge9c2B7/++3DrS8EpjXfiFuV+uZaU4DUzt4ZhBCwjQLCPEEZJgnDkBKQMt8HZ+b4/7qteefnuh7vdmebqV36hro/kHv1L/5quCdoNULokCB0IFkJqITT0lKu6ftq3GIoDQgCFBiSwDMlSUfeaPp2DNQrJAsYpJlJD0kS2gsPMvKzqf0pqK8v+Ohly/rptbeqGlxqazVF0Vd01nITh9+UKAWe+ptPnCXvfrR3y4vfvfKfnPaGfxRGhKzCSPbitvhnX8rZu30zmiHHgeXY0GUPHhuwIjGQFYEmAWIF4RVBxYlixC/+JI3xB3u6/3k7d3TI2688Kq68/XV9o4BSv6GaP//8m1rMK57uj1SVoTTBtGjWF1isk5GIeP2Vc1YfeGzbrtNLhbdCAKSHiz236ZRvxOMyHBrRVNcIvLaNUfBcfPIGG5Y1BcN0ZKKmuhgSkSiO7jh/kdi09bh6I2QVM/3yz82yf8isuAN+6OUjphFlQTUzZU2JeEIZOuw3K96bHw9Xvf7Vg7cWxk6+P5tVj2WhHvsUACC2+NZ559xwQWzNktb4smgkmQr8RH7vbvuR+3Zs3jU50VddExJUQGAQdEggARAzOCQUpsZSa9fCGIxANl+A/6gG6/aDs9nZ37+ugG4oZk11H0yui1jEYUikoNC3V8AQCsvOI0wXAxzLT8L3jcAupg8gOlRYUStu3XvY/B9JR367se7t3W7s7RjFZuo4qmsMU9dK4VEsEtUeuzmGGit6eni0APWVYSyNfGABVfrHC2ZdtdNSF9Qsa+flH5gfuWRRvbhwWWtkXjJtYLQ8g6nyMMqeh4MFfGRt9I+bxunNgJVGoaxR8QDHAkyTUPEZFA8QN+Pc3Y2wowOc7cK7KocJAH/yk59LMFQLMVMYgKbGCeE0YeUlQD6nMZFg7h13OT8VG5Tl5YNNRu91qxeekRu3n1SV6MGzc5b56VSdiNXWEJIpIB4DohETmViIxnQKtbE4bNhgJaF8gYoHlF2lM3EWzTUOajI2FBTcoIKDAzO8d/9k6HmBnszD6ukFDfc4u/qeesJlrC4syGictSyFs1dWYdG8FOKRCBTAr/VMo5Ksp4OzXSsgm3331aBhTNvEZLLWqBQFTR0jLDgbKBQYvkcYyYWUmw5pbMjqHh39o9K89cums8M//FeZ9C5IZQykU4xIPFSGwxxohusDSQdImw4caJBykYwTokaU3MATTDlELS0kHIxOhfrV3jFdViVMTUnqHVZcLLCZnzAwM2rmSmORB0e2Nnw99onRKz581sidVyxr4BWLq2A4RCXfx+h0DvmpUDuOEsVwx11r13ZuW76vS59WOWwfX1HwKroQBdKlCWIhiYRkFCcJM5VAN9bGxGBvbHj0meEn2z/SfNtQ2PdNclxhm0KBmDwFIUNIiyVsCZhg5Asaw1MVSFlBzARYAUFAcCTDIkKoJU9Ol2iyEpAhIVRZ0uCApkpBQhWs/lLRemSKky+tvcZfefufetvPWlj7gcaaEEOTBTz35gH0DTEmJhSPjoZqZIjNsCKRtJKqdf5Wo6sL3kl2v5urMSFI6NSaSLfTUL5UFaVWgEzXCBQ8H/MbmoJ1Z11h/kv25cvLIr/YswuPCgo5mha6volkS4tAQy2hLg3UJQRqYhJpy4aJFAolA71jPt7oLWLfwAwmCwGUB9iCwIGE0hqmAZSmgWJOQHjWayJI/kOlxn7ryg3hBy9bnvjUBWdEGwQVsX9gQr95vMgHjig5NgRUKqQKOcjQk7DZ3ltjV39+99PHnmPo02yIrIXQ3VpbwtniFd3L4BNLizA+EqA6Ux3c+eF7zH9++unP5cZzcdFUfjSZ0mHTPENm6iCjEQHbBPwKI68F4DEMxYikNFJJjTPqU/i95TUwLo1jJOdj5+FRbNk5hJ/tGMWxQR9JU+jAM/N+xdxdW1v9YuuZ0f5ES/7SS1bg7zacW5VUYRk7ew+Fe/qLYmCUxNARicq0YE2sKwWWumxVEmbiy3csveurmx7cVMHJhP+0LkdP5AGXXn/uvH2FPQdDP3TIFAhDET701w+Zr+ze9a3H7n3k4aYNzmuxWo8sU4gwIHJdBtNsOCLBsByGEwXicaChltBQJxBzgJZMBE2pOOZlatGWqkG1k8JEjvC954/x029MF5vrwn3nrZS6phoLHZsbYgmFQjHAa4cm1IzrivyMoPERgYk+ARY61GCjPClgIfJv9YnGP389e3DPyToGWah3bmufogiiLKnGy9NPFHXx5lIpdG+74RYnatQ+9cCm+z837yOxl7VVbqhMCx1oCGkzDIvgRBmxJGAKgh8QDEvDiTCEAWRSApmkBFOAmiQjEQMcWyLuWGirqsKCmnr0jRUx4Y4gGtGYLmqMTSo9Mal4qsBiaFRQxdWYHiIU81CxKi18BaoMW/lkNNPZ96OxhxQrYC0MdEO929vkUyoAWegV17Rf1Dd17KVUJiVXz7/0ez/+2dN/W7sk9qOK6y70S6RJspAWIC2GsAAyAcMCEinAcQhhQNBg2DaDDEYyJpCIGdDQqK/WiEUBEoAUCoKAuGkgPyP16EwAzyMqFJncEqFSIbgFYGZIqBCKYjVKqBmTdTH6vfbmMzq7H3+1b3a8BoSudzD605kP4M0sUw9F8wbMZ6xK6uucyT1XKrv17EllJSDMGLNhMUyTIAyQkICQIBIMywKiSQGAUXFnCxiWjESUYBoCfqiQiAGWBQSBhCDANhV8jzAxLqAVQ2tGuUBcmCBdnmEy4ywsiyDKkR8nvLp79r949GUGnzz1EL8F6DffenXI3ZW3bjMCPT3mDjzi+14KQCgdNoQloDXAIaACBqvZmQgwMQkoKQkAk2mDTIdIWkyGDQibEY0DpiS4PqDC2T0Cj8GaZrs9EqwYujwDdgtsCHPWXEyY25yg6is9zw89q6FOMpXfydH9dgo44URWXbvqot7CgZcDdmGSCdYAK/jENCOEdH3llw1L2sIQcdacYAGLBUNrDQ40OASgCARoItJCAhAMaQKmJIJkliYgrNnujlYsvDJE4BGEIBgkS4l45PmMXf3Y7u/3/kTP+jWBTuB06X66DBCdnZ3Gwy98Y6c2fMcSzraoGdklAnorEssMZKoyk9eddZ33l5v+0r17891mz66e2L7efakwdJvcsNJeqpTOgNZnBSpYwkq3McHWpEHMJy6ZeLaTIwExayngkKAVwSSjYFnW7qhlP90Ya316e3Zn74l4TrOlOt6zaZF3MoHIgeJbi9760YH9goTi0xzTIQhoVvLCj509L18pLwo4WBhUKi1aqbrQ13FJMsqstWY1bZpiImJH+y1LvL24bsnbW77z4pA6KWcHZifJ3kPBT39IqgMSYyDUgU/YHf8XOQRhPwhjJ/btBgOn/uiT7cpTKJawFhLroN8Lqv/2CphNjPh3mNKiX1PML0tvPpF9/nK9DozN0O802DCHOcxhDnOYwxzmMIc5/G74dyHZ4gaV9wAWAAAAAElFTkSuQmCC" />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "MedicalBusiness",
+  "name": "Careva+ Home Health Care",
+  "description": "Home nursing, elderly care, post-surgery recovery, physiotherapy and palliative care at home across Salem, Tamil Nadu.",
+  "telephone": "+919655508881",
+  "email": "info@carevaplus.com",
+  "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "142/3-2 KMS Garden Road, Alagapuram, Periyapudur",
+      "addressLocality": "Salem",
+      "addressRegion": "Tamil Nadu",
+      "addressCountry": "IN"
+    },
+  "openingHoursSpecification": {
+    "@type": "OpeningHoursSpecification",
+    "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],
+    "opens": "00:00",
+    "closes": "23:59"
+  },
+  "areaServed": [
+      { "@type": "City", "name": "Salem" },
+      { "@type": "Place", "name": "Alagapuram" },
+      { "@type": "Place", "name": "Fairlands" },
+      { "@type": "Place", "name": "Hasthampatti" },
+      { "@type": "Place", "name": "Ammapet" },
+      { "@type": "Place", "name": "Suramangalam" },
+      { "@type": "Place", "name": "Shevapet" },
+      { "@type": "Place", "name": "Gugai" },
+      { "@type": "Place", "name": "Kondalampatti" },
+      { "@type": "Place", "name": "Omalur" },
+      { "@type": "Place", "name": "Attur" },
+      { "@type": "Place", "name": "Mettur" },
+      { "@type": "Place", "name": "Edappadi" },
+      { "@type": "Place", "name": "Sankagiri" },
+      { "@type": "Place", "name": "Valapady" },
+      { "@type": "Place", "name": "Yercaud" },
+      { "@type": "Place", "name": "Tharamangalam" }
+  ],
+  "availableLanguage": ["Tamil", "English"]
+}
+</script>
 </head>
 <body>
 

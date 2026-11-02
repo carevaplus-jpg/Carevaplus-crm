@@ -10,6 +10,7 @@ defined once here and written into each page. Edit this file, then run:
 ...and all the .html files in this folder are rewritten.
 """
 
+import json
 import pathlib
 
 OUT = pathlib.Path(__file__).parent
@@ -19,6 +20,14 @@ PHONE_DISPLAY = "+91 96555 08881"
 PHONE_TEL     = "+919655508881"
 WHATSAPP      = "https://wa.me/919655508881"
 EMAIL         = "info@carevaplus.com"
+# Set SITE_URL once the site has a real address, e.g. "https://carevaplus.com".
+# While it is empty, canonical / Open Graph / Twitter tags are left out rather
+# than emitted with a wrong URL, which would be worse than having none.
+SITE_URL = ""
+# PIN code — must match the Google Business Profile exactly. Left out of the
+# address and the schema while empty.
+PIN_CODE = ""
+
 ADDRESS_LINES = ["142/3-2 KMS Garden Road", "Alagapuram, Periyapudur", "Salem, Tamil Nadu"]
 ADDRESS_ONE   = "142/3-2 KMS Garden Road, Alagapuram, Periyapudur, Salem"
 
@@ -30,6 +39,12 @@ ADDRESS_ONE   = "142/3-2 KMS Garden Road, Alagapuram, Periyapudur, Salem"
 FORM_ENDPOINT = "https://formsubmit.co/ajax/" + EMAIL
 MAPS_LINK     = ("https://www.google.com/maps/search/?api=1&query="
                  "142%2F3-2+KMS+Garden+Road%2C+Alagapuram%2C+Periyapudur%2C+Salem")
+
+AREAS_SERVED = [
+    "Salem", "Alagapuram", "Fairlands", "Hasthampatti", "Ammapet", "Suramangalam",
+    "Shevapet", "Gugai", "Kondalampatti", "Omalur", "Attur", "Mettur", "Edappadi",
+    "Sankagiri", "Valapady", "Yercaud", "Tharamangalam",
+]
 
 NAV = [
     ("index.html",        "Home"),
@@ -43,9 +58,103 @@ NAV = [
 
 # ─────────────────────────── shared chrome ───────────────────────────
 
-def head(title, description, depth_note=""):
+def seo_tags(title, description, page):
+    """canonical + Open Graph + Twitter. Omitted entirely without SITE_URL."""
+    if not SITE_URL:
+        return ("<!-- Set SITE_URL in build.py to emit canonical, Open Graph "
+                "and Twitter tags. -->")
+    base = SITE_URL.rstrip("/")
+    url = base + "/" + ("" if page == "index.html" else page)
+    img = base + "/assets/careva-logo.png"
+    return f"""<link rel="canonical" href="{url}" />
+<meta property="og:url" content="{url}" />
+<meta property="og:site_name" content="Careva+ Home Health Care" />
+<meta property="og:locale" content="en_IN" />
+<meta property="og:image" content="{img}" />
+<meta property="og:image:alt" content="Careva+ Home Health Care, Salem" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="{title}" />
+<meta name="twitter:description" content="{description}" />
+<meta name="twitter:image" content="{img}" />"""
+
+
+def business_schema():
+    """MedicalBusiness for the home and contact pages."""
+    addr = {
+        '"@type"': '"PostalAddress"',
+        '"streetAddress"': '"142/3-2 KMS Garden Road, Alagapuram, Periyapudur"',
+        '"addressLocality"': '"Salem"',
+        '"addressRegion"': '"Tamil Nadu"',
+        '"addressCountry"': '"IN"',
+    }
+    if PIN_CODE:
+        addr['"postalCode"'] = f'"{PIN_CODE}"'
+    addr_json = "{\n      " + ",\n      ".join(f"{k}: {v}" for k, v in addr.items()) + "\n    }"
+    areas = ",\n      ".join(
+        '{ "@type": "City", "name": "%s" }' % a if a == "Salem"
+        else '{ "@type": "Place", "name": "%s" }' % a
+        for a in AREAS_SERVED
+    )
+    url_line = f'\n  "url": "{SITE_URL.rstrip("/")}/",' if SITE_URL else ""
+    return f"""<script type="application/ld+json">
+{{
+  "@context": "https://schema.org",
+  "@type": "MedicalBusiness",
+  "name": "Careva+ Home Health Care",
+  "description": "Home nursing, elderly care, post-surgery recovery, physiotherapy and palliative care at home across Salem, Tamil Nadu.",{url_line}
+  "telephone": "{PHONE_TEL}",
+  "email": "{EMAIL}",
+  "address": {addr_json},
+  "openingHoursSpecification": {{
+    "@type": "OpeningHoursSpecification",
+    "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],
+    "opens": "00:00",
+    "closes": "23:59"
+  }},
+  "areaServed": [
+      {areas}
+  ],
+  "availableLanguage": ["Tamil", "English"]
+}}
+</script>"""
+
+
+def breadcrumb_schema(label, page):
+    if not SITE_URL:
+        return ""
+    base = SITE_URL.rstrip("/")
+    return f"""<script type="application/ld+json">
+{{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {{ "@type": "ListItem", "position": 1, "name": "Home", "item": "{base}/" }},
+    {{ "@type": "ListItem", "position": 2, "name": "{label}", "item": "{base}/{page}" }}
+  ]
+}}
+</script>"""
+
+
+def faq_schema():
+    items = ",\n    ".join(
+        '{ "@type": "Question", "name": %s, "acceptedAnswer": { "@type": "Answer", "text": %s } }'
+        % (json.dumps(q), json.dumps(a))
+        for q, a in FAQS
+    )
+    return f"""<script type="application/ld+json">
+{{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {items}
+  ]
+}}
+</script>"""
+
+
+def head(title, description, page="index.html", schema=""):
     return f"""<!DOCTYPE html>
-<html lang="en">
+<html lang="en-IN">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -55,17 +164,22 @@ def head(title, description, depth_note=""):
 <meta property="og:title" content="{title}" />
 <meta property="og:description" content="{description}" />
 <meta property="og:type" content="website" />
+{seo_tags(title, description, page)}
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="styles.css" />
 <link rel="icon" type="image/png" href="assets/favicon.png" />
+{schema}
 </head>
 <body>
 
 <div class="preloader" id="preloader">
   <div class="preloader-inner">
-    <img src="assets/careva-logo.png" alt="Careva+ Home Health Care" />
+    <picture class="preloader-pic">
+      <source srcset="assets/careva-logo.webp" type="image/webp" />
+      <img src="assets/careva-logo.png" alt="Careva+ Home Health Care, Salem" width="600" height="210" />
+    </picture>
     <div class="loader-track"><span class="loader-bar"></span></div>
   </div>
 </div>
@@ -84,7 +198,10 @@ def header(active):
 <header class="site-header" id="siteHeader">
   <div class="container header-inner">
     <a href="index.html" class="brand" aria-label="Careva+ Home Health Care — home">
-      <img class="brand-logo" src="assets/careva-logo.png" alt="Careva+ Home Health Care" width="600" height="210" />
+      <picture class="brand-pic">
+        <source srcset="assets/careva-logo.webp" type="image/webp" />
+        <img class="brand-logo" src="assets/careva-logo.png" alt="Careva+ Home Health Care, Salem" width="600" height="210" />
+      </picture>
     </a>
 
     <nav class="nav" id="nav" aria-label="Main">
@@ -146,7 +263,10 @@ def footer():
   <div class="container footer-grid">
     <div>
       <a href="index.html" class="brand" aria-label="Careva+ home">
-        <img class="footer-logo" src="assets/careva-logo-light.png" alt="Careva+ Home Health Care" />
+        <picture class="footer-pic">
+          <source srcset="assets/careva-logo-light.webp" type="image/webp" />
+          <img class="footer-logo" src="assets/careva-logo-light.png" alt="Careva+ Home Health Care, Salem" width="600" height="210" />
+        </picture>
       </a>
       <p class="footer-blurb">Compassionate, reliable and professional medical support at home across Salem — backed by a smart, AI-assisted care CRM.</p>
     </div>
@@ -214,8 +334,8 @@ def footer():
 """
 
 
-def build(filename, title, description, body, active=None):
-    html = head(title, description) + header(active or filename) + body + footer()
+def build(filename, title, description, body, active=None, schema=""):
+    html = head(title, description, filename, schema) + header(active or filename) + body + footer()
     (OUT / filename).write_text(html, encoding="utf-8")
     return filename
 
@@ -801,21 +921,29 @@ if __name__ == "__main__":
     S = "Careva+ Home Health Care, Salem"
     pages = [
         build("index.html", f"{S} | Nursing &amp; Caregiving at Home",
-              "Careva+ provides trained nurses, care attendants and physiotherapists at home across Salem. 24/7 helpline, verified staff, free assessment.", home()),
+              "Careva+ provides trained nurses, care attendants and physiotherapists at home across Salem. 24/7 helpline, verified staff, free assessment.", home(),
+              schema=business_schema()),
         build("services.html", f"Services | {S}",
-              "Home nursing, elderly care, post-surgery recovery, physiotherapy, newborn care, palliative care and medical equipment rental across Salem.", services_page()),
+              "Home nursing, elderly care, post-surgery recovery, physiotherapy, newborn care, palliative care and medical equipment rental across Salem.", services_page(),
+              schema=breadcrumb_schema("Services", "services.html")),
         build("about.html", f"About Us | {S}",
-              "Careva+ is a Salem-based home health care service placing verified, supervised nurses and caregivers in homes across the district.", about_page()),
+              "Careva+ is a Salem-based home health care service placing verified, supervised nurses and caregivers in homes across the district.", about_page(),
+              schema=breadcrumb_schema("About", "about.html")),
         build("how-it-works.html", f"How It Works | {S}",
-              "From your first call to ongoing supervised care — the Careva+ process, including the free home assessment and written quotation.", how_page()),
+              "From your first call to ongoing supervised care — the Careva+ process, including the free home assessment and written quotation.", how_page(),
+              schema=breadcrumb_schema("How it works", "how-it-works.html")),
         build("service-areas.html", f"Service Areas | {S}",
-              "Careva+ serves Salem city and nearby towns including Omalur, Attur, Mettur, Edappadi, Sankagiri, Valapady and Yercaud.", areas_page()),
+              "Careva+ serves Salem city and nearby towns including Omalur, Attur, Mettur, Edappadi, Sankagiri, Valapady and Yercaud.", areas_page(),
+              schema=breadcrumb_schema("Service areas", "service-areas.html")),
         build("careers.html", f"Careers | {S}",
-              "Careva+ is hiring nurses, care attendants, physiotherapists and postnatal carers in Salem. Steady placements, fair pay, proper supervision.", careers_page(), active="careers.html"),
+              "Careva+ is hiring nurses, care attendants, physiotherapists and postnatal carers in Salem. Steady placements, fair pay, proper supervision.", careers_page(), active="careers.html",
+              schema=breadcrumb_schema("Careers", "careers.html")),
         build("faq.html", f"FAQ | {S}",
-              "Answers to common questions about home nursing in Salem — pricing, verification, equipment, timelines and emergencies.", faq_page()),
+              "Answers to common questions about home nursing in Salem — pricing, verification, equipment, timelines and emergencies.", faq_page(),
+              schema=faq_schema() + breadcrumb_schema("FAQ", "faq.html")),
         build("contact.html", f"Contact | {S}",
-              f"Call {PHONE_DISPLAY} or visit Careva+ at {ADDRESS_ONE}. Available 24/7 for home nursing enquiries across Salem.", contact_page()),
+              f"Call {PHONE_DISPLAY} or visit Careva+ at {ADDRESS_ONE}. Available 24/7 for home nursing enquiries across Salem.", contact_page(),
+              schema=business_schema() + breadcrumb_schema("Contact", "contact.html")),
     ]
     for p in pages:
         print("wrote", p)

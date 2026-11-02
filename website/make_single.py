@@ -103,8 +103,10 @@ def main():
 
     for frag_name, frag in (("header", header), ("footer", footer)):
         pass
-    header = re.sub(r'<img class="brand-logo"[^>]*>', f'<span class="brand-logo" {label}></span>', header)
-    footer = re.sub(r'<img class="footer-logo"[^>]*>', f'<span class="footer-logo" {label}></span>', footer)
+    header = re.sub(r'<picture class="brand-pic">.*?</picture>',
+                    f'<span class="brand-logo" {label}></span>', header, flags=re.S)
+    footer = re.sub(r'<picture class="footer-pic">.*?</picture>',
+                    f'<span class="footer-logo" {label}></span>', footer, flags=re.S)
 
     routes_html = "\n".join(
         '<section class="route" id="route-%s" data-title="%s">\n%s\n</section>'
@@ -247,7 +249,7 @@ def main():
   };""")
 
     html = f"""<!DOCTYPE html>
-<html lang="en">
+<html lang="en-IN">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />

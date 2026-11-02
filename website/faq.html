@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-IN">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -9,17 +9,39 @@
 <meta property="og:title" content="FAQ | Careva+ Home Health Care, Salem" />
 <meta property="og:description" content="Answers to common questions about home nursing in Salem — pricing, verification, equipment, timelines and emergencies." />
 <meta property="og:type" content="website" />
+<!-- Set SITE_URL in build.py to emit canonical, Open Graph and Twitter tags. -->
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="styles.css" />
 <link rel="icon" type="image/png" href="assets/favicon.png" />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    { "@type": "Question", "name": "How quickly can a caregiver start?", "acceptedAnswer": { "@type": "Answer", "text": "For most attendant and nursing requests we can place a professional within 24 to 48 hours of the assessment. Specialised critical-care placements may take a little longer." } },
+    { "@type": "Question", "name": "Are your caregivers background verified?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Every caregiver goes through identity and address verification, certificate validation, a reference check and a practical skills assessment before assignment." } },
+    { "@type": "Question", "name": "Can we change the caregiver if it isn't working out?", "acceptedAnswer": { "@type": "Answer", "text": "Absolutely. Tell your care manager and we arrange a replacement \u2014 your billing cycle continues uninterrupted rather than restarting." } },
+    { "@type": "Question", "name": "Do you provide medical equipment at home?", "acceptedAnswer": { "@type": "Answer", "text": "We arrange hospital beds, oxygen concentrators, suction machines, monitors, wheelchairs and ventilator support on rental, delivered, set up and tested by our team." } },
+    { "@type": "Question", "name": "How is pricing decided?", "acceptedAnswer": { "@type": "Answer", "text": "Pricing depends on the level of care, shift length and duration. You receive a written quotation after the free assessment \u2014 there are no hidden charges or surprise add-ons." } },
+    { "@type": "Question", "name": "Do you coordinate with our existing doctor?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Our nurses follow the treating doctor's prescription and share daily reports so your doctor can adjust the plan with real data." } },
+    { "@type": "Question", "name": "Which areas around Salem do you cover?", "acceptedAnswer": { "@type": "Answer", "text": "Salem city and the surrounding towns including Omalur, Attur, Mettur, Edappadi, Sankagiri, Valapady and Yercaud. If you are unsure, call us and we will tell you honestly whether we can staff your location." } },
+    { "@type": "Question", "name": "Is the first assessment really free?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. A nurse supervisor assesses the patient at home or over video and drafts a care plan at no cost, with no obligation to proceed." } },
+    { "@type": "Question", "name": "Can you arrange care at short notice or at night?", "acceptedAnswer": { "@type": "Answer", "text": "We operate 24/7 and take calls at any hour. Night shifts and urgent placements are common \u2014 call the helpline and we will tell you what is realistically possible." } },
+    { "@type": "Question", "name": "What happens in a medical emergency?", "acceptedAnswer": { "@type": "Answer", "text": "Call 108 immediately for an ambulance. Our caregivers are trained in first response and will stabilise and assist until help arrives, then inform the family and the supervisor." } }
+  ]
+}
+</script>
 </head>
 <body>
 
 <div class="preloader" id="preloader">
   <div class="preloader-inner">
-    <img src="assets/careva-logo.png" alt="Careva+ Home Health Care" />
+    <picture class="preloader-pic">
+      <source srcset="assets/careva-logo.webp" type="image/webp" />
+      <img src="assets/careva-logo.png" alt="Careva+ Home Health Care, Salem" width="600" height="210" />
+    </picture>
     <div class="loader-track"><span class="loader-bar"></span></div>
   </div>
 </div>
@@ -30,7 +52,10 @@
 <header class="site-header" id="siteHeader">
   <div class="container header-inner">
     <a href="index.html" class="brand" aria-label="Careva+ Home Health Care — home">
-      <img class="brand-logo" src="assets/careva-logo.png" alt="Careva+ Home Health Care" width="600" height="210" />
+      <picture class="brand-pic">
+        <source srcset="assets/careva-logo.webp" type="image/webp" />
+        <img class="brand-logo" src="assets/careva-logo.png" alt="Careva+ Home Health Care, Salem" width="600" height="210" />
+      </picture>
     </a>
 
     <nav class="nav" id="nav" aria-label="Main">
@@ -109,7 +134,10 @@
   <div class="container footer-grid">
     <div>
       <a href="index.html" class="brand" aria-label="Careva+ home">
-        <img class="footer-logo" src="assets/careva-logo-light.png" alt="Careva+ Home Health Care" />
+        <picture class="footer-pic">
+          <source srcset="assets/careva-logo-light.webp" type="image/webp" />
+          <img class="footer-logo" src="assets/careva-logo-light.png" alt="Careva+ Home Health Care, Salem" width="600" height="210" />
+        </picture>
       </a>
       <p class="footer-blurb">Compassionate, reliable and professional medical support at home across Salem — backed by a smart, AI-assisted care CRM.</p>
     </div>

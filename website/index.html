@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-IN">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -9,17 +9,64 @@
 <meta property="og:title" content="Careva+ Home Health Care, Salem | Nursing &amp; Caregiving at Home" />
 <meta property="og:description" content="Careva+ provides trained nurses, care attendants and physiotherapists at home across Salem. 24/7 helpline, verified staff, free assessment." />
 <meta property="og:type" content="website" />
+<!-- Set SITE_URL in build.py to emit canonical, Open Graph and Twitter tags. -->
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="styles.css" />
 <link rel="icon" type="image/png" href="assets/favicon.png" />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "MedicalBusiness",
+  "name": "Careva+ Home Health Care",
+  "description": "Home nursing, elderly care, post-surgery recovery, physiotherapy and palliative care at home across Salem, Tamil Nadu.",
+  "telephone": "+919655508881",
+  "email": "info@carevaplus.com",
+  "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "142/3-2 KMS Garden Road, Alagapuram, Periyapudur",
+      "addressLocality": "Salem",
+      "addressRegion": "Tamil Nadu",
+      "addressCountry": "IN"
+    },
+  "openingHoursSpecification": {
+    "@type": "OpeningHoursSpecification",
+    "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],
+    "opens": "00:00",
+    "closes": "23:59"
+  },
+  "areaServed": [
+      { "@type": "City", "name": "Salem" },
+      { "@type": "Place", "name": "Alagapuram" },
+      { "@type": "Place", "name": "Fairlands" },
+      { "@type": "Place", "name": "Hasthampatti" },
+      { "@type": "Place", "name": "Ammapet" },
+      { "@type": "Place", "name": "Suramangalam" },
+      { "@type": "Place", "name": "Shevapet" },
+      { "@type": "Place", "name": "Gugai" },
+      { "@type": "Place", "name": "Kondalampatti" },
+      { "@type": "Place", "name": "Omalur" },
+      { "@type": "Place", "name": "Attur" },
+      { "@type": "Place", "name": "Mettur" },
+      { "@type": "Place", "name": "Edappadi" },
+      { "@type": "Place", "name": "Sankagiri" },
+      { "@type": "Place", "name": "Valapady" },
+      { "@type": "Place", "name": "Yercaud" },
+      { "@type": "Place", "name": "Tharamangalam" }
+  ],
+  "availableLanguage": ["Tamil", "English"]
+}
+</script>
 </head>
 <body>
 
 <div class="preloader" id="preloader">
   <div class="preloader-inner">
-    <img src="assets/careva-logo.png" alt="Careva+ Home Health Care" />
+    <picture class="preloader-pic">
+      <source srcset="assets/careva-logo.webp" type="image/webp" />
+      <img src="assets/careva-logo.png" alt="Careva+ Home Health Care, Salem" width="600" height="210" />
+    </picture>
     <div class="loader-track"><span class="loader-bar"></span></div>
   </div>
 </div>
@@ -30,7 +77,10 @@
 <header class="site-header" id="siteHeader">
   <div class="container header-inner">
     <a href="index.html" class="brand" aria-label="Careva+ Home Health Care — home">
-      <img class="brand-logo" src="assets/careva-logo.png" alt="Careva+ Home Health Care" width="600" height="210" />
+      <picture class="brand-pic">
+        <source srcset="assets/careva-logo.webp" type="image/webp" />
+        <img class="brand-logo" src="assets/careva-logo.png" alt="Careva+ Home Health Care, Salem" width="600" height="210" />
+      </picture>
     </a>
 
     <nav class="nav" id="nav" aria-label="Main">
@@ -253,7 +303,10 @@
   <div class="container footer-grid">
     <div>
       <a href="index.html" class="brand" aria-label="Careva+ home">
-        <img class="footer-logo" src="assets/careva-logo-light.png" alt="Careva+ Home Health Care" />
+        <picture class="footer-pic">
+          <source srcset="assets/careva-logo-light.webp" type="image/webp" />
+          <img class="footer-logo" src="assets/careva-logo-light.png" alt="Careva+ Home Health Care, Salem" width="600" height="210" />
+        </picture>
       </a>
       <p class="footer-blurb">Compassionate, reliable and professional medical support at home across Salem — backed by a smart, AI-assisted care CRM.</p>
     </div>

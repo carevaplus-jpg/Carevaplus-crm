@@ -57,12 +57,12 @@ def main():
     for name in PAGES:
         html = (SRC / name).read_text(encoding="utf-8")
 
-        html, n1 = re.subn(r'<img class="brand-logo"[^>]*>',
-                           f'<span class="brand-logo" {label}></span>', html)
-        html, n2 = re.subn(r'<img class="footer-logo"[^>]*>',
-                           f'<span class="footer-logo" {label}></span>', html)
-        html, n3 = re.subn(r'<img src="assets/careva-logo\.png"[^>]*>',
-                           f'<span class="preloader-logo" {label}></span>', html)
+        html, n1 = re.subn(r'<picture class="brand-pic">.*?</picture>',
+                           f'<span class="brand-logo" {label}></span>', html, flags=re.S)
+        html, n2 = re.subn(r'<picture class="footer-pic">.*?</picture>',
+                           f'<span class="footer-logo" {label}></span>', html, flags=re.S)
+        html, n3 = re.subn(r'<picture class="preloader-pic">.*?</picture>',
+                           f'<span class="preloader-logo" {label}></span>', html, flags=re.S)
         html, n4 = re.subn(r'<link rel="icon"[^>]*>',
                            f'<link rel="icon" type="image/png" href="{favicon}" />', html)
         assert (n1, n2, n3, n4) == (1, 1, 1, 1), (name, n1, n2, n3, n4)
