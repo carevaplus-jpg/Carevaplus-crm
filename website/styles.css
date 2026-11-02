@@ -715,3 +715,8 @@ textarea { resize: vertical; }
 .page-hero + .section { padding-top: 54px; }
 .page-hero + .section-alt { padding-top: 64px; }
 .page-hero { padding-bottom: 36px; }
+
+/* honeypot — hidden from people, visible to bots */
+.honeypot { position: absolute !important; left: -9999px !important; width: 1px !important; height: 1px !important; opacity: 0 !important; pointer-events: none; }
+/* disabled submit button while sending */
+.btn:disabled { opacity: .72; cursor: wait; transform: none !important; }

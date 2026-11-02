@@ -79,13 +79,52 @@ accent bars and icon tilts.
 All motion is disabled under `prefers-reduced-motion`, and the preloader has a
 4-second hard fallback so the page can never stay hidden.
 
+## Enquiry forms
+
+Both forms (home page and contact page) POST to **FormSubmit**, which forwards
+each enquiry as an email to `info@carevaplus.com`. The endpoint is set by
+`FORM_ENDPOINT` at the top of `build.py`.
+
+### One-time activation — required
+
+FormSubmit will not deliver anything until the address is confirmed:
+
+1. Put the site online (the forms cannot reach FormSubmit from a `file://` page).
+2. Submit the form once.
+3. FormSubmit emails `info@carevaplus.com` a confirmation link. Click it.
+4. From then on every enquiry arrives in that inbox.
+
+Until step 3 is done, visitors see FormSubmit's "confirm your email" message
+followed by a prompt to call the helpline instead — so no enquiry is silently
+lost.
+
+### Optional: hide the address
+
+After activating, FormSubmit gives you a random string that works in place of
+the email address. Swapping it into `FORM_ENDPOINT` keeps `info@carevaplus.com`
+out of the page source, where spam crawlers can read it.
+
+### How it behaves
+
+- Sends name, phone, email, service, duration, area, message, plus the page it
+  came from and a timestamp.
+- The submit button disables and reads "Sending…", so a slow connection cannot
+  produce duplicate enquiries.
+- If sending fails, the message tells the visitor to call +91 96555 08881 and
+  **keeps what they typed** so they do not have to retype it.
+- Every enquiry is also saved in the visitor's browser (`localStorage`, key
+  `carevaEnquiries`) as a backup.
+- A hidden honeypot field blocks bot submissions before any request is made.
+
+### Switching to your own CRM
+
+Replace `FORM_ENDPOINT` in `build.py` with your own URL and re-run `build.py`.
+The handler in `script.js` posts standard `FormData` and treats a JSON response
+containing `success: "true"` as delivered.
+
 ## Still to do before launch
 
-1. **The forms don't send anything.** Both the home-page and contact-page forms
-   save to `localStorage` under `carevaEnquiries` and show a confirmation.
-   Replace `saveEnquiry()` in `script.js` with a `fetch()` to your backend, the
-   Careva+ CRM, or a form service to receive real enquiries.
-2. **Check the headline statistics** on the home page — "30 min average response
+1. **Check the headline statistics** on the home page — "30 min average response
    time", "7 days from enquiry to placement" and so on are claims visitors will
    hold you to. Edit them in `build.py` if they don't match reality.
 3. **Check the service-area lists** in `build.py` and remove anywhere you don't

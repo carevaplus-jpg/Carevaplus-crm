@@ -21,6 +21,13 @@ WHATSAPP      = "https://wa.me/919655508881"
 EMAIL         = "info@carevaplus.com"
 ADDRESS_LINES = ["142/3-2 KMS Garden Road", "Alagapuram, Periyapudur", "Salem, Tamil Nadu"]
 ADDRESS_ONE   = "142/3-2 KMS Garden Road, Alagapuram, Periyapudur, Salem"
+
+# Enquiry forms are POSTed here and arrive as email at the address below.
+# FormSubmit needs a one-time activation: the first submission triggers a
+# confirmation email to EMAIL — click the link in it and the form is live.
+# After activating you can replace the address in this URL with the random
+# string FormSubmit shows you, so the address is not exposed in the page.
+FORM_ENDPOINT = "https://formsubmit.co/ajax/" + EMAIL
 MAPS_LINK     = ("https://www.google.com/maps/search/?api=1&query="
                  "142%2F3-2+KMS+Garden+Road%2C+Alagapuram%2C+Periyapudur%2C+Salem")
 
@@ -190,6 +197,14 @@ def footer():
   </a>
 </div>
 
+<script>
+  window.CAREVA_CONFIG = {{
+    endpoint: "{FORM_ENDPOINT}",
+    email: "{EMAIL}",
+    phone: "{PHONE_DISPLAY}",
+    phoneTel: "{PHONE_TEL}"
+  }};
+</script>
 <script src="script.js"></script>
 </body>
 </html>
@@ -207,6 +222,11 @@ def build(filename, title, description, body, active=None):
 ENQUIRY_FORM = """
 <form class="contact-form reveal" data-form="full">
   <h3>Request a callback</h3>
+  <input type="hidden" name="_subject" value="New care enquiry from the Careva+ website" />
+  <input type="hidden" name="_template" value="table" />
+  <input type="hidden" name="_captcha" value="false" />
+  <input type="text" name="_honey" class="honeypot" tabindex="-1" autocomplete="off" aria-hidden="true" />
+
   <div class="field-row">
     <label>Your name<input type="text" name="name" required placeholder="Full name" autocomplete="name" /></label>
     <label>Phone<input type="tel" name="phone" required placeholder="Mobile number" pattern="[0-9+\\s\\-]{8,16}" autocomplete="tel" /></label>
@@ -237,7 +257,7 @@ ENQUIRY_FORM = """
   <label>Tell us about the patient<textarea name="message" rows="4" placeholder="Age, condition, mobility level, any doctor's instructions…"></textarea></label>
   <button class="btn btn-primary btn-block btn-lg" type="submit">Send request</button>
   <p class="form-note" data-note></p>
-  <p class="form-disclaimer">This form is a front-end demo — connect it to your CRM or email service to receive live enquiries.</p>
+  <p class="form-disclaimer">Your details are sent securely to our care team and used only to respond to this enquiry.</p>
 </form>
 """
 
@@ -321,6 +341,10 @@ def home():
       <h2 class="hero-card-title">Talk to a care advisor</h2>
       <p class="hero-card-sub">Tell us what you need. We respond within 30 minutes.</p>
       <form class="quick-form" data-form="quick">
+        <input type="hidden" name="_subject" value="New care enquiry from the Careva+ website" />
+        <input type="hidden" name="_template" value="table" />
+        <input type="hidden" name="_captcha" value="false" />
+        <input type="text" name="_honey" class="honeypot" tabindex="-1" autocomplete="off" aria-hidden="true" />
         <label>Full name<input type="text" name="name" required placeholder="e.g. Anita Sharma" autocomplete="name" /></label>
         <label>Phone number<input type="tel" name="phone" required placeholder="10-digit mobile number" pattern="[0-9+\\s\\-]{{8,16}}" autocomplete="tel" /></label>
         <label>Care needed

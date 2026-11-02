@@ -169,50 +169,110 @@
   }
 
   /* ============================================================
-     Forms
-     Front-end only. Enquiries are stored in localStorage so the
-     Careva+ CRM can pick them up locally. Connect a backend or an
-     email service to receive them for real.
+     Forms — submitted to FormSubmit, which emails the care team.
+     Config comes from window.CAREVA_CONFIG (written by build.py).
+     Every enquiry is also kept in localStorage as a local backup, so
+     nothing is lost if the network call fails.
      ============================================================ */
+  var CFG = window.CAREVA_CONFIG || {};
   var STORE_KEY = "carevaEnquiries";
 
-  var saveEnquiry = function (data) {
+  var backup = function (data) {
     try {
       var list = JSON.parse(localStorage.getItem(STORE_KEY)) || [];
       list.push(data);
       localStorage.setItem(STORE_KEY, JSON.stringify(list));
-      return true;
     } catch (err) {
-      return false;
+      /* private mode or blocked storage — the network call still carries it */
     }
+  };
+
+  var callUs = function () {
+    return CFG.phone
+      ? " Please call us on " + CFG.phone + " instead."
+      : " Please call our helpline instead.";
   };
 
   document.querySelectorAll("[data-form]").forEach(function (form) {
     var note = form.querySelector("[data-note]");
+    var button = form.querySelector('button[type="submit"]');
+    var buttonText = button ? button.textContent : "";
+
+    var say = function (message, kind) {
+      note.textContent = message;
+      note.className = "form-note " + kind;
+    };
+
+    var busy = function (on) {
+      if (!button) return;
+      button.disabled = on;
+      button.textContent = on ? "Sending…" : buttonText;
+    };
 
     form.addEventListener("submit", function (e) {
       e.preventDefault();
 
+      var fd = new FormData(form);
       var data = {};
-      new FormData(form).forEach(function (value, key) {
+      fd.forEach(function (value, key) {
         data[key] = typeof value === "string" ? value.trim() : value;
       });
 
+      // Bots fill the hidden field; humans never see it.
+      if (data._honey) return;
+
       if (!data.name || !data.phone) {
-        note.textContent = "Please enter your name and phone number.";
-        note.className = "form-note err";
+        say("Please enter your name and phone number.", "err");
         return;
       }
 
       data.source = form.getAttribute("data-form");
       data.receivedAt = new Date().toISOString();
+      fd.set("Page", document.title);
+      fd.set("Submitted at", new Date().toLocaleString());
 
-      var stored = saveEnquiry(data);
-      note.textContent = stored
-        ? "Thank you, " + data.name.split(" ")[0] + ". Your request is saved — a care advisor will call you shortly."
-        : "Thank you. Please also call our helpline so we don't miss your request.";
-      note.className = "form-note ok";
-      form.reset();
+      backup(data);
+
+      if (!CFG.endpoint) {
+        say("Thank you, " + data.name.split(" ")[0] + "." + callUs(), "ok");
+        form.reset();
+        return;
+      }
+
+      busy(true);
+      say("", "");
+
+      fetch(CFG.endpoint, {
+        method: "POST",
+        body: fd,
+        headers: { Accept: "application/json" }
+      })
+        .then(function (res) {
+          return res.json().catch(function () { return {}; });
+        })
+        .then(function (body) {
+          var ok = body && String(body.success) === "true";
+          if (ok) {
+            say(
+              "Thank you, " + data.name.split(" ")[0] +
+                ". Your request has reached our care team — an advisor will call you shortly.",
+              "ok"
+            );
+            form.reset();
+          } else {
+            // Most common cause: the address has not been activated yet.
+            say(
+              (body && body.message ? body.message + " " : "We could not send your request just now.") + callUs(),
+              "err"
+            );
+          }
+        })
+        .catch(function () {
+          say("We could not reach our server — your connection may be offline." + callUs(), "err");
+        })
+        .then(function () {
+          busy(false);
+        });
     });
   });
 })();

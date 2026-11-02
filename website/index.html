@@ -81,6 +81,10 @@
       <h2 class="hero-card-title">Talk to a care advisor</h2>
       <p class="hero-card-sub">Tell us what you need. We respond within 30 minutes.</p>
       <form class="quick-form" data-form="quick">
+        <input type="hidden" name="_subject" value="New care enquiry from the Careva+ website" />
+        <input type="hidden" name="_template" value="table" />
+        <input type="hidden" name="_captcha" value="false" />
+        <input type="text" name="_honey" class="honeypot" tabindex="-1" autocomplete="off" aria-hidden="true" />
         <label>Full name<input type="text" name="name" required placeholder="e.g. Anita Sharma" autocomplete="name" /></label>
         <label>Phone number<input type="tel" name="phone" required placeholder="10-digit mobile number" pattern="[0-9+\s\-]{8,16}" autocomplete="tel" /></label>
         <label>Care needed
@@ -298,6 +302,14 @@
   </a>
 </div>
 
+<script>
+  window.CAREVA_CONFIG = {
+    endpoint: "https://formsubmit.co/ajax/info@carevaplus.com",
+    email: "info@carevaplus.com",
+    phone: "+91 96555 08881",
+    phoneTel: "+919655508881"
+  };
+</script>
 <script src="script.js"></script>
 </body>
 </html>
