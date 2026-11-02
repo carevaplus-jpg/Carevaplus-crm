@@ -182,30 +182,46 @@ def header(active):
         for href, label in NAV
     )
     return f"""
+<div class="promo-bar">
+  <div class="shell"><span>New launch — <strong>{PRODUCT} {WEIGHT} at {money(MRP)}</strong> · Packs of 3 and 6 available</span></div>
+</div>
+
 <header class="site-header" id="siteHeader">
   <div class="shell header-inner">
     <a class="brand" href="index.html" aria-label="{BRAND} — home">
-      <img class="brand-mark" src="assets/mark.png" width="191" height="160"
-           alt="" aria-hidden="true" />
-      <span class="brand-word">{BRAND}</span>
+      <img class="brand-mark" src="assets/mark.png" width="191" height="160" alt="" aria-hidden="true" />
+      <span class="brand-word">{BRAND}<span class="brand-sub">{BRAND_FULL.split()[-1]}</span></span>
     </a>
 
-    <nav class="nav" id="nav" aria-label="Main">
-{links}
-    </nav>
+    <form class="search desktop" role="search" data-search>
+      <label class="sr-only" for="q">Search products</label>
+      <input id="q" type="text" name="q" placeholder="Search for soaps, ingredients, packs…" autocomplete="off" />
+      <button type="submit" aria-label="Search">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      </button>
+    </form>
 
     <div class="header-actions">
+      <a class="header-link" href="contact.html">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+        <span>Help</span>
+      </a>
       <button class="cart-button" id="cartButton" aria-label="Open bag" aria-haspopup="dialog">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
-             stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M6 7h12l-1 13H7L6 7Z"/><path d="M9.5 7V5.5a2.5 2.5 0 0 1 5 0V7"/>
-        </svg>
+        <svg viewBox="0 0 24 24" width="21" height="21"><path d="M6 7h12l-1 13H7L6 7Z"/><path d="M9.5 7V5.5a2.5 2.5 0 0 1 5 0V7"/></svg>
+        <span class="label">Bag</span>
         <span class="cart-count" data-cart-count hidden>0</span>
       </button>
-      <button class="nav-toggle" id="navToggle" aria-expanded="false" aria-controls="nav" aria-label="Open menu">
+      <button class="nav-toggle" id="navToggle" aria-expanded="false" aria-controls="navStrip" aria-label="Open menu">
         <span></span><span></span>
       </button>
     </div>
+  </div>
+
+  <div class="nav-strip" id="navStrip">
+    <nav class="shell nav" id="nav" aria-label="Main">
+{links}
+    </nav>
   </div>
 </header>
 
@@ -348,7 +364,7 @@ def variant_picker(context="page"):
         checked = ' checked' if v.get("featured") else ''
         rows.append(f"""        <label class="variant{' is-featured' if v.get('featured') else ''}">
           <input type="radio" name="variant-{context}" value="{v['id']}"{checked}
-                 data-variant data-price="{v['price']}" data-name="{v['name']}" data-qty="{v['qty']}" />
+                 data-variant data-price="{v['price']}" data-mrp="{v['mrp']}" data-name="{v['name']}" data-qty="{v['qty']}" />
           <span class="variant-body">
             <span class="variant-top"><strong>{v['name']}</strong>{badge}</span>
             <span class="variant-meta">{v['qty']} × {WEIGHT}</span>
@@ -410,6 +426,47 @@ def faq_items(limit=None):
         for q, a in items)
 
 
+TRUST = [
+    ("Dermatologically tested", '<path d="M12 3 4 6v6c0 4.4 3.4 7.6 8 9 4.6-1.4 8-4.6 8-9V6Z"/><path d="m9 12 2 2 4-4"/>'),
+    ("Suitable for daily use", '<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>'),
+    ("Gentle on skin", '<path d="M12 21s-7-4.3-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.7-7 10-7 10Z"/>'),
+    ("Order confirmed by our team", '<rect x="5" y="4" width="14" height="16" rx="2"/><path d="m9 12 2 2 4-4"/>'),
+]
+
+
+def trust_strip():
+    items = "\n".join(
+        f'      <li><svg viewBox="0 0 24 24" aria-hidden="true">{icon}</svg>{label}</li>'
+        for label, icon in TRUST)
+    return f"""
+<section class="trust-strip">
+  <ul class="shell">
+{items}
+  </ul>
+</section>
+"""
+
+
+def pack_cards():
+    out = []
+    for v in VARIANTS:
+        save = v["mrp"] - v["price"]
+        pct = round(save / v["mrp"] * 100) if v["mrp"] else 0
+        tag = f'<span class="pack-tag">{v["note"]}</span>' if v.get("note") else ""
+        off = f'<span class="off">{pct}% off</span>' if pct else ""
+        strike = f"<s>{money(v['mrp'])}</s>" if save > 0 else ""
+        out.append(f"""      <article class="pack-card" data-reveal>
+        {tag}
+        <img src="assets/kojiba-pack-480.jpg" width="625" height="676" loading="lazy" decoding="async"
+             alt="{PRODUCT} {v['name']} — {v['qty']} × {WEIGHT}" />
+        <h3>{v['name']}</h3>
+        <p class="pack-meta">{v['qty']} × {WEIGHT} bar{'s' if v['qty'] > 1 else ''}</p>
+        <p class="pack-price"><b>{money(v['price'])}</b> {strike} {off}</p>
+        <a class="btn btn-primary btn-block" href="kojiba.html#buy">Select pack</a>
+      </article>""")
+    return "\n".join(out)
+
+
 def cta_band():
     return f"""
 <section class="band" data-parallax-root>
@@ -432,64 +489,47 @@ def cta_band():
 # ═══════════════════════════════════════════════════════════════════
 
 def home():
+    best = max(VARIANTS, key=lambda v: (v["mrp"] - v["price"]) / v["mrp"] if v["mrp"] else 0)
+    best_pct = round((best["mrp"] - best["price"]) / best["mrp"] * 100) if best["mrp"] else 0
     return f"""
-<section class="hero" data-parallax-root>
-  <span class="hero-wash" aria-hidden="true"></span>
-  <span class="leaf leaf-a" data-depth="0.16" aria-hidden="true"></span>
-  <span class="leaf leaf-b" data-depth="0.26" aria-hidden="true"></span>
-  <span class="leaf leaf-c" data-depth="0.09" aria-hidden="true"></span>
-
+<section class="hero">
   <div class="shell hero-inner">
     <div class="hero-copy">
-      <p class="eyebrow" data-rise="1">{BRAND_FULL} presents</p>
+      <p class="eyebrow" data-rise="1" style="color:var(--amber-500)">{BRAND_FULL}</p>
       <h1 data-rise="2"><span class="script">{PRODUCT}</span><span class="h1-sub">{SUBTITLE}</span></h1>
-      <p class="lead" data-rise="3">{FORMULA}. A {WEIGHT} bar made to leave skin
-        clean, comfortable and quietly luminous.</p>
-      <div class="hero-actions" data-rise="4">
-        <a class="btn btn-primary btn-lg" href="kojiba.html">Shop {PRODUCT} — {money(MRP)}</a>
-        <a class="btn btn-quiet btn-lg" href="#story">The story</a>
+      <div class="price-flash" data-rise="3">
+        <b>{money(MRP)}</b><s>{money(MRP)} MRP</s><em>75 g bar</em>
       </div>
-      <ul class="claims" data-rise="5">
-{claim_row()}
-      </ul>
+      <p class="lead" data-rise="4">{FORMULA}. Save up to {best_pct}% when you buy a multi-pack.</p>
+      <div class="hero-actions" data-rise="5">
+        <a class="btn btn-buy btn-lg" href="kojiba.html#buy">Buy now</a>
+        <a class="btn btn-ghost btn-lg" href="#packs">View packs</a>
+      </div>
     </div>
-
-    <div class="hero-art" data-depth="0.07">
-      <span class="hero-halo" aria-hidden="true"></span>
+    <div class="hero-art">
       {scene_shot('hero-shot', loading='eager')}
     </div>
   </div>
-
-  <a class="scroll-cue" href="#story" aria-label="Scroll to the story">
-    <span></span>
-  </a>
 </section>
+{trust_strip()}
 
-<section class="section" id="story" data-parallax-root>
-  <div class="shell split-prose">
-    <div data-reveal>
-      <p class="eyebrow">Why we made it</p>
-      <h2>Care that feels like a ritual, not a chore</h2>
-      <p>{BRAND_FULL} began with a simple belief — that everyday skincare should feel
-        considered. Not clinical, not complicated. Something you look forward to.</p>
-      <p>{PRODUCT} is our first bar. We built it around four well-understood ingredients and
-        left out the noise, so a single step in your routine does honest work.</p>
-      <p class="sig">{TAGLINE}</p>
-    </div>
-    <div class="prose-art" data-depth="0.05" data-reveal>
-      {pack_shot(cls='pack-float')}
+<section class="section" id="packs">
+  <div class="shell">
+    <header class="section-head" data-reveal>
+      <h2>Choose your pack</h2>
+      <p class="section-lead">The more bars you take, the lower the price per bar.</p>
+    </header>
+    <div class="pack-grid">
+{pack_cards()}
     </div>
   </div>
 </section>
 
-<section class="section section-tint" data-parallax-root>
-  <span class="tint-glow" data-depth="0.12" aria-hidden="true"></span>
+<section class="section">
   <div class="shell">
     <header class="section-head" data-reveal>
-      <p class="eyebrow">Inside the bar</p>
-      <h2>Four ingredients, each doing one job</h2>
-      <p class="section-lead">No long list for the sake of it. These are the actives printed on
-        every {PRODUCT} carton.</p>
+      <h2>What's inside</h2>
+      <p class="section-lead">The four actives printed on every {PRODUCT} carton.</p>
     </header>
     <div class="actives">
 {actives_grid()}
@@ -497,34 +537,39 @@ def home():
   </div>
 </section>
 
-<section class="section ritual" data-parallax-root>
-  <div class="shell split-prose reverse">
-    <div class="prose-art" data-depth="0.06" data-reveal>
-      {scene_shot('pack-float')}
-    </div>
-    <div data-reveal>
-      <p class="eyebrow">The ritual</p>
-      <h2>Three unhurried steps</h2>
+<section class="section">
+  <div class="shell split-prose">
+    <div class="panel" data-reveal>
+      <h2>How to use it</h2>
       <ol class="steps">
-        <li><span>1</span><div><h3>Wet</h3><p>Warm water, face or body — whichever you are caring for.</p></div></li>
-        <li><span>2</span><div><h3>Lather</h3><p>Massage the bar gently until it works into a rich, soft lather.</p></div></li>
-        <li><span>3</span><div><h3>Rinse</h3><p>Rinse thoroughly. Follow with your moisturiser while skin is still damp.</p></div></li>
+        <li><span>1</span><div><h3>Wet</h3><p>Warm water, face or body.</p></div></li>
+        <li><span>2</span><div><h3>Lather</h3><p>Massage the bar until it works into a rich lather.</p></div></li>
+        <li><span>3</span><div><h3>Rinse</h3><p>Rinse thoroughly, then moisturise while skin is damp.</p></div></li>
       </ol>
       <p class="caution-line">{CAUTION}</p>
+    </div>
+    <div class="prose-art" data-reveal>
+      {pack_shot(cls='pack-float')}
     </div>
   </div>
 </section>
 
-<section class="section" data-parallax-root>
-  <div class="shell faq-wrap">
-    <header class="section-head" data-reveal>
-      <p class="eyebrow">Good to know</p>
-      <h2>Questions, answered plainly</h2>
-    </header>
-    <div class="faq-list">
-{faq_items(limit=4)}
+<section class="section">
+  <div class="shell split-prose">
+    <div class="panel" data-reveal>
+      <h2>About {BRAND_FULL}</h2>
+      <p>{BRAND_FULL} is a cosmetics house in Salem, Tamil Nadu. {PRODUCT} is our first bar — built
+        around four well-understood ingredients, with nothing added for the sake of a longer label.</p>
+      <p class="sig">{TAGLINE}</p>
+      <p class="more-link"><a href="about.html">Read our story <span aria-hidden="true">&rarr;</span></a></p>
     </div>
-    <p class="more-link" data-reveal><a href="faq.html">All questions <span aria-hidden="true">→</span></a></p>
+    <div class="panel faq-wrap" data-reveal>
+      <h2>Common questions</h2>
+      <div class="faq-list">
+{faq_items(limit=3)}
+      </div>
+      <p class="more-link"><a href="faq.html">All questions <span aria-hidden="true">&rarr;</span></a></p>
+    </div>
   </div>
 </section>
 {cta_band()}
@@ -532,101 +577,159 @@ def home():
 
 
 def product():
-    ing = ("<p class=\"ingredients-pending\">The full ingredient list is being confirmed with our "
-           "manufacturer and will be published here, exactly as it appears on the carton.</p>"
+    ing = ('<p class="ingredients-pending">The full ingredient list is being confirmed with our '
+           'manufacturer and will be published here exactly as it appears on the carton.</p>'
            if not INGREDIENTS else
-           "<p class=\"ingredients-list\">" + ", ".join(INGREDIENTS) + "</p>")
+           '<p class="ingredients-list">' + ", ".join(INGREDIENTS) + "</p>")
+    hi = "\n".join(f"        <li>{name} — {verb.lower()}</li>" for name, verb, _ in ACTIVES)
     return f"""
-<section class="product" data-parallax-root>
-  <span class="leaf leaf-b" data-depth="0.18" aria-hidden="true"></span>
+<div class="shell">
+  <nav class="crumb">
+    <a href="index.html">Home</a><span aria-hidden="true">&rsaquo;</span>
+    <a href="index.html#packs">Soap</a><span aria-hidden="true">&rsaquo;</span>
+    <span aria-current="page">{PRODUCT}</span>
+  </nav>
+</div>
+
+<section class="product" id="buy">
   <div class="shell product-grid">
-    <div class="product-media" data-reveal>
-      <div class="media-main" data-depth="0.04">
-        {scene_shot('', loading='eager')}
-      </div>
+    <div class="product-media">
+      <div class="media-main">{scene_shot('', loading='eager')}</div>
       <div class="media-thumbs">
         <span class="thumb is-active">{scene_shot()}</span>
         <span class="thumb">{pack_shot(cls='')}</span>
       </div>
     </div>
 
-    <div class="product-info" data-reveal>
-      <nav class="crumb"><a href="index.html">Home</a><span aria-hidden="true">/</span><span aria-current="page">{PRODUCT}</span></nav>
-      <h1>{PRODUCT}<span class="h1-sub">{SUBTITLE}</span></h1>
-      <p class="product-formula">{FORMULA}</p>
-
-      <div class="price-row">
-        <strong data-price-display>{money(MRP)}</strong>
-        <span class="price-meta">{WEIGHT} · inclusive of all taxes</span>
+    <div class="product-info">
+      <p class="brand-line">{BRAND_FULL}</p>
+      <h1>{PRODUCT} — {SUBTITLE}<span class="h1-sub">Net quantity {WEIGHT}</span></h1>
+      <div class="rating-row">
+        <span class="rating-pill">New launch</span>
+        <span>No ratings yet</span>
       </div>
 
-      <form class="variants" id="variants" data-add-form>
+      <div class="price-block">
+        <div class="price-row">
+          <strong data-price-display>{money(MRP)}</strong>
+          <span class="off" data-off hidden></span>
+        </div>
+        <p class="price-meta">Inclusive of all taxes</p>
+      </div>
+
+      <p class="product-formula">{FORMULA}</p>
+
+      <ul class="highlights">
+{hi}
+        <li>Suitable for daily use on face and body</li>
+        <li>Dermatologically tested</li>
+      </ul>
+
+      <table class="spec-table">
+        <tbody>
+          <tr><th>Brand</th><td>{BRAND_FULL}</td></tr>
+          <tr><th>Product</th><td>{PRODUCT_FULL}</td></tr>
+          <tr><th>Net quantity</th><td>{WEIGHT} per bar</td></tr>
+          <tr><th>Key actives</th><td>Kojic acid, niacinamide, jojoba oil, licorice extract</td></tr>
+          <tr><th>Form</th><td>Bathing bar</td></tr>
+          <tr><th>Marketed by</th><td>{BRAND_FULL}, Salem, Tamil Nadu</td></tr>
+          <tr><th>Country of origin</th><td>India</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <aside class="buy-box">
+      <div class="buy-price">
+        <strong data-price-display>{money(MRP)}</strong>
+        <span class="off" data-off hidden></span>
+      </div>
+      <p class="in-stock">Available to order</p>
+
+      <form class="variants" data-add-form>
         <fieldset>
-          <legend class="eyebrow">Choose your pack</legend>
+          <legend>Select pack</legend>
 {variant_picker()}
         </fieldset>
 
         <div class="qty-row">
-          <label for="qty">Quantity</label>
+          <label for="qty">Qty</label>
           <div class="qty">
-            <button type="button" data-qty-down aria-label="Decrease quantity">−</button>
+            <button type="button" data-qty-down aria-label="Decrease quantity">&minus;</button>
             <input id="qty" type="number" value="1" min="1" max="20" data-qty-input inputmode="numeric" />
             <button type="button" data-qty-up aria-label="Increase quantity">+</button>
           </div>
         </div>
 
         <button class="btn btn-primary btn-block btn-lg" type="submit">Add to bag</button>
-        <p class="buy-note">Order confirmed by our team before dispatch. Delivery charges, if any,
-          are told to you upfront.</p>
+        <button class="btn btn-buy btn-block btn-lg" type="button" data-buy-now>Buy now</button>
       </form>
 
-      <ul class="claims">
-{claim_row()}
+      <div class="delivery-box">
+        <h3>Delivery</h3>
+        <div class="pin-row">
+          <input type="text" inputmode="numeric" maxlength="6" placeholder="Enter 6-digit PIN code"
+                 data-pin aria-label="PIN code" />
+          <button type="button" data-pin-check>Check</button>
+        </div>
+        <p class="pin-note" data-pin-note></p>
+      </div>
+
+      <ul class="offer-list">
+        <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
+            Order confirmed by our team before dispatch</li>
+        <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
+            Delivery time and charges told to you upfront</li>
+        <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
+            Questions? Call {PHONE_DISPLAY}</li>
       </ul>
-    </div>
+
+      <div class="secure-row">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+        Your details stay with Auravelle
+      </div>
+      <p class="buy-note" data-checkout-note></p>
+    </aside>
   </div>
 </section>
 
-<section class="section section-tint" id="ingredients" data-parallax-root>
-  <span class="tint-glow" data-depth="0.12" aria-hidden="true"></span>
+<section class="section" id="ingredients">
   <div class="shell">
-    <header class="section-head" data-reveal>
-      <p class="eyebrow">Formulation</p>
-      <h2>What's inside, and why</h2>
-    </header>
+    <header class="section-head" data-reveal><h2>Product details</h2></header>
     <div class="actives">
 {actives_grid()}
     </div>
-
     <div class="panel-grid">
+      <div class="panel" data-reveal><h3>Directions for use</h3><p>{DIRECTIONS}</p></div>
+      <div class="panel" data-reveal><h3>Caution</h3><p>{CAUTION}</p></div>
+      <div class="panel" data-reveal><h3>Full ingredient list</h3>{ing}</div>
       <div class="panel" data-reveal>
-        <h3>Directions for use</h3>
-        <p>{DIRECTIONS}</p>
-      </div>
-      <div class="panel" data-reveal>
-        <h3>Caution</h3>
-        <p>{CAUTION}</p>
-      </div>
-      <div class="panel" data-reveal>
-        <h3>Full ingredient list</h3>
-        {ing}
-      </div>
-      <div class="panel" data-reveal>
-        <h3>Net quantity</h3>
+        <h3>Net quantity &amp; price</h3>
         <p>{WEIGHT} per bar. MRP {money(MRP)} inclusive of all taxes.</p>
-        <p class="panel-fine">Marketed by {BRAND_FULL}, Salem, Tamil Nadu.</p>
+        <p class="panel-fine">Marketed by {BRAND_FULL}, Salem, Tamil Nadu. Manufacturer details are
+          printed on every carton.</p>
       </div>
     </div>
   </div>
 </section>
 
-<section class="section" data-parallax-root>
+<section class="section">
+  <div class="shell">
+    <header class="section-head" data-reveal><h2>Ratings &amp; reviews</h2></header>
+    <div class="reviews-empty" data-reveal>
+      <h3>No reviews yet</h3>
+      <p>{PRODUCT} has just launched. Once customers have used it, their reviews will appear here —
+        we will not publish anything we have not actually received.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
   <div class="shell faq-wrap">
-    <header class="section-head" data-reveal><p class="eyebrow">Good to know</p><h2>Questions about {PRODUCT}</h2></header>
+    <header class="section-head" data-reveal><h2>Questions about {PRODUCT}</h2></header>
     <div class="faq-list">
 {faq_items(limit=5)}
     </div>
-    <p class="more-link" data-reveal><a href="faq.html">All questions <span aria-hidden="true">→</span></a></p>
+    <p class="more-link" data-reveal><a href="faq.html">All questions <span aria-hidden="true">&rarr;</span></a></p>
   </div>
 </section>
 """

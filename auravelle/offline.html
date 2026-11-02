@@ -29,34 +29,50 @@
 <a class="skip-link" href="#main">Skip to content</a>
 <div class="grain" aria-hidden="true"></div>
 
+<div class="promo-bar">
+  <div class="shell"><span>New launch — <strong>Kojiba 75 g at ₹149</strong> · Packs of 3 and 6 available</span></div>
+</div>
+
 <header class="site-header" id="siteHeader">
   <div class="shell header-inner">
     <a class="brand" href="index.html" aria-label="Auravelle — home">
-      <img class="brand-mark" src="assets/mark.png" width="191" height="160"
-           alt="" aria-hidden="true" />
-      <span class="brand-word">Auravelle</span>
+      <img class="brand-mark" src="assets/mark.png" width="191" height="160" alt="" aria-hidden="true" />
+      <span class="brand-word">Auravelle<span class="brand-sub">Cosmetics</span></span>
     </a>
 
-    <nav class="nav" id="nav" aria-label="Main">
+    <form class="search desktop" role="search" data-search>
+      <label class="sr-only" for="q">Search products</label>
+      <input id="q" type="text" name="q" placeholder="Search for soaps, ingredients, packs…" autocomplete="off" />
+      <button type="submit" aria-label="Search">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      </button>
+    </form>
+
+    <div class="header-actions">
+      <a class="header-link" href="contact.html">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+        <span>Help</span>
+      </a>
+      <button class="cart-button" id="cartButton" aria-label="Open bag" aria-haspopup="dialog">
+        <svg viewBox="0 0 24 24" width="21" height="21"><path d="M6 7h12l-1 13H7L6 7Z"/><path d="M9.5 7V5.5a2.5 2.5 0 0 1 5 0V7"/></svg>
+        <span class="label">Bag</span>
+        <span class="cart-count" data-cart-count hidden>0</span>
+      </button>
+      <button class="nav-toggle" id="navToggle" aria-expanded="false" aria-controls="navStrip" aria-label="Open menu">
+        <span></span><span></span>
+      </button>
+    </div>
+  </div>
+
+  <div class="nav-strip" id="navStrip">
+    <nav class="shell nav" id="nav" aria-label="Main">
       <a href="index.html">Home</a>
       <a href="kojiba.html">Kojiba</a>
       <a href="about.html">About</a>
       <a href="faq.html">FAQ</a>
       <a href="contact.html">Contact</a>
     </nav>
-
-    <div class="header-actions">
-      <button class="cart-button" id="cartButton" aria-label="Open bag" aria-haspopup="dialog">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
-             stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M6 7h12l-1 13H7L6 7Z"/><path d="M9.5 7V5.5a2.5 2.5 0 0 1 5 0V7"/>
-        </svg>
-        <span class="cart-count" data-cart-count hidden>0</span>
-      </button>
-      <button class="nav-toggle" id="navToggle" aria-expanded="false" aria-controls="nav" aria-label="Open menu">
-        <span></span><span></span>
-      </button>
-    </div>
   </div>
 </header>
 

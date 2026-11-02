@@ -29,98 +29,128 @@
 <a class="skip-link" href="#main">Skip to content</a>
 <div class="grain" aria-hidden="true"></div>
 
+<div class="promo-bar">
+  <div class="shell"><span>New launch — <strong>Kojiba 75 g at ₹149</strong> · Packs of 3 and 6 available</span></div>
+</div>
+
 <header class="site-header" id="siteHeader">
   <div class="shell header-inner">
     <a class="brand" href="index.html" aria-label="Auravelle — home">
-      <img class="brand-mark" src="assets/mark.png" width="191" height="160"
-           alt="" aria-hidden="true" />
-      <span class="brand-word">Auravelle</span>
+      <img class="brand-mark" src="assets/mark.png" width="191" height="160" alt="" aria-hidden="true" />
+      <span class="brand-word">Auravelle<span class="brand-sub">Cosmetics</span></span>
     </a>
 
-    <nav class="nav" id="nav" aria-label="Main">
+    <form class="search desktop" role="search" data-search>
+      <label class="sr-only" for="q">Search products</label>
+      <input id="q" type="text" name="q" placeholder="Search for soaps, ingredients, packs…" autocomplete="off" />
+      <button type="submit" aria-label="Search">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      </button>
+    </form>
+
+    <div class="header-actions">
+      <a class="header-link" href="contact.html">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+        <span>Help</span>
+      </a>
+      <button class="cart-button" id="cartButton" aria-label="Open bag" aria-haspopup="dialog">
+        <svg viewBox="0 0 24 24" width="21" height="21"><path d="M6 7h12l-1 13H7L6 7Z"/><path d="M9.5 7V5.5a2.5 2.5 0 0 1 5 0V7"/></svg>
+        <span class="label">Bag</span>
+        <span class="cart-count" data-cart-count hidden>0</span>
+      </button>
+      <button class="nav-toggle" id="navToggle" aria-expanded="false" aria-controls="navStrip" aria-label="Open menu">
+        <span></span><span></span>
+      </button>
+    </div>
+  </div>
+
+  <div class="nav-strip" id="navStrip">
+    <nav class="shell nav" id="nav" aria-label="Main">
       <a href="index.html" class="active">Home</a>
       <a href="kojiba.html">Kojiba</a>
       <a href="about.html">About</a>
       <a href="faq.html">FAQ</a>
       <a href="contact.html">Contact</a>
     </nav>
-
-    <div class="header-actions">
-      <button class="cart-button" id="cartButton" aria-label="Open bag" aria-haspopup="dialog">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
-             stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M6 7h12l-1 13H7L6 7Z"/><path d="M9.5 7V5.5a2.5 2.5 0 0 1 5 0V7"/>
-        </svg>
-        <span class="cart-count" data-cart-count hidden>0</span>
-      </button>
-      <button class="nav-toggle" id="navToggle" aria-expanded="false" aria-controls="nav" aria-label="Open menu">
-        <span></span><span></span>
-      </button>
-    </div>
   </div>
 </header>
 
 <main id="main" tabindex="-1">
 
-<section class="hero" data-parallax-root>
-  <span class="hero-wash" aria-hidden="true"></span>
-  <span class="leaf leaf-a" data-depth="0.16" aria-hidden="true"></span>
-  <span class="leaf leaf-b" data-depth="0.26" aria-hidden="true"></span>
-  <span class="leaf leaf-c" data-depth="0.09" aria-hidden="true"></span>
-
+<section class="hero">
   <div class="shell hero-inner">
     <div class="hero-copy">
-      <p class="eyebrow" data-rise="1">Auravelle Cosmetics presents</p>
+      <p class="eyebrow" data-rise="1" style="color:var(--amber-500)">Auravelle Cosmetics</p>
       <h1 data-rise="2"><span class="script">Kojiba</span><span class="h1-sub">Brightening & Nourishing Soap</span></h1>
-      <p class="lead" data-rise="3">Formulated with Kojic Acid, Niacinamide, Jojoba Oil & Licorice Extract. A 75 g bar made to leave skin
-        clean, comfortable and quietly luminous.</p>
-      <div class="hero-actions" data-rise="4">
-        <a class="btn btn-primary btn-lg" href="kojiba.html">Shop Kojiba — ₹149</a>
-        <a class="btn btn-quiet btn-lg" href="#story">The story</a>
+      <div class="price-flash" data-rise="3">
+        <b>₹149</b><s>₹149 MRP</s><em>75 g bar</em>
       </div>
-      <ul class="claims" data-rise="5">
-      <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 4.4 3.4 7.6 8 9 4.6-1.4 8-4.6 8-9V6Z"/><path d="m9 12 2 2 4-4"/></svg>Dermatologically tested</li>
-      <li><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Suitable for daily use</li>
-      <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-4.3-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.7-7 10-7 10Z"/></svg>Gentle on skin</li>
-      </ul>
+      <p class="lead" data-rise="4">Formulated with Kojic Acid, Niacinamide, Jojoba Oil & Licorice Extract. Save up to 16% when you buy a multi-pack.</p>
+      <div class="hero-actions" data-rise="5">
+        <a class="btn btn-buy btn-lg" href="kojiba.html#buy">Buy now</a>
+        <a class="btn btn-ghost btn-lg" href="#packs">View packs</a>
+      </div>
     </div>
-
-    <div class="hero-art" data-depth="0.07">
-      <span class="hero-halo" aria-hidden="true"></span>
+    <div class="hero-art">
       <picture class="hero-shot"><source type="image/webp" srcset="assets/kojiba-scene-400.webp 400w, assets/kojiba-scene-640.webp 640w" sizes="(max-width: 820px) 90vw, 560px" /><img src="assets/kojiba-scene-640.jpg" width="310" height="280" loading="eager" decoding="async" alt="Kojiba soap bar beside its carton on marble with jasmine flowers" srcset="assets/kojiba-scene-400.jpg 400w, assets/kojiba-scene-640.jpg 640w" sizes="(max-width: 820px) 90vw, 560px" /></picture>
     </div>
   </div>
-
-  <a class="scroll-cue" href="#story" aria-label="Scroll to the story">
-    <span></span>
-  </a>
 </section>
 
-<section class="section" id="story" data-parallax-root>
-  <div class="shell split-prose">
-    <div data-reveal>
-      <p class="eyebrow">Why we made it</p>
-      <h2>Care that feels like a ritual, not a chore</h2>
-      <p>Auravelle Cosmetics began with a simple belief — that everyday skincare should feel
-        considered. Not clinical, not complicated. Something you look forward to.</p>
-      <p>Kojiba is our first bar. We built it around four well-understood ingredients and
-        left out the noise, so a single step in your routine does honest work.</p>
-      <p class="sig">Beauty in every you</p>
-    </div>
-    <div class="prose-art" data-depth="0.05" data-reveal>
-      <picture class="pack-float"><source type="image/webp" srcset="assets/kojiba-pack-480.webp 480w, assets/kojiba-pack-800.webp 800w" sizes="(max-width: 820px) 86vw, 420px" /><img src="assets/kojiba-pack-800.jpg" width="625" height="676" loading="lazy" decoding="async" alt="Kojiba Brightening &amp; Nourishing Soap carton, 75 g" srcset="assets/kojiba-pack-480.jpg 480w, assets/kojiba-pack-800.jpg 800w" sizes="(max-width: 820px) 86vw, 420px" /></picture>
+<section class="trust-strip">
+  <ul class="shell">
+      <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 4.4 3.4 7.6 8 9 4.6-1.4 8-4.6 8-9V6Z"/><path d="m9 12 2 2 4-4"/></svg>Dermatologically tested</li>
+      <li><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Suitable for daily use</li>
+      <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-4.3-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.7-7 10-7 10Z"/></svg>Gentle on skin</li>
+      <li><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="16" rx="2"/><path d="m9 12 2 2 4-4"/></svg>Order confirmed by our team</li>
+  </ul>
+</section>
+
+
+<section class="section" id="packs">
+  <div class="shell">
+    <header class="section-head" data-reveal>
+      <h2>Choose your pack</h2>
+      <p class="section-lead">The more bars you take, the lower the price per bar.</p>
+    </header>
+    <div class="pack-grid">
+      <article class="pack-card" data-reveal>
+        <span class="pack-tag">Try it first</span>
+        <img src="assets/kojiba-pack-480.jpg" width="625" height="676" loading="lazy" decoding="async"
+             alt="Kojiba Single bar — 1 × 75 g" />
+        <h3>Single bar</h3>
+        <p class="pack-meta">1 × 75 g bar</p>
+        <p class="pack-price"><b>₹149</b>  </p>
+        <a class="btn btn-primary btn-block" href="kojiba.html#buy">Select pack</a>
+      </article>
+      <article class="pack-card" data-reveal>
+        <span class="pack-tag">Most loved</span>
+        <img src="assets/kojiba-pack-480.jpg" width="625" height="676" loading="lazy" decoding="async"
+             alt="Kojiba Pack of 3 — 3 × 75 g" />
+        <h3>Pack of 3</h3>
+        <p class="pack-meta">3 × 75 g bars</p>
+        <p class="pack-price"><b>₹399</b> <s>₹447</s> <span class="off">11% off</span></p>
+        <a class="btn btn-primary btn-block" href="kojiba.html#buy">Select pack</a>
+      </article>
+      <article class="pack-card" data-reveal>
+        <span class="pack-tag">Best value</span>
+        <img src="assets/kojiba-pack-480.jpg" width="625" height="676" loading="lazy" decoding="async"
+             alt="Kojiba Pack of 6 — 6 × 75 g" />
+        <h3>Pack of 6</h3>
+        <p class="pack-meta">6 × 75 g bars</p>
+        <p class="pack-price"><b>₹749</b> <s>₹894</s> <span class="off">16% off</span></p>
+        <a class="btn btn-primary btn-block" href="kojiba.html#buy">Select pack</a>
+      </article>
     </div>
   </div>
 </section>
 
-<section class="section section-tint" data-parallax-root>
-  <span class="tint-glow" data-depth="0.12" aria-hidden="true"></span>
+<section class="section">
   <div class="shell">
     <header class="section-head" data-reveal>
-      <p class="eyebrow">Inside the bar</p>
-      <h2>Four ingredients, each doing one job</h2>
-      <p class="section-lead">No long list for the sake of it. These are the actives printed on
-        every Kojiba carton.</p>
+      <h2>What's inside</h2>
+      <p class="section-lead">The four actives printed on every Kojiba carton.</p>
     </header>
     <div class="actives">
       <article class="active-card" data-reveal data-depth="0.052">
@@ -151,31 +181,35 @@
   </div>
 </section>
 
-<section class="section ritual" data-parallax-root>
-  <div class="shell split-prose reverse">
-    <div class="prose-art" data-depth="0.06" data-reveal>
-      <picture class="pack-float"><source type="image/webp" srcset="assets/kojiba-scene-400.webp 400w, assets/kojiba-scene-640.webp 640w" sizes="(max-width: 820px) 90vw, 560px" /><img src="assets/kojiba-scene-640.jpg" width="310" height="280" loading="lazy" decoding="async" alt="Kojiba soap bar beside its carton on marble with jasmine flowers" srcset="assets/kojiba-scene-400.jpg 400w, assets/kojiba-scene-640.jpg 640w" sizes="(max-width: 820px) 90vw, 560px" /></picture>
-    </div>
-    <div data-reveal>
-      <p class="eyebrow">The ritual</p>
-      <h2>Three unhurried steps</h2>
+<section class="section">
+  <div class="shell split-prose">
+    <div class="panel" data-reveal>
+      <h2>How to use it</h2>
       <ol class="steps">
-        <li><span>1</span><div><h3>Wet</h3><p>Warm water, face or body — whichever you are caring for.</p></div></li>
-        <li><span>2</span><div><h3>Lather</h3><p>Massage the bar gently until it works into a rich, soft lather.</p></div></li>
-        <li><span>3</span><div><h3>Rinse</h3><p>Rinse thoroughly. Follow with your moisturiser while skin is still damp.</p></div></li>
+        <li><span>1</span><div><h3>Wet</h3><p>Warm water, face or body.</p></div></li>
+        <li><span>2</span><div><h3>Lather</h3><p>Massage the bar until it works into a rich lather.</p></div></li>
+        <li><span>3</span><div><h3>Rinse</h3><p>Rinse thoroughly, then moisturise while skin is damp.</p></div></li>
       </ol>
       <p class="caution-line">For external use only. Avoid contact with eyes. If irritation occurs, stop use and consult a dermatologist.</p>
+    </div>
+    <div class="prose-art" data-reveal>
+      <picture class="pack-float"><source type="image/webp" srcset="assets/kojiba-pack-480.webp 480w, assets/kojiba-pack-800.webp 800w" sizes="(max-width: 820px) 86vw, 420px" /><img src="assets/kojiba-pack-800.jpg" width="625" height="676" loading="lazy" decoding="async" alt="Kojiba Brightening &amp; Nourishing Soap carton, 75 g" srcset="assets/kojiba-pack-480.jpg 480w, assets/kojiba-pack-800.jpg 800w" sizes="(max-width: 820px) 86vw, 420px" /></picture>
     </div>
   </div>
 </section>
 
-<section class="section" data-parallax-root>
-  <div class="shell faq-wrap">
-    <header class="section-head" data-reveal>
-      <p class="eyebrow">Good to know</p>
-      <h2>Questions, answered plainly</h2>
-    </header>
-    <div class="faq-list">
+<section class="section">
+  <div class="shell split-prose">
+    <div class="panel" data-reveal>
+      <h2>About Auravelle Cosmetics</h2>
+      <p>Auravelle Cosmetics is a cosmetics house in Salem, Tamil Nadu. Kojiba is our first bar — built
+        around four well-understood ingredients, with nothing added for the sake of a longer label.</p>
+      <p class="sig">Beauty in every you</p>
+      <p class="more-link"><a href="about.html">Read our story <span aria-hidden="true">&rarr;</span></a></p>
+    </div>
+    <div class="panel faq-wrap" data-reveal>
+      <h2>Common questions</h2>
+      <div class="faq-list">
       <details class="faq" data-reveal>
         <summary>What is Kojiba?</summary>
         <div class="faq-body"><p>Kojiba is Auravelle Cosmetics' brightening and nourishing soap — a 75 g bar formulated with kojic acid, niacinamide, jojoba oil and licorice extract.</p></div>
@@ -188,12 +222,9 @@
         <summary>Can I use it every day?</summary>
         <div class="faq-body"><p>The carton states that Kojiba is suitable for daily use. As with any new cosmetic, patch test on a small area first and see how your skin responds before using it more widely.</p></div>
       </details>
-      <details class="faq" data-reveal>
-        <summary>Is it suitable for sensitive skin?</summary>
-        <div class="faq-body"><p>Kojiba is formulated to be gentle, and the carton states it is dermatologically tested. If your skin is reactive or you are treating a specific condition, check with a dermatologist before adding any new product.</p></div>
-      </details>
+      </div>
+      <p class="more-link"><a href="faq.html">All questions <span aria-hidden="true">&rarr;</span></a></p>
     </div>
-    <p class="more-link" data-reveal><a href="faq.html">All questions <span aria-hidden="true">→</span></a></p>
   </div>
 </section>
 

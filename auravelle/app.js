@@ -25,15 +25,18 @@
      Mobile nav
      ============================================================ */
   var nav = document.getElementById("nav");
+  var navStrip = document.getElementById("navStrip");
   var navToggle = document.getElementById("navToggle");
   if (nav && navToggle) {
     var closeNav = function () {
       nav.classList.remove("open");
+      if (navStrip) navStrip.classList.remove("open");
       navToggle.setAttribute("aria-expanded", "false");
       navToggle.setAttribute("aria-label", "Open menu");
     };
     navToggle.addEventListener("click", function () {
       var open = nav.classList.toggle("open");
+      if (navStrip) navStrip.classList.toggle("open", open);
       navToggle.setAttribute("aria-expanded", String(open));
       navToggle.setAttribute("aria-label", open ? "Close menu" : "Open menu");
     });
@@ -299,9 +302,19 @@
     var currentVariant = function () {
       return form.querySelector("[data-variant]:checked") || form.querySelector("[data-variant]");
     };
+    var priceEls = document.querySelectorAll("[data-price-display]");
+    var offEls = document.querySelectorAll("[data-off]");
     var syncPrice = function () {
       var v = currentVariant();
-      if (v && priceDisplay) priceDisplay.textContent = money(+v.getAttribute("data-price"));
+      if (!v) return;
+      var price = +v.getAttribute("data-price");
+      var mrp = +v.getAttribute("data-mrp") || price;
+      priceEls.forEach(function (el) { el.textContent = money(price); });
+      var pct = mrp > price ? Math.round((mrp - price) / mrp * 100) : 0;
+      offEls.forEach(function (el) {
+        el.textContent = pct ? pct + "% off" : "";
+        el.hidden = !pct;
+      });
     };
     form.querySelectorAll("[data-variant]").forEach(function (r) {
       r.addEventListener("change", syncPrice);
@@ -320,19 +333,55 @@
     if (down) down.addEventListener("click", function () { qtyInput.value = clampQty() - 1; clampQty(); });
     if (qtyInput) qtyInput.addEventListener("change", clampQty);
 
-    form.addEventListener("submit", function (e) {
-      e.preventDefault();
+    var buildLine = function () {
       var v = currentVariant();
-      if (!v) return;
-      addToCart({
+      if (!v) return null;
+      return {
         id: v.value,
         name: v.getAttribute("data-name"),
         price: +v.getAttribute("data-price"),
         bars: +v.getAttribute("data-qty"),
         qty: clampQty()
-      });
+      };
+    };
+
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var line = buildLine();
+      if (!line) return;
+      addToCart(line);
       openCart();   // the drawer is the confirmation; a toast would cover its footer
     });
+
+    var buyNow = form.querySelector("[data-buy-now]");
+    if (buyNow) {
+      buyNow.addEventListener("click", function () {
+        var line = buildLine();
+        if (!line) return;
+        addToCart(line);
+        checkout();
+      });
+    }
+
+    /* ---- PIN code check ----
+       No courier is connected yet, so this only validates the format and
+       confirms that our team will confirm delivery for that PIN. */
+    var pin = document.querySelector("[data-pin]");
+    var pinBtn = document.querySelector("[data-pin-check]");
+    var pinNote = document.querySelector("[data-pin-note]");
+    var checkPin = function () {
+      if (!pin || !pinNote) return;
+      var v = pin.value.replace(/\s+/g, "");
+      if (!/^[1-9][0-9]{5}$/.test(v)) {
+        pinNote.textContent = "Please enter a valid 6-digit PIN code.";
+        pinNote.className = "pin-note err";
+        return;
+      }
+      pinNote.textContent = "Our team will confirm delivery time and charges for " + v + " before dispatch.";
+      pinNote.className = "pin-note ok";
+    };
+    if (pinBtn) pinBtn.addEventListener("click", checkPin);
+    if (pin) pin.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); checkPin(); } });
   }
 
   /* ---- product thumbnails ---- */
@@ -364,15 +413,26 @@
     checkoutNote.textContent = "Online payment is coming soon. For now your order reaches us on " +
       "WhatsApp and we confirm it with you before dispatch.";
   }
-  if (checkoutBtn) {
-    checkoutBtn.addEventListener("click", function () {
-      if (!cart.length) return;
-      var lines = cart.map(function (l) {
-        return "• " + l.name + " × " + l.qty + " — " + money(l.price * l.qty);
-      });
-      var msg = ["Hello Auravelle, I'd like to order Kojiba:", ""]
-        .concat(lines, ["", "Total: " + money(cartTotal())]).join("\n");
-      window.open(WHATSAPP + "?text=" + encodeURIComponent(msg), "_blank", "noopener");
+  function checkout() {
+    if (!cart.length) return;
+    var lines = cart.map(function (l) {
+      return "• " + l.name + " × " + l.qty + " — " + money(l.price * l.qty);
+    });
+    var msg = ["Hello Auravelle, I'd like to order Kojiba:", ""]
+      .concat(lines, ["", "Total: " + money(cartTotal())]).join("\n");
+    window.open(WHATSAPP + "?text=" + encodeURIComponent(msg), "_blank", "noopener");
+  }
+  if (checkoutBtn) checkoutBtn.addEventListener("click", checkout);
+
+  /* ---- header search: no catalogue to search yet, so go to the product ---- */
+  var searchForm = document.querySelector("[data-search]");
+  if (searchForm) {
+    searchForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var q = (searchForm.querySelector("input").value || "").trim().toLowerCase();
+      var hit = ["kojiba", "soap", "kojic", "niacinamide", "jojoba", "licorice", "brightening"]
+        .some(function (w) { return q.indexOf(w) !== -1 || w.indexOf(q) !== -1 && q.length > 2; });
+      location.href = hit || !q ? "kojiba.html" : "faq.html";
     });
   }
 
