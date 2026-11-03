@@ -388,16 +388,16 @@ const lichSegs=[];let lichMax=0;
 (function genLich(){
   const r=rng(2024);
   function grow(x,y,ang,w,dist,depth){
-    for(let i=0;i<130&&w>.9;i++){
+    for(let i=0;i<130&&w>.9&&lichSegs.length<9000;i++){
       const L=5+r()*5;const nx=x+Math.cos(ang)*L,ny=y+Math.sin(ang)*L;
       lichSegs.push([x,y,nx,ny,w,dist]);dist+=L;x=nx;y=ny;
       ang+=(r()-.5)*1.0;ang=lerp(ang,Math.PI/2,.05);w*=.972;
-      if(r()<.28&&depth<7)grow(x,y,ang+(r()<.5?-1:1)*(.6+r()*.8),w*.68,dist,depth+1);
+      if(r()<.16&&depth<5)grow(x,y,ang+(r()<.5?-1:1)*(.6+r()*.8),w*.68,dist,depth+1);
       if(ny>1030)break;
     }
   }
   for(let k=0;k<6;k++)grow(60+k*170+r()*60,90+r()*60,Math.PI/2+(r()-.5)*.5,16,0,0);
-  lichMax=Math.max(...lichSegs.map(s=>s[5]));
+  lichMax=lichSegs.reduce((m,s)=>Math.max(m,s[5]),0);
 })();
 let lichLast=-1;
 function drawLich(k){
