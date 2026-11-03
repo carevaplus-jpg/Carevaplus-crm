@@ -4,7 +4,7 @@ const S=process.env.S, V=S+'/vendor';
 const [,,mode,...args]=process.argv;
 (async()=>{
   const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
-  const p=await b.newPage({viewport:{width:540,height:960},deviceScaleFactor:1});
+  const p=await b.newPage({viewport:{width:540,height:960},deviceScaleFactor:2});
   p.on('console',m=>{if(m.type()==='error')console.log('console:',m.text())});
   p.on('pageerror',e=>console.log('pageerror:',e.message));p.on('requestfailed',q=>console.log('reqfail',q.url()));
   await p.route(/^https?:\/\//,async r=>{const u=r.request().url();
