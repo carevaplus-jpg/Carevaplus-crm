@@ -1,0 +1,28 @@
+name: Fetch Supabase library
+on:
+  push:
+    branches: [careva-app]
+    paths: ['.github/workflows/vendor.yml', 'vendor/REQUEST']
+permissions:
+  contents: write
+jobs:
+  vendor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download @supabase/supabase-js from npm
+        run: |
+          mkdir -p /tmp/sb vendor && cd /tmp/sb
+          npm pack @supabase/supabase-js@2 --silent > name.txt
+          tar xzf "$(cat name.txt)"
+          VER=$(node -p "require('./package/package.json').version")
+          cp package/dist/umd/supabase.js "$GITHUB_WORKSPACE/vendor/supabase.js"
+          cd "$GITHUB_WORKSPACE"
+          echo "@supabase/supabase-js $VER (MIT) — downloaded from registry.npmjs.org on $(date -u +%F)" > vendor/SUPABASE_VERSION.txt
+          sha256sum vendor/supabase.js >> vendor/SUPABASE_VERSION.txt
+          npm view @supabase/supabase-js@$VER dist.integrity >> vendor/SUPABASE_VERSION.txt
+      - name: Save to branch
+        run: |
+          git config user.name "careva-bot"; git config user.email "careva-bot@users.noreply.github.com"
+          git add vendor; git commit -m "Add Supabase library for the Careva+ app" || exit 0
+          git push
