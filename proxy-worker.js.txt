@@ -1,0 +1,29 @@
+/*
+ * Careva+ backup server address — Cloudflare Worker (free plan is enough).
+ *
+ * Why: some Indian internet providers have blocked *.supabase.co before (Feb–Mar 2026).
+ * When that happens the app can't reach its server on those networks. This Worker gives
+ * the server a second address on your own domain (for example api.carevaplus.com), which
+ * passes everything — sign-in, data, files, live updates — through to Supabase unchanged.
+ *
+ * Set up (about 10 minutes):
+ *   1. Make a free account at dash.cloudflare.com → Workers & Pages → Create → Worker.
+ *   2. Replace the sample code with this file → Deploy.
+ *   3. (Recommended) Settings → Domains & Routes → add a custom domain such as api.carevaplus.com
+ *      (carevaplus.com must use Cloudflare DNS for this), or use the *.workers.dev address it gives you.
+ *   4. In js/config.js set  supabaseProxyUrl: 'https://api.carevaplus.com'  and rebuild the app.
+ * The app tries the normal address first and only switches to this one when the normal one is blocked.
+ * No secret keys go in this Worker.
+ */
+const SUPABASE = 'prjedhzcrrboyhewvcar.supabase.co';
+
+export default {
+  async fetch(request) {
+    const url = new URL(request.url);
+    url.protocol = 'https:';
+    url.hostname = SUPABASE;
+    url.port = '';
+    // Works for normal requests and for the live-updates WebSocket (Upgrade: websocket).
+    return fetch(new Request(url.toString(), request));
+  },
+};
