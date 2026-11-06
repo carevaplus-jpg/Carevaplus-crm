@@ -66,12 +66,12 @@ const LogoPlate: React.FC<{ srcFrame: number }> = ({ srcFrame }) => {
   );
 };
 
-const Plate: React.FC<{ start: number }> = ({ start }) => {
+const Plate: React.FC<{ start: number; logo?: boolean }> = ({ start, logo = true }) => {
   const f = useCurrentFrame();
   return (
     <>
       <OffthreadVideo src={SRC} startFrom={start} muted style={{ width: "100%", height: "100%" }} />
-      <LogoPlate srcFrame={start + f} />
+      {logo && <LogoPlate srcFrame={start + f} />}
     </>
   );
 };
@@ -120,7 +120,52 @@ const Footage: React.FC<{ style?: React.CSSProperties }> = ({ style }) => (
   </>
 );
 
+/** Clean cut: original footage + new logo only. Each hidden jump cut gets a 6-frame dissolve
+ *  from the outgoing shot (continued past the cut) so the holds read as one smooth shot. */
+const DISSOLVE = 6;
+// measured alignment (scale, dx, dy in 720-wide px) that maps the last outgoing frame onto the first incoming frame
+const ALIGN: [number, number, number][] = [
+  [0.982, 0, -9],
+  [1, 0, 0],
+  [1, 0, 0],
+  [1.016, 0, 1],
+];
+const CleanCut: React.FC = () => {
+  const f = useCurrentFrame();
+  const end = interpolate(f, [870, 899], [1, 0], clamp);
+  return (
+    <AbsoluteFill style={{ background: "#000" }}>
+      <AbsoluteFill style={{ opacity: end }}>
+        <Footage />
+        {SEGMENTS.slice(0, 4).map(([, b], i) => {
+          const at = Math.round(OUT_START[i + 1] * FPS);
+          return (
+            <Sequence key={i} from={at} durationInFrames={DISSOLVE} layout="none">
+              <Dissolve srcStart={Math.round(b * FPS)} align={ALIGN[i]} />
+              <IncomingLogo srcStart={Math.round(SEGMENTS[i + 1][0] * FPS)} />
+            </Sequence>
+          );
+        })}
+      </AbsoluteFill>
+    </AbsoluteFill>
+  );
+};
+const Dissolve: React.FC<{ srcStart: number; align: [number, number, number] }> = ({ srcStart, align: [sc, dx, dy] }) => {
+  const f = useCurrentFrame();
+  return (
+    <AbsoluteFill style={{ opacity: interpolate(f, [0, DISSOLVE], [1, 0], clamp), transform: `translate(${dx}px, ${dy}px) scale(${sc})` }}>
+      <Plate start={srcStart} logo={false} />
+    </AbsoluteFill>
+  );
+};
+/** keeps exactly one (the incoming shot's) new logo on screen through a dissolve */
+const IncomingLogo: React.FC<{ srcStart: number }> = ({ srcStart }) => {
+  const f = useCurrentFrame();
+  return <LogoPlate srcFrame={srcStart + f} />;
+};
+
 export const BNICut: React.FC = () => {
+  if (!(getInputProps() as { fx?: boolean }).fx) return <CleanCut />;
   const f = useCurrentFrame();
 
   // --- camera: punch-ins on cuts/transitions, beat pulses, drop shake ---
