@@ -8,6 +8,7 @@ import {
   interpolate,
   random,
   staticFile,
+  getInputProps,
   useCurrentFrame,
 } from "remotion";
 
@@ -74,7 +75,8 @@ const Plate: React.FC<{ start: number }> = ({ start }) => {
     </>
   );
 };
-const SRC = staticFile("edit/bni-source.mp4");
+// pass --props='{"hd":true}' with --scale=1.5 for the 1080x1920 master (pre-upscaled, denoised source)
+const SRC = staticFile((getInputProps() as { hd?: boolean }).hd ? "edit/bni-source-1080.mp4" : "edit/bni-source.mp4");
 const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
 
 // output start time (s) of each segment
