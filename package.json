@@ -5,13 +5,21 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "remotion:studio": "remotion studio",
+    "remotion:render": "remotion render",
+    "hf:preview": "hyperframes preview",
+    "hf:render": "hyperframes render"
   },
   "dependencies": {
+    "@remotion/cli": "^4.0.541",
+    "@remotion/player": "^4.0.541",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "remotion": "^4.0.541"
   },
   "devDependencies": {
+    "hyperframes": "^0.9.19",
     "vite": "^5.0.0"
   }
 }
