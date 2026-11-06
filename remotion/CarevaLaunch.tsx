@@ -1,6 +1,7 @@
 import React from "react";
 import {
   AbsoluteFill,
+  Html5Audio,
   Easing,
   Img,
   Sequence,
@@ -635,8 +636,42 @@ const T = [
   { from: 374, dur: 76, C: SceneCTA, fadeOut: false },
 ];
 
+/* ---------- sound (frame-synced) ---------- */
+
+// [frame, file, volume]. Music beat = 14 frames; cuts sit on beats 6/14/22, final chord on beat 30 (frame 418).
+const SFX: [number, string, number][] = [
+  [4, "impact-bass-1", 0.18],
+  [22, "sparkle", 0.3],
+  [76, "whoosh", 0.5],
+  [128, "click-soft", 0.8],
+  [142, "chime", 0.4],
+  [188, "whoosh", 0.5],
+  [214, "ping", 0.3],
+  [294, "notification", 0.3],
+  [300, "whoosh-short", 0.5],
+  [316, "pop", 0.22],
+  [321, "pop", 0.22],
+  [326, "pop", 0.22],
+  [368, "whoosh", 0.55],
+  [400, "pop", 0.45],
+  [418, "impact-bass-1", 0.3],
+  [418, "sparkle", 0.4],
+];
+
+const Sound: React.FC = () => (
+  <>
+    <Html5Audio src={staticFile("audio/careva-bed.wav")} volume={0.5} />
+    {SFX.map(([from, file, vol], i) => (
+      <Sequence key={i} from={from} layout="none">
+        <Html5Audio src={staticFile(`audio/sfx/${file}.mp3`)} volume={vol} />
+      </Sequence>
+    ))}
+  </>
+);
+
 export const CarevaLaunch: React.FC = () => (
   <AbsoluteFill>
+    <Sound />
     <Background />
     {T.map(({ from, dur, C: Comp, fadeIn, fadeOut }) => (
       <Sequence key={from} from={from} durationInFrames={dur}>
