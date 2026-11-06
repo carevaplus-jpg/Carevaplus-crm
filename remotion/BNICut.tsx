@@ -3,6 +3,7 @@ import {
   AbsoluteFill,
   Easing,
   OffthreadVideo,
+  Img,
   Sequence,
   interpolate,
   random,
@@ -27,7 +28,52 @@ export const SEGMENTS: [number, number][] = [
   [39.47, 40.406], //   outro fade
 ];
 
+import TRACK from "./bni-logo-track.json";
+
 const FPS = 30;
+const LOGO = staticFile("brand/lifetech-logo.jpg");
+const track = TRACK as unknown as Record<string, number[]>;
+
+/** New LifeTech logo pinned over the old one, following the tracked white card. */
+const LogoPlate: React.FC<{ srcFrame: number }> = ({ srcFrame }) => {
+  const t = track[String(srcFrame)];
+  if (!t) return null;
+  const [x0, y0, x1, y1, r, g, b, blur, gray, opacity] = t;
+  const big = srcFrame < 400;
+  const inset = big ? 5 : 3;
+  const w = x1 - x0 - inset * 2;
+  const h = y1 - y0 - inset * 2;
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: x0 + inset,
+        top: y0 + inset,
+        width: w,
+        height: h,
+        borderRadius: big ? 12 : 6,
+        overflow: "hidden",
+        background: "#fff",
+        opacity,
+        filter: `${blur ? `blur(${blur}px) ` : ""}${gray ? `grayscale(${gray})` : ""}` || undefined,
+      }}
+    >
+      <Img src={LOGO} style={{ position: "absolute", left: "4%", top: "6%", width: "92%", height: "88%", objectFit: "contain" }} />
+      {/* match the plate's light: multiply by the card colour measured in this frame */}
+      <div style={{ position: "absolute", inset: 0, mixBlendMode: "multiply", background: `rgb(${r * 255},${g * 255},${b * 255})` }} />
+    </div>
+  );
+};
+
+const Plate: React.FC<{ start: number }> = ({ start }) => {
+  const f = useCurrentFrame();
+  return (
+    <>
+      <OffthreadVideo src={SRC} startFrom={start} muted style={{ width: "100%", height: "100%" }} />
+      <LogoPlate srcFrame={start + f} />
+    </>
+  );
+};
 const SRC = staticFile("edit/bni-source.mp4");
 const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
 
@@ -64,7 +110,7 @@ const Footage: React.FC<{ style?: React.CSSProperties }> = ({ style }) => (
       return (
         <Sequence key={i} from={from} durationInFrames={next - from} layout="none">
           <AbsoluteFill style={style}>
-            <OffthreadVideo src={SRC} startFrom={Math.round(a * FPS)} muted style={{ width: "100%", height: "100%" }} />
+            <Plate start={Math.round(a * FPS)} />
           </AbsoluteFill>
         </Sequence>
       );
