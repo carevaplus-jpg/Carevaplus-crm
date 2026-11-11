@@ -2,7 +2,7 @@ import LOGO from "../assets/logo.webp";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   LayoutDashboard, Map as MapIcon, CalendarDays, Users, Inbox, Stethoscope, Receipt, Bell, MessageSquare, Settings as Cog,
-  LogOut, Plus, KeyRound, UserPlus, Share2, Trash2, Navigation, Phone, CheckCircle2, AlertTriangle, Clock, IndianRupee, Activity, MapPin, Search, ShieldCheck, Route,
+  LogOut, Plus, KeyRound, Grid2x2, ChevronLeft, ChevronRight, Home, UserPlus, Share2, Trash2, Navigation, Phone, CheckCircle2, AlertTriangle, Clock, IndianRupee, Activity, MapPin, Search, ShieldCheck, Route,
 } from "lucide-react";
 import { useStore, put, patch, signOut, settings as getSettings, byId, adminCall } from "../lib/store";
 import { SERVICES, TASKS, STATUS } from "../lib/config";
@@ -10,7 +10,7 @@ import { distM, fmtDist, gmapsAt } from "../lib/geo";
 import { uid, today, fmtDate, fmtTime, ago, rupee, byStart, addDays } from "../lib/util";
 import GMap from "../components/GMap";
 import { SOSOverlay, ApkButton } from "../components/alerts";
-import { Card, Badge, StatusBadge, ServiceTag, Avatar, Btn, Stat, Empty, Field, Sheet, Tabs, Spark, toast, useAction } from "../components/ui";
+import { Card, Badge, StatusBadge, ServiceTag, Avatar, Btn, Stat, Empty, Field, Sheet, Tabs, Spark, toast, useAction, usePhone } from "../components/ui";
 
 const LIVE_MS = 10 * 60e3;
 const NAV = [
@@ -18,6 +18,8 @@ const NAV = [
   ["patients", "Patients", Users], ["requests", "Requests", Inbox], ["staff", "Care staff", Stethoscope],
   ["billing", "Billing", Receipt], ["alerts", "Alerts", Bell], ["messages", "Messages", MessageSquare], ["settings", "Settings", Cog],
 ];
+
+const TABS = [["dash", "Home", Home], ["visits", "Schedule", CalendarDays], ["patients", "Patients", Users], ["messages", "Messages", MessageSquare], ["more", "More", Grid2x2]];
 
 export default function Office() {
   const s = useStore();
@@ -27,6 +29,9 @@ export default function Office() {
   const [patientId, setPatientId] = useState(null);
   const [staffId, setStaffId] = useState(null);
   const [thread, setThread] = useState(null);
+  const [more, setMore] = useState(false);
+  const phone = usePhone();
+  const goPage = (k) => { setPage(k); setMore(false); window.scrollTo(0, 0); };
   // tapping a notification / banner opens the right place
   useEffect(() => {
     const f = (e) => { const g = e.detail || ""; if (g.startsWith("messages:")) { setThread(g.slice(9)); setPage("messages"); } else if (g === "alerts") setPage("alerts"); else if (g === "requests") setPage("requests"); };
@@ -35,7 +40,7 @@ export default function Office() {
   const T = s.t;
   const openAlerts = (T.alerts || []).filter((a) => !a.done).length;
   const pending = (T.requests || []).filter((r) => r.status === "pending").length;
-  const ctx = { T, cfg: getSettings(s), isAdmin: s.profile.role === "admin", setPage, thread, setThread, newVisit: (v) => setVisitForm(v || {}), openVisit: setVisitId, openPatient: setPatientId, openStaff: setStaffId };
+  const ctx = { T, cfg: getSettings(s), isAdmin: s.profile.role === "admin", phone, setPage: goPage, thread, setThread, newVisit: (v) => setVisitForm(v || {}), openVisit: setVisitId, openPatient: setPatientId, openStaff: setStaffId };
   const counts = { alerts: openAlerts, requests: pending };
   const Page = { dash: Dashboard, map: LiveMap, visits: Schedule, patients: Patients, requests: Requests, staff: StaffPage, billing: Billing, alerts: Alerts, messages: Messages, settings: SettingsPage }[page];
 
@@ -51,15 +56,21 @@ export default function Office() {
         <div className="me"><Avatar name={s.profile.name || "Office"} color="#2B6DE8" size={32} /><div><div style={{ fontWeight: 600 }}>{s.profile.name || "Office"}</div><small className="muted" style={{ textTransform: "capitalize" }}>{s.profile.role}</small></div><button onClick={signOut} aria-label="Sign out"><LogOut size={18} /></button></div>
       </aside>
       <div style={{ minWidth: 0 }}>
-        <div className="mobile-top">
-          <span className="logo-plate" style={{ padding: "3px 6px" }}><img src={LOGO} alt="Careva+" style={{ height: 24 }} /></span>
-          <select aria-label="Section" value={page} onChange={(e) => setPage(e.target.value)} style={{ width: "auto", flex: 1 }}>
-            {NAV.map(([k, l]) => <option key={k} value={k}>{l}{counts[k] ? ` (${counts[k]})` : ""}</option>)}
-          </select>
-          <button className="icon-btn" onClick={signOut} aria-label="Sign out"><LogOut size={18} /></button>
-        </div>
         <main className="main"><Page {...ctx} /></main>
       </div>
+      {/* phone: floating bottom tab bar + "More" sheet */}
+      <nav className="tabbar mtab" aria-label="Office"><div>
+        {TABS.map(([k, l, I]) => {
+          const on = k === "more" ? more || !TABS.some(([x]) => x === page) : page === k && !more;
+          const n = k === "more" ? (counts.alerts || 0) + (counts.requests || 0) : k === "messages" ? 0 : counts[k];
+          return <button key={k} className={on ? "on" : ""} aria-current={on ? "page" : undefined} onClick={() => (k === "more" ? setMore(true) : goPage(k))}><I size={22} />{l}{n ? <i className="dotc num-badge">{n}</i> : null}</button>;
+        })}
+      </div></nav>
+      {more && <Sheet open title="More" onClose={() => setMore(false)}>
+        <div className="more-grid">{NAV.filter(([k]) => !TABS.some(([x]) => x === k)).map(([k, l, I]) => (
+          <button key={k} className={`more-tile ${page === k ? "on" : ""}`} onClick={() => goPage(k)}><span className="more-i"><I size={22} /></span>{l}{counts[k] ? <span className="count">{counts[k]}</span> : null}</button>))}</div>
+        <div className="li" style={{ marginTop: 4 }}><Avatar name={s.profile.name || "Office"} color="#5856D6" size={36} /><div className="grow"><div className="t">{s.profile.name || "Office"}</div><div className="s" style={{ textTransform: "capitalize" }}>{s.profile.role}</div></div><Btn kind="danger" icon={LogOut} onClick={signOut}>Sign out</Btn></div>
+      </Sheet>}
       {visitForm && <VisitForm init={visitForm} ctx={ctx} onClose={() => setVisitForm(null)} />}
       {visitId && <VisitSheet id={visitId} ctx={ctx} onClose={() => setVisitId(null)} />}
       {patientId && <PatientSheet id={patientId} ctx={ctx} onClose={() => setPatientId(null)} />}
@@ -170,6 +181,17 @@ function AlertRow({ a, c }) {
 
 function VisitTable({ visits, c }) {
   const { T } = c;
+  if (c.phone) return (
+    <div className="list">{visits.map((v) => { const p = byId(T.patients, v.pid), st = byId(T.staff, v.sid); return (
+      <div key={v.id} className="li click vrow" onClick={() => c.openVisit(v.id)}>
+        <div className="vtime"><b className="num">{fmtTime(v.start).replace(" ", "\u00a0")}</b><small>{v.date !== today() ? fmtDate(v.date, { day: "numeric", month: "short" }) : `${v.dur || 45} min`}</small></div>
+        <span className="vbar" style={{ background: SERVICES[v.service]?.color }} />
+        <div className="grow"><div className="t ell">{p?.name || v.pid}</div>
+          <div className="s ell">{SERVICES[v.service]?.label} · {st ? st.name.split(" ")[0] : <span style={{ color: "var(--red)" }}>Unassigned</span>}</div></div>
+        <div className="vend"><StatusBadge s={v.status} />{v.evv?.status === "flagged" && <Badge tone="red">EVV</Badge>}</div>
+        <ChevronRight size={18} className="chev" />
+      </div>); })}</div>
+  );
   return (
     <div className="tbl-wrap"><table className="tbl">
       <thead><tr><th>Time</th><th>Patient</th><th>Service</th><th>Care staff</th><th>Status</th><th>EVV</th></tr></thead>
@@ -197,7 +219,7 @@ function LiveMap({ T, cfg, openStaff }) {
           <label className="row" style={{ fontWeight: 600, fontSize: 13 }}><input type="checkbox" style={{ width: 18 }} checked={showTrails} onChange={(e) => setShowTrails(e.target.checked)} />Travel trails</label></div>
       </div>
       <div className="cols">
-        <div><GMap key={focus || "all"} markers={liveMarkers(T, cfg, { onlyStaff: focus })} paths={showTrails ? trails(T, focus) : []} height={620} /><Legend /></div>
+        <div><GMap key={focus || "all"} markers={liveMarkers(T, cfg, { onlyStaff: focus })} paths={showTrails ? trails(T, focus) : []} height={620} className="tall" /><Legend /></div>
         <Card title="Care staff">
           <div className="list">{staff.map((st) => { const l = byId(T.staff_locations, st.id); const v = (T.visits || []).find((x) => x.sid === st.id && x.date === today() && ["enroute", "inprogress"].includes(x.status)); const p = v && byId(T.patients, v.pid); return (
             <div key={st.id} className="li click" onClick={() => openStaff(st.id)}>
@@ -223,7 +245,7 @@ function Schedule(c) {
     <>
       <div className="page-h"><div><h1>Schedule</h1><p>{list.length} visits on {fmtDate(day, { weekday: "long", day: "numeric", month: "long" })}</p></div><Btn icon={Plus} onClick={() => c.newVisit({ date: day })}>New visit</Btn></div>
       <div className="row wrap">
-        <div className="chips">{days.map((d) => <button key={d} className={`chip ${d === day ? "on" : ""}`} onClick={() => setDay(d)}>{d === today() ? "Today" : fmtDate(d)}</button>)}</div>
+        <div className="chips scroll">{days.map((d) => <button key={d} className={`chip ${d === day ? "on" : ""}`} onClick={() => setDay(d)}>{d === today() ? "Today" : fmtDate(d)}</button>)}</div>
         <input type="date" value={day} onChange={(e) => setDay(e.target.value)} style={{ width: "auto" }} aria-label="Pick a date" />
         <div className="row grow" style={{ minWidth: 220 }}><Search size={16} className="muted" /><input placeholder="Search patient or staff" value={q} onChange={(e) => setQ(e.target.value)} /></div>
       </div>
@@ -324,6 +346,14 @@ function Patients(c) {
     <>
       <div className="page-h"><div><h1>Patients</h1><p>{(T.patients || []).filter((p) => p.status === "active").length} active patients</p></div><Btn icon={Plus} onClick={() => setAdd(true)}>Add patient</Btn></div>
       <div className="row wrap"><Tabs tabs={[["active", "Active"], ["discharged", "Discharged"], ["all", "All"]]} value={tab} onChange={setTab} /><div className="row grow" style={{ minWidth: 220 }}><Search size={16} className="muted" /><input placeholder="Search name, area, phone or ID" value={q} onChange={(e) => setQ(e.target.value)} /></div></div>
+      {c.phone ? <Card>{list.length ? <div className="list">{list.map((p) => { const n = next(p.id); return (
+        <div key={p.id} className="li click" onClick={() => c.openPatient(p.id)}>
+          <Avatar name={p.name} size={42} color="#12407c" />
+          <div className="grow"><div className="t ell">{p.name}</div><div className="s ell">{[p.area, p.age && `${p.age} ${p.g || ""}`, (p.dx || [])[0]].filter(Boolean).join(" · ")}</div>
+            <div className="s ell" style={{ fontSize: 13 }}>{n ? `Next: ${fmtDate(n.date, { day: "numeric", month: "short" })} ${fmtTime(n.start)}` : "No visit booked"}{!p.login ? " · no app login" : ""}</div></div>
+          <div className="vend"><Badge tone={p.risk === "High" ? "red" : p.risk === "Medium" ? "amber" : "green"}>{p.risk || "—"}</Badge>{!p.lat && <Badge tone="amber">No pin</Badge>}</div>
+          <ChevronRight size={18} className="chev" />
+        </div>); })}</div> : <Empty icon={Users} title="No patients match" />}</Card> :
       <Card><div className="tbl-wrap"><table className="tbl">
         <thead><tr><th>Patient</th><th>Area</th><th>Conditions</th><th>Risk</th><th>Next visit</th><th>Location</th><th>App login</th></tr></thead>
         <tbody>{list.map((p) => { const n = next(p.id); return (
@@ -335,7 +365,7 @@ function Patients(c) {
             <td>{p.lat ? <Badge tone="green"><MapPin size={12} />Pinned</Badge> : <Badge tone="amber">Not pinned</Badge>}</td>
             <td>{p.login ? <Badge tone="green">Active</Badge> : <Badge>None</Badge>}</td>
           </tr>); })}</tbody>
-      </table>{!list.length && <Empty icon={Users} title="No patients match" />}</div></Card>
+      </table>{!list.length && <Empty icon={Users} title="No patients match" />}</div></Card>}
       {add && <PatientForm ctx={c} onClose={() => setAdd(false)} />}
     </>
   );
@@ -587,7 +617,19 @@ function OfficeUsers({ isAdmin }) {
 /* ------------------------------ Billing ------------------------------ */
 function InvoiceTable({ inv, T, onOpen }) {
   const [busy, run] = useAction();
+  const phone = usePhone();
   if (!inv.length) return <Empty icon={Receipt} title="No invoices" />;
+  const badge = (i) => i.status === "paid" ? <Badge tone="green">Paid{i.paidOn ? ` ${fmtDate(i.paidOn, { day: "numeric", month: "short" })}` : ""}</Badge> : i.status === "verifying" ? <Badge tone="amber">Verify payment</Badge> : i.due < today() ? <Badge tone="red">Overdue</Badge> : <Badge tone="blue">Due</Badge>;
+  if (phone) return (
+    <div className="list">{[...inv].sort((a, b) => (b.date || "").localeCompare(a.date || "")).map((i) => (
+      <div key={i.id} className="li" style={{ alignItems: "flex-start" }}>
+        <div className="grow"><div className="t ell">{byId(T.patients, i.pid)?.name || i.pid}</div>
+          <div className="s ell">{(i.items || []).map((x) => `${x.d} × ${x.q}`).join(", ")}</div>
+          <div className="s" style={{ fontSize: 13 }}>{i.id} · due {fmtDate(i.due, { day: "numeric", month: "short" })}{i.payRef ? ` · Ref ${i.payRef}` : ""}</div>
+          {i.status !== "paid" && <div style={{ marginTop: 8 }}><Btn kind={i.status === "verifying" ? "green" : "ghost"} busy={busy === i.id} onClick={() => run(i.id, () => patch("invoices", i.id, { status: "paid", paidOn: today() }), "Marked as paid")}>{i.status === "verifying" ? "Confirm payment" : "Mark paid"}</Btn></div>}</div>
+        <div className="vend"><b className="num" style={{ fontSize: 17 }}>{rupee(i.amount)}</b>{badge(i)}</div>
+      </div>))}</div>
+  );
   return (
     <div className="tbl-wrap"><table className="tbl"><thead><tr><th>Invoice</th><th>Patient</th><th>Items</th><th>Amount</th><th>Due</th><th>Status</th><th /></tr></thead>
       <tbody>{inv.sort((a, b) => (b.date || "").localeCompare(a.date || "")).map((i) => (
@@ -597,7 +639,7 @@ function InvoiceTable({ inv, T, onOpen }) {
           <td>{i.status !== "paid" && <Btn kind={i.status === "verifying" ? "green" : "ghost"} busy={busy === i.id} onClick={() => run(i.id, () => patch("invoices", i.id, { status: "paid", paidOn: today() }), "Marked as paid")}>{i.status === "verifying" ? "Confirm payment" : "Mark paid"}</Btn>}</td></tr>))}</tbody></table></div>
   );
 }
-function Billing({ T, cfg }) {
+function Billing({ T, cfg, phone }) {
   const month = today().slice(0, 7);
   const [busy, run] = useAction();
   const inv = T.invoices || [];
@@ -619,7 +661,7 @@ function Billing({ T, cfg }) {
   });
   return (
     <>
-      <div className="page-h"><div><h1>Billing</h1><p>Invoices are built from completed visits at your service rates. Patients pay by UPI to {cfg.company?.upi || "your UPI ID"}.</p></div><Btn icon={Receipt} busy={busy === "g"} onClick={generate}>Prepare this month's invoices</Btn></div>
+      <div className="page-h"><div><h1>Billing</h1><p>Invoices are built from completed visits at your service rates. Patients pay by UPI to {cfg.company?.upi || "your UPI ID"}.</p></div><Btn icon={Receipt} busy={busy === "g"} onClick={generate}>{phone ? "Prepare invoices" : "Prepare this month's invoices"}</Btn></div>
       <div className="stats">
         <Stat icon={Receipt} label="Billed this month" value={rupee(sum((i) => i.month === month))} tone="blue" />
         <Stat icon={CheckCircle2} label="Collected" value={rupee(sum((i) => i.status === "paid"))} tone="green" />
@@ -645,16 +687,22 @@ function Alerts(c) {
 }
 
 /* ------------------------------ Messages ------------------------------ */
-function Messages({ T, thread, setThread }) {
+function Messages({ T, thread, setThread, phone }) {
   const threads = useMemo(() => {
     const g = {};
     (T.messages || []).forEach((m) => { (g[m.thread] ||= []).push(m); });
     [...(T.staff || []).map((s) => s.id), ...(T.patients || []).filter((p) => p.status === "active").map((p) => p.id)].forEach((id) => (g[id] ||= []));
     return Object.entries(g).map(([id, ms]) => ({ id, ms: ms.sort((a, b) => a.ts - b.ts), last: ms.at(-1)?.ts || 0 })).sort((a, b) => b.last - a.last);
   }, [T.messages, T.staff, T.patients]);
-  const sel = thread || threads[0]?.id; const setSel = setThread;
+  const sel = thread || (phone ? null : threads[0]?.id); const setSel = setThread;
   const name = (id) => id === "all-staff" ? "All staff" : byId(T.staff, id)?.name || byId(T.patients, id)?.name || id;
   const cur = threads.find((t) => t.id === sel);
+  if (phone && cur) return (
+    <>
+      <button className="back" onClick={() => setSel(null)}><ChevronLeft size={22} />Messages</button>
+      <Chat title={name(cur.id)} msgs={cur.ms} me="office" thread={cur.id} />
+    </>
+  );
   return (
     <>
       <div className="page-h"><div><h1>Messages</h1><p>Chat with care staff and patient families.</p></div></div>
@@ -662,10 +710,10 @@ function Messages({ T, thread, setThread }) {
         <Card title="Conversations"><div className="list">{threads.map((t) => (
           <div key={t.id} className="li click" onClick={() => setSel(t.id)} style={sel === t.id ? { background: "var(--bg)" } : undefined}>
             <Avatar name={name(t.id)} color={t.id.startsWith("S") ? byId(T.staff, t.id)?.color || "#2B6DE8" : "#12407c"} size={34} />
-            <div className="grow"><div className="t">{name(t.id)}</div><div className="s" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.ms.at(-1)?.text || (t.id.startsWith("S") ? "Care staff" : "Patient")}</div></div>
+            <div className="grow"><div className="t ell">{name(t.id)}</div><div className="s ell">{t.ms.at(-1)?.text || (t.id.startsWith("S") ? "Care staff" : "Patient")}</div></div>
             {t.last ? <small className="muted">{ago(t.last)}</small> : null}
           </div>))}</div></Card>
-        {cur ? <Chat title={name(cur.id)} msgs={cur.ms} me="office" thread={cur.id} /> : <Card><Empty icon={MessageSquare} title="Pick a conversation" /></Card>}
+        {!phone && (cur ? <Chat title={name(cur.id)} msgs={cur.ms} me="office" thread={cur.id} /> : <Card><Empty icon={MessageSquare} title="Pick a conversation" /></Card>)}
       </div>
     </>
   );

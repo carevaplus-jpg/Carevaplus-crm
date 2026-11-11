@@ -99,3 +99,14 @@ export function SignaturePad({ onChange }) {
   const clear = () => { const c = ref.current; c.getContext("2d").clearRect(0, 0, c.width, c.height); onChange(null); };
   return <div className="sig"><canvas ref={ref} aria-label="Signature pad" /><button type="button" className="link" onClick={clear}>Clear</button></div>;
 }
+
+/** true on phone-sized screens — used to swap tables for touch-friendly lists */
+const PHONE_Q = "(max-width: 860px)";
+export function usePhone() {
+  const [m, setM] = useState(() => typeof matchMedia !== "undefined" && matchMedia(PHONE_Q).matches);
+  useEffect(() => {
+    const mm = matchMedia(PHONE_Q), f = () => setM(mm.matches);
+    mm.addEventListener("change", f); return () => mm.removeEventListener("change", f);
+  }, []);
+  return m;
+}
