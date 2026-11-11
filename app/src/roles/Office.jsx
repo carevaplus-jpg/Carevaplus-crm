@@ -1,0 +1,615 @@
+import React, { useMemo, useState } from "react";
+import {
+  LayoutDashboard, Map as MapIcon, CalendarDays, Users, Inbox, Stethoscope, Receipt, Bell, MessageSquare, Settings as Cog,
+  LogOut, Plus, Navigation, Phone, CheckCircle2, AlertTriangle, Clock, IndianRupee, Activity, MapPin, Search, ShieldCheck, Route,
+} from "lucide-react";
+import { useStore, put, patch, signOut, settings as getSettings, byId } from "../lib/store";
+import { SERVICES, TASKS, STATUS } from "../lib/config";
+import { distM, fmtDist, gmapsAt } from "../lib/geo";
+import { uid, today, fmtDate, fmtTime, ago, rupee, byStart, addDays } from "../lib/util";
+import GMap from "../components/GMap";
+import { Card, Badge, StatusBadge, ServiceTag, Avatar, Btn, Stat, Empty, Field, Sheet, Tabs, Spark, toast, useAction } from "../components/ui";
+
+const LIVE_MS = 10 * 60e3;
+const NAV = [
+  ["dash", "Dashboard", LayoutDashboard], ["map", "Live map", MapIcon], ["visits", "Schedule", CalendarDays],
+  ["patients", "Patients", Users], ["requests", "Requests", Inbox], ["staff", "Care staff", Stethoscope],
+  ["billing", "Billing", Receipt], ["alerts", "Alerts", Bell], ["messages", "Messages", MessageSquare], ["settings", "Settings", Cog],
+];
+
+export default function Office() {
+  const s = useStore();
+  const [page, setPage] = useState("dash");
+  const [visitForm, setVisitForm] = useState(null);
+  const [visitId, setVisitId] = useState(null);
+  const [patientId, setPatientId] = useState(null);
+  const [staffId, setStaffId] = useState(null);
+  const T = s.t;
+  const openAlerts = (T.alerts || []).filter((a) => !a.done).length;
+  const pending = (T.requests || []).filter((r) => r.status === "pending").length;
+  const ctx = { T, cfg: getSettings(s), setPage, newVisit: (v) => setVisitForm(v || {}), openVisit: setVisitId, openPatient: setPatientId, openStaff: setStaffId };
+  const counts = { alerts: openAlerts, requests: pending };
+  const Page = { dash: Dashboard, map: LiveMap, visits: Schedule, patients: Patients, requests: Requests, staff: StaffPage, billing: Billing, alerts: Alerts, messages: Messages, settings: SettingsPage }[page];
+
+  return (
+    <div className="shell">
+      <aside className="side">
+        <div className="brand"><span className="logo-plate"><img src="/logo.png" alt="Careva+" /></span></div>
+        <nav aria-label="Office">
+          {NAV.map(([k, l, I]) => (
+            <button key={k} className={page === k ? "on" : ""} onClick={() => setPage(k)}><I size={18} />{l}{counts[k] ? <span className="count">{counts[k]}</span> : null}</button>
+          ))}
+        </nav>
+        <div className="me"><Avatar name={s.profile.name || "Office"} color="#2B6DE8" size={32} /><div><div style={{ color: "#fff", fontWeight: 700, fontSize: 13 }}>{s.profile.name || "Office"}</div><small style={{ textTransform: "capitalize" }}>{s.profile.role}</small></div><button onClick={signOut} aria-label="Sign out"><LogOut size={18} /></button></div>
+      </aside>
+      <div style={{ minWidth: 0 }}>
+        <div className="mobile-top">
+          <span className="logo-plate" style={{ padding: "3px 6px" }}><img src="/logo.png" alt="Careva+" style={{ height: 24 }} /></span>
+          <select aria-label="Section" value={page} onChange={(e) => setPage(e.target.value)} style={{ width: "auto", flex: 1 }}>
+            {NAV.map(([k, l]) => <option key={k} value={k}>{l}{counts[k] ? ` (${counts[k]})` : ""}</option>)}
+          </select>
+          <button className="icon-btn" onClick={signOut} aria-label="Sign out"><LogOut size={18} /></button>
+        </div>
+        <main className="main"><Page {...ctx} /></main>
+      </div>
+      {visitForm && <VisitForm init={visitForm} ctx={ctx} onClose={() => setVisitForm(null)} />}
+      {visitId && <VisitSheet id={visitId} ctx={ctx} onClose={() => setVisitId(null)} />}
+      {patientId && <PatientSheet id={patientId} ctx={ctx} onClose={() => setPatientId(null)} />}
+      {staffId && <StaffSheet id={staffId} ctx={ctx} onClose={() => setStaffId(null)} />}
+    </div>
+  );
+}
+
+/* ----------------------------- shared bits ----------------------------- */
+const officePos = (cfg) => (cfg.company?.officeLat ? { lat: cfg.company.officeLat, lng: cfg.company.officeLng } : null);
+const isLive = (l) => l && l.on && Date.now() - l.ts < LIVE_MS;
+function liveMarkers(T, cfg, { patientsToday = true, onlyStaff } = {}) {
+  const m = [];
+  const o = officePos(cfg);
+  if (o) m.push({ id: "office", kind: "office", ...o, title: "Careva+ office", sub: cfg.company?.city });
+  const d = today();
+  const todays = (T.visits || []).filter((v) => v.date === d && v.status !== "cancelled");
+  if (patientsToday) todays.forEach((v) => {
+    const p = byId(T.patients, v.pid); if (!p?.lat) return;
+    m.push({ id: "p" + p.id, kind: "patient", lat: p.lat, lng: p.lng, color: SERVICES[v.service]?.color, title: p.name, sub: `${fmtTime(v.start)} · ${SERVICES[v.service]?.label} · ${STATUS[v.status]?.label}` });
+  });
+  (T.staff_locations || []).forEach((l) => {
+    if (onlyStaff && l.id !== onlyStaff) return;
+    const st = byId(T.staff, l.id); if (!st || l.lat == null) return;
+    const v = todays.find((x) => x.sid === st.id && ["enroute", "inprogress"].includes(x.status));
+    m.push({ id: "s" + st.id, kind: "staff", lat: l.lat, lng: l.lng, color: st.color, label: initialsOf(st.name), stale: !isLive(l), title: st.name, sub: `${v ? STATUS[v.status].label + " · " + (byId(T.patients, v.pid)?.name || "") : "Available"} · ${ago(l.ts)}` });
+  });
+  return m;
+}
+const initialsOf = (n = "") => n.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+function trails(T, only) {
+  const g = {};
+  (T.location_trail || []).forEach((r) => { if (only && r.staff_id !== only) return; if (new Date(r.recorded_at).toDateString() !== new Date().toDateString()) return; (g[r.staff_id] ||= []).push({ lat: r.lat, lng: r.lng }); });
+  return Object.entries(g).map(([sid, pts]) => ({ pts, color: byId(T.staff, sid)?.color || "#0B2F5E" }));
+}
+const Legend = () => (
+  <div className="map-legend">
+    <span><i style={{ background: "#0B2F5E" }} />Office</span><span><i style={{ background: "#2B6DE8" }} />Staff (live)</span>
+    <span><i style={{ background: "#9AA4B2" }} />Staff (no signal 10+ min)</span><span><i style={{ background: "#3FA34D", borderRadius: 2 }} />Patient home</span><span>– – Today's travel</span>
+  </div>
+);
+function EvvBadge({ v }) {
+  if (!v.evv) return <span className="muted">—</span>;
+  const t = v.evv.status === "verified" ? "green" : v.evv.status === "flagged" ? "red" : "amber";
+  return <Badge tone={t}>{v.evv.status === "verified" ? "GPS verified" : v.evv.status === "flagged" ? "Outside geofence" : "Checked in"}</Badge>;
+}
+
+/* ------------------------------ Dashboard ------------------------------ */
+function Dashboard(c) {
+  const { T, cfg } = c;
+  const d = today();
+  const todays = (T.visits || []).filter((v) => v.date === d && v.status !== "cancelled").sort(byStart);
+  const done = todays.filter((v) => v.status === "completed").length;
+  const moving = todays.filter((v) => ["enroute", "inprogress"].includes(v.status)).length;
+  const live = (T.staff_locations || []).filter(isLive).length;
+  const due = (T.invoices || []).filter((i) => i.status !== "paid").reduce((a, i) => a + (+i.amount || 0), 0);
+  const alerts = (T.alerts || []).filter((a) => !a.done).sort((a, b) => b.ts - a.ts);
+  const reqs = (T.requests || []).filter((r) => r.status === "pending");
+  const hour = new Date().getHours();
+  return (
+    <>
+      <div className="page-h">
+        <div><h1>Good {hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening"}</h1><p>{fmtDate(d, { weekday: "long", day: "numeric", month: "long" })} · {cfg.company?.name || "Careva Plus"}</p></div>
+        <Btn icon={Plus} onClick={() => c.newVisit()}>New visit</Btn>
+      </div>
+      <div className="stats">
+        <Stat icon={CalendarDays} label="Visits today" value={todays.length} sub={`${done} completed`} tone="blue" />
+        <Stat icon={Activity} label="On the way / in visit" value={moving} sub="right now" tone="amber" />
+        <Stat icon={Navigation} label="Staff sharing location" value={`${live}/${(T.staff || []).filter((s) => s.active !== false).length}`} sub="updated in last 10 min" tone="green" />
+        <Stat icon={AlertTriangle} label="Open alerts" value={alerts.length} sub={`${reqs.length} visit requests`} tone={alerts.some((a) => a.level === "red") ? "red" : undefined} />
+        <Stat icon={IndianRupee} label="Outstanding" value={rupee(due)} sub="unpaid & verifying" />
+      </div>
+      <div className="cols">
+        <Card title="Live operations" action={<button className="link" onClick={() => c.setPage("map")}>Full map →</button>}>
+          <GMap markers={liveMarkers(T, cfg)} paths={trails(T)} height={420} />
+          <Legend />
+        </Card>
+        <div className="stack">
+          <Card title="Needs attention" action={<button className="link" onClick={() => c.setPage("alerts")}>All alerts</button>}>
+            {alerts.length ? <div className="list">{alerts.slice(0, 5).map((a) => <AlertRow key={a.id} a={a} c={c} />)}</div> : <Empty icon={CheckCircle2} title="All clear">No open alerts.</Empty>}
+          </Card>
+          <Card title="Visit requests" action={<button className="link" onClick={() => c.setPage("requests")}>Review</button>}>
+            {reqs.length ? <div className="list">{reqs.slice(0, 4).map((r) => (
+              <div className="li" key={r.id}><div className="grow"><div className="t">{byId(T.patients, r.pid)?.name || r.name || "New enquiry"}</div><div className="s">{SERVICES[r.service]?.label} · {fmtDate(r.date)} {fmtTime(r.slot)}</div></div><Btn kind="ghost" onClick={() => c.setPage("requests")}>Review</Btn></div>
+            ))}</div> : <Empty title="No pending requests" />}
+          </Card>
+        </div>
+      </div>
+      <Card title="Today's schedule" action={<span className="muted">{todays.length} visits</span>}>
+        {todays.length ? <VisitTable visits={todays} c={c} /> : <Empty icon={CalendarDays} title="No visits today"><button className="link" onClick={() => c.newVisit()}>Schedule one</button></Empty>}
+      </Card>
+    </>
+  );
+}
+
+function AlertRow({ a, c }) {
+  const [busy, run] = useAction();
+  const tone = { red: "red", amber: "amber", green: "green", blue: "blue" }[a.level] || "grey";
+  return (
+    <div className="li">
+      <span className={`badge t-${tone}`} style={{ padding: 6 }}><AlertTriangle size={14} /></span>
+      <div className="grow"><div style={{ fontWeight: 600, fontSize: 13.5 }}>{a.text}</div><div className="s">{ago(a.ts)}{a.vid ? <> · <button className="link" onClick={() => c.openVisit(a.vid)}>Open visit</button></> : null}</div></div>
+      {!a.done && <Btn kind="ghost" busy={busy === "d"} onClick={() => run("d", () => patch("alerts", a.id, { done: true }))}>Done</Btn>}
+    </div>
+  );
+}
+
+function VisitTable({ visits, c }) {
+  const { T } = c;
+  return (
+    <div className="tbl-wrap"><table className="tbl">
+      <thead><tr><th>Time</th><th>Patient</th><th>Service</th><th>Care staff</th><th>Status</th><th>EVV</th></tr></thead>
+      <tbody>{visits.map((v) => { const p = byId(T.patients, v.pid), st = byId(T.staff, v.sid); return (
+        <tr key={v.id} className="click" onClick={() => c.openVisit(v.id)}>
+          <td className="num" style={{ fontWeight: 700, whiteSpace: "nowrap" }}>{fmtTime(v.start)}<div className="muted" style={{ fontWeight: 500, fontSize: 12 }}>{v.date !== today() ? fmtDate(v.date) : `${v.dur || 45} min`}</div></td>
+          <td><b>{p?.name || v.pid}</b><div className="muted" style={{ fontSize: 12 }}>{p?.area || p?.addr?.split(",").slice(-2, -1)[0]}</div></td>
+          <td><ServiceTag s={v.service} /></td>
+          <td>{st ? <span className="row"><Avatar name={st.name} color={st.color} size={26} />{st.name}</span> : <Badge tone="red">Unassigned</Badge>}</td>
+          <td><StatusBadge s={v.status} /></td><td><EvvBadge v={v} /></td>
+        </tr>); })}</tbody>
+    </table></div>
+  );
+}
+
+/* ------------------------------ Live map ------------------------------ */
+function LiveMap({ T, cfg, openStaff }) {
+  const [focus, setFocus] = useState(null);
+  const [showTrails, setShowTrails] = useState(true);
+  const staff = (T.staff || []).filter((s) => s.active !== false);
+  return (
+    <>
+      <div className="page-h"><div><h1>Live map</h1><p>Care staff positions update in real time while they are on shift.</p></div>
+        <div className="row"><Tabs tabs={[["all", "Everyone"], ...staff.map((s) => [s.id, s.name.split(" ")[0]])]} value={focus || "all"} onChange={(v) => setFocus(v === "all" ? null : v)} />
+          <label className="row" style={{ fontWeight: 600, fontSize: 13 }}><input type="checkbox" style={{ width: 18 }} checked={showTrails} onChange={(e) => setShowTrails(e.target.checked)} />Travel trails</label></div>
+      </div>
+      <div className="cols">
+        <div><GMap key={focus || "all"} markers={liveMarkers(T, cfg, { onlyStaff: focus })} paths={showTrails ? trails(T, focus) : []} height={620} /><Legend /></div>
+        <Card title="Care staff">
+          <div className="list">{staff.map((st) => { const l = byId(T.staff_locations, st.id); const v = (T.visits || []).find((x) => x.sid === st.id && x.date === today() && ["enroute", "inprogress"].includes(x.status)); const p = v && byId(T.patients, v.pid); return (
+            <div key={st.id} className="li click" onClick={() => openStaff(st.id)}>
+              <Avatar name={st.name} color={isLive(l) ? st.color : "#9AA4B2"} />
+              <div className="grow"><div className="t">{st.name}</div><div className="s">{v ? `${STATUS[v.status].label} → ${p?.name}` : "Available"} · {l ? ago(l.ts) : "no location yet"}</div>
+                {v?.status === "enroute" && l && p?.lat && <div className="s" style={{ color: "#1F57C4", fontWeight: 700 }}>{fmtDist(distM(l, p))} away</div>}</div>
+              {isLive(l) ? <Badge tone="green" dot>Live</Badge> : <Badge>Offline</Badge>}
+            </div>); })}</div>
+        </Card>
+      </div>
+    </>
+  );
+}
+
+/* ------------------------------ Schedule ------------------------------ */
+function Schedule(c) {
+  const { T } = c;
+  const [day, setDay] = useState(today());
+  const [q, setQ] = useState("");
+  const list = (T.visits || []).filter((v) => v.date === day).filter((v) => !q || (byId(T.patients, v.pid)?.name || "").toLowerCase().includes(q.toLowerCase()) || (byId(T.staff, v.sid)?.name || "").toLowerCase().includes(q.toLowerCase())).sort(byStart);
+  const days = Array.from({ length: 7 }, (_, i) => addDays(today(), i - 1));
+  return (
+    <>
+      <div className="page-h"><div><h1>Schedule</h1><p>{list.length} visits on {fmtDate(day, { weekday: "long", day: "numeric", month: "long" })}</p></div><Btn icon={Plus} onClick={() => c.newVisit({ date: day })}>New visit</Btn></div>
+      <div className="row wrap">
+        <div className="chips">{days.map((d) => <button key={d} className={`chip ${d === day ? "on" : ""}`} onClick={() => setDay(d)}>{d === today() ? "Today" : fmtDate(d)}</button>)}</div>
+        <input type="date" value={day} onChange={(e) => setDay(e.target.value)} style={{ width: "auto" }} aria-label="Pick a date" />
+        <div className="row grow" style={{ minWidth: 220 }}><Search size={16} className="muted" /><input placeholder="Search patient or staff" value={q} onChange={(e) => setQ(e.target.value)} /></div>
+      </div>
+      <Card pad={false}><div className="card-b">{list.length ? <VisitTable visits={list} c={c} /> : <Empty icon={CalendarDays} title="Nothing scheduled">Use “New visit” to book care for this day.</Empty>}</div></Card>
+    </>
+  );
+}
+
+function VisitForm({ init, ctx, onClose }) {
+  const { T, cfg } = ctx;
+  const [f, setF] = useState({ pid: init.pid || "", sid: init.sid || "", date: init.date || today(), start: init.start || "09:00", dur: init.dur || 45, service: init.service || "nursing", notes: init.notes || "" });
+  const [busy, run] = useAction();
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  const p = byId(T.patients, f.pid);
+  const staffOpts = (T.staff || []).filter((s) => s.active !== false).map((s) => {
+    const l = byId(T.staff_locations, s.id);
+    const clash = (T.visits || []).some((v) => v.id !== init.id && v.sid === s.id && v.date === f.date && v.status !== "cancelled" && Math.abs(toMin(v.start) - toMin(f.start)) < (+v.dur || 45));
+    return { s, skill: (s.skills || []).includes(f.service), dist: p?.lat && l ? distM(l, p) : null, clash };
+  }).sort((a, b) => (b.skill - a.skill) || (a.clash - b.clash) || ((a.dist ?? 9e9) - (b.dist ?? 9e9)));
+  const save = () => run("s", async () => {
+    if (!f.pid) throw new Error("Choose a patient.");
+    const v = init.id ? { ...byId(T.visits, init.id), ...f, dur: +f.dur } : { id: uid("V"), ...f, dur: +f.dur, status: "scheduled", tasks: (TASKS[f.service] || []).map((t) => ({ t, done: false })) };
+    await put("visits", v);
+    if (!init.id) await put("notifications", { id: uid("N"), pid: f.pid, text: `${SERVICES[f.service].label} visit booked for ${fmtDate(f.date)} at ${fmtTime(f.start)}${f.sid ? ` with ${byId(T.staff, f.sid)?.name}` : ""}.`, ts: Date.now(), read: false });
+    init.onSaved?.(v); onClose();
+  }, init.id ? "Visit updated" : "Visit scheduled");
+  return (
+    <Sheet open title={init.id ? "Edit visit" : "Schedule a visit"} onClose={onClose}>
+      <Field label="Patient"><select value={f.pid} onChange={set("pid")}><option value="">Choose patient…</option>{(T.patients || []).filter((x) => x.status !== "discharged").map((x) => <option key={x.id} value={x.id}>{x.name} · {x.area || x.id}</option>)}</select></Field>
+      <Field label="Service"><div className="chips">{Object.entries(SERVICES).map(([k, s]) => <button type="button" key={k} className={`chip ${f.service === k ? "on" : ""}`} onClick={() => setF({ ...f, service: k })}>{s.label}</button>)}</div></Field>
+      <div className="grid3"><Field label="Date"><input type="date" value={f.date} onChange={set("date")} /></Field><Field label="Start"><input type="time" value={f.start} onChange={set("start")} /></Field><Field label="Minutes"><input type="number" min="15" step="5" value={f.dur} onChange={set("dur")} /></Field></div>
+      <Field label="Care staff" hint="Sorted by skill match, free time and distance from the patient's home.">
+        <div className="list" style={{ border: "1px solid var(--line)", borderRadius: 12, padding: "0 10px", maxHeight: 260, overflowY: "auto" }}>
+          {staffOpts.map(({ s, skill, dist, clash }) => (
+            <label key={s.id} className="li" style={{ cursor: "pointer" }}>
+              <input type="radio" name="sid" style={{ width: 18 }} checked={f.sid === s.id} onChange={() => setF({ ...f, sid: s.id })} />
+              <Avatar name={s.name} color={s.color} size={30} />
+              <div className="grow"><div className="t">{s.name}</div><div className="s">{s.role}{dist != null ? ` · ${fmtDist(dist)} from home` : ""}</div></div>
+              {clash ? <Badge tone="red">Busy then</Badge> : skill ? <Badge tone="green">Skilled</Badge> : <Badge>Other skill</Badge>}
+            </label>))}
+        </div>
+      </Field>
+      {p && <div className="muted" style={{ fontSize: 13 }}><MapPin size={13} /> {p.addr}</div>}
+      <Btn className="btn b-primary block" busy={busy === "s"} onClick={save}>{init.id ? "Save changes" : "Schedule visit"}</Btn>
+    </Sheet>
+  );
+}
+const toMin = (t = "0:0") => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+
+function VisitSheet({ id, ctx, onClose }) {
+  const { T, cfg } = ctx;
+  const v = byId(T.visits, id);
+  const [busy, run] = useAction();
+  const [edit, setEdit] = useState(false);
+  if (!v) return null;
+  const p = byId(T.patients, v.pid), st = byId(T.staff, v.sid), l = byId(T.staff_locations, v.sid);
+  const markers = [];
+  if (p?.lat) markers.push({ id: "home", kind: "patient", lat: p.lat, lng: p.lng, color: SERVICES[v.service]?.color, title: p.name, sub: p.addr });
+  if (v.evv?.inLat) markers.push({ id: "in", kind: "me", lat: v.evv.inLat, lng: v.evv.inLng, color: "#3FA34D", label: "IN", title: `Check-in ${v.evv.inT}`, sub: `${v.evv.inDist} m from home` });
+  if (v.evv?.outLat) markers.push({ id: "out", kind: "me", lat: v.evv.outLat, lng: v.evv.outLng, color: "#E5862B", label: "OUT", title: `Check-out ${v.evv.outT}`, sub: `${v.evv.outDist} m from home` });
+  if (["enroute", "inprogress"].includes(v.status) && l && st) markers.push({ id: "st", kind: "staff", lat: l.lat, lng: l.lng, color: st.color, label: initialsOf(st.name), title: st.name, sub: ago(l.ts) });
+  const done = (v.tasks || []).filter((t) => t.done).length;
+  return (
+    <Sheet open wide title={`${SERVICES[v.service]?.label} · ${p?.name || ""}`} onClose={onClose}>
+      <div className="row wrap"><StatusBadge s={v.status} /><EvvBadge v={v} /><span className="muted">{fmtDate(v.date, { weekday: "long", day: "numeric", month: "long" })} · {fmtTime(v.start)} · {v.dur || 45} min</span></div>
+      {markers.length > 0 && <GMap markers={markers} focus={p?.lat ? p : undefined} radius={cfg.geofence || 75} route={v.status === "enroute" && l && p?.lat ? { from: l, to: p } : null} height={280} />}
+      <div className="grid2">
+        <Card title="Care staff">{st ? <div className="row"><Avatar name={st.name} color={st.color} /><div className="grow"><b>{st.name}</b><div className="muted">{st.role}</div></div><a className="icon-btn" href={`tel:${st.phone}`} aria-label="Call"><Phone size={16} /></a></div> : <Badge tone="red">Unassigned</Badge>}</Card>
+        <Card title="EVV — visit verification">{v.evv ? <dl className="kv"><dt>Check-in</dt><dd>{v.evv.inT || "—"} · {v.evv.inDist ?? "—"} m from home</dd><dt>Check-out</dt><dd>{v.evv.outT || "—"}{v.evv.outDist != null ? ` · ${v.evv.outDist} m` : ""}</dd><dt>Geofence</dt><dd>{cfg.geofence || 75} m</dd></dl> : <span className="muted">Not checked in yet.</span>}</Card>
+      </div>
+      <Card title={`Care tasks · ${done}/${(v.tasks || []).length}`}>{(v.tasks || []).map((t, i) => <div key={i} className={`task ${t.done ? "done" : ""}`} style={{ cursor: "default" }}><CheckCircle2 size={18} color={t.done ? "#3FA34D" : "#C5CDD8"} /><span>{t.t}</span></div>)}</Card>
+      {(v.vitals || v.notes || v.sig || v.rating) && <Card title="Visit record">
+        <dl className="kv">
+          {v.vitals && <><dt>Vitals</dt><dd>{vitalsLine(v.vitals)}</dd></>}
+          {v.notes && <><dt>Notes</dt><dd>{v.notes}</dd></>}
+          {v.rating && <><dt>Family rating</dt><dd>{"★".repeat(v.rating)}{"☆".repeat(5 - v.rating)} {v.feedback ? `— “${v.feedback}”` : ""}</dd></>}
+          {v.sig && <><dt>Signed by</dt><dd><img src={v.sig} alt="Signature" style={{ height: 60, background: "#FBFCFE", border: "1px solid var(--line)", borderRadius: 8 }} />{v.sigBy ? <div className="muted">{v.sigBy}</div> : null}</dd></>}
+        </dl>
+      </Card>}
+      {v.status !== "completed" && v.status !== "cancelled" && <div className="row wrap">
+        <Btn kind="ghost" onClick={() => setEdit(true)}>Reassign / reschedule</Btn>
+        <Btn kind="danger" busy={busy === "c"} onClick={() => run("c", () => patch("visits", v.id, { status: "cancelled" }), "Visit cancelled")}>Cancel visit</Btn>
+        {p?.phone && <a className="btn b-ghost" href={`tel:${p.phone}`}><Phone size={16} />Call patient</a>}
+      </div>}
+      {edit && <VisitForm init={v} ctx={ctx} onClose={() => setEdit(false)} />}
+    </Sheet>
+  );
+}
+export const vitalsLine = (x) => [x.sys && `BP ${x.sys}/${x.dia}`, x.pulse && `Pulse ${x.pulse}`, x.spo2 && `SpO₂ ${x.spo2}%`, x.sugar && `Sugar ${x.sugar}`, x.temp && `Temp ${x.temp}°F`].filter(Boolean).join(" · ") || "—";
+
+/* ------------------------------ Patients ------------------------------ */
+function Patients(c) {
+  const { T } = c;
+  const [q, setQ] = useState(""); const [tab, setTab] = useState("active"); const [add, setAdd] = useState(false);
+  const list = (T.patients || []).filter((p) => (tab === "all" || p.status === tab) && (!q || `${p.name} ${p.area} ${p.phone} ${p.id}`.toLowerCase().includes(q.toLowerCase())));
+  const next = (pid) => (T.visits || []).filter((v) => v.pid === pid && v.date >= today() && v.status === "scheduled").sort(byStart)[0];
+  return (
+    <>
+      <div className="page-h"><div><h1>Patients</h1><p>{(T.patients || []).filter((p) => p.status === "active").length} active patients</p></div><Btn icon={Plus} onClick={() => setAdd(true)}>Add patient</Btn></div>
+      <div className="row wrap"><Tabs tabs={[["active", "Active"], ["discharged", "Discharged"], ["all", "All"]]} value={tab} onChange={setTab} /><div className="row grow" style={{ minWidth: 220 }}><Search size={16} className="muted" /><input placeholder="Search name, area, phone or ID" value={q} onChange={(e) => setQ(e.target.value)} /></div></div>
+      <Card><div className="tbl-wrap"><table className="tbl">
+        <thead><tr><th>Patient</th><th>Area</th><th>Conditions</th><th>Risk</th><th>Next visit</th><th>Location</th></tr></thead>
+        <tbody>{list.map((p) => { const n = next(p.id); return (
+          <tr key={p.id} className="click" onClick={() => c.openPatient(p.id)}>
+            <td><div className="row"><Avatar name={p.name} size={32} color="#12407c" /><div><b>{p.name}</b><div className="muted" style={{ fontSize: 12 }}>{p.id} · {p.age || "—"}{p.g ? ` ${p.g}` : ""}</div></div></div></td>
+            <td>{p.area || "—"}</td><td style={{ maxWidth: 220 }}>{(p.dx || []).join(", ") || "—"}</td>
+            <td><Badge tone={p.risk === "High" ? "red" : p.risk === "Medium" ? "amber" : "green"}>{p.risk || "—"}</Badge></td>
+            <td className="num">{n ? `${fmtDate(n.date)} ${fmtTime(n.start)}` : <span className="muted">None</span>}</td>
+            <td>{p.lat ? <Badge tone="green"><MapPin size={12} />Pinned</Badge> : <Badge tone="amber">Not pinned</Badge>}</td>
+          </tr>); })}</tbody>
+      </table>{!list.length && <Empty icon={Users} title="No patients match" />}</div></Card>
+      {add && <PatientForm ctx={c} onClose={() => setAdd(false)} />}
+    </>
+  );
+}
+
+/** Accepts a Google Maps link, "lat, lng", or a plus-code-free coordinate string. */
+export function parseLatLng(s = "") {
+  const m = s.match(/@(-?\d+\.\d+),\s*(-?\d+\.\d+)/) || s.match(/[?&](?:q|query|ll|destination)=(-?\d+\.\d+),\s*(-?\d+\.\d+)/) || s.match(/(-?\d{1,2}\.\d{3,})\s*,\s*(-?\d{1,3}\.\d{3,})/);
+  return m ? { lat: +m[1], lng: +m[2] } : null;
+}
+
+function PatientForm({ ctx, onClose, init }) {
+  const { T } = ctx;
+  const [f, setF] = useState(init || { name: "", age: "", g: "F", phone: "", addr: "", area: "", dx: "", allergies: "", blood: "", doctor: "", risk: "Low", payer: "Self pay", source: "Office", services: ["nursing"], contact: { name: "", rel: "", phone: "" } });
+  const [loc, setLoc] = useState(init?.lat ? `${init.lat}, ${init.lng}` : "");
+  const [busy, run] = useAction();
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  const pt = parseLatLng(loc);
+  const save = () => run("s", async () => {
+    if (!f.name.trim()) throw new Error("Enter the patient's name.");
+    const nextId = "P" + (Math.max(1000, ...(T.patients || []).map((p) => +p.id.slice(1) || 0)) + 1);
+    const doc = { ...f, id: init?.id || nextId, age: +f.age || null, dx: typeof f.dx === "string" ? f.dx.split(",").map((x) => x.trim()).filter(Boolean) : f.dx, allergies: typeof f.allergies === "string" ? f.allergies.split(",").map((x) => x.trim()).filter(Boolean) : f.allergies, status: init?.status || "active", since: init?.since || today(), ...(pt || {}) };
+    await put("patients", doc); onClose();
+  }, init ? "Patient updated" : "Patient added");
+  return (
+    <Sheet open title={init ? "Edit patient" : "Add patient"} onClose={onClose}>
+      <div className="grid2"><Field label="Full name"><input value={f.name} onChange={set("name")} /></Field><Field label="Mobile"><input type="tel" value={f.phone} onChange={set("phone")} /></Field></div>
+      <div className="grid3"><Field label="Age"><input type="number" value={f.age} onChange={set("age")} /></Field><Field label="Gender"><select value={f.g} onChange={set("g")}><option value="F">Female</option><option value="M">Male</option><option value="O">Other</option></select></Field><Field label="Risk"><select value={f.risk} onChange={set("risk")}><option>Low</option><option>Medium</option><option>High</option></select></Field></div>
+      <Field label="Home address"><textarea value={f.addr} onChange={set("addr")} style={{ minHeight: 60 }} /></Field>
+      <div className="grid2"><Field label="Area"><input value={f.area} onChange={set("area")} placeholder="e.g. Fairlands" /></Field>
+        <Field label="Home location" hint={pt ? `Pinned at ${pt.lat.toFixed(5)}, ${pt.lng.toFixed(5)}` : "Paste a Google Maps link or “lat, lng”."}><input value={loc} onChange={(e) => setLoc(e.target.value)} placeholder="https://maps.google.com/…" /></Field></div>
+      {pt && <GMap markers={[{ id: "h", kind: "patient", ...pt, color: "#3FA34D", title: f.name || "Home" }]} height={180} />}
+      <div className="grid2"><Field label="Conditions (comma separated)"><input value={Array.isArray(f.dx) ? f.dx.join(", ") : f.dx} onChange={set("dx")} /></Field><Field label="Allergies"><input value={Array.isArray(f.allergies) ? f.allergies.join(", ") : f.allergies} onChange={set("allergies")} /></Field></div>
+      <div className="grid3"><Field label="Blood group"><input value={f.blood} onChange={set("blood")} /></Field><Field label="Doctor"><input value={f.doctor} onChange={set("doctor")} /></Field><Field label="Payer"><input value={f.payer} onChange={set("payer")} /></Field></div>
+      <div className="grid3"><Field label="Emergency contact"><input value={f.contact?.name || ""} onChange={(e) => setF({ ...f, contact: { ...f.contact, name: e.target.value } })} /></Field><Field label="Relation"><input value={f.contact?.rel || ""} onChange={(e) => setF({ ...f, contact: { ...f.contact, rel: e.target.value } })} /></Field><Field label="Their phone"><input type="tel" value={f.contact?.phone || ""} onChange={(e) => setF({ ...f, contact: { ...f.contact, phone: e.target.value } })} /></Field></div>
+      <Btn className="btn b-primary block" busy={busy === "s"} onClick={save}>{init ? "Save patient" : "Add patient"}</Btn>
+    </Sheet>
+  );
+}
+
+function PatientSheet({ id, ctx, onClose }) {
+  const { T } = ctx;
+  const p = byId(T.patients, id);
+  const [tab, setTab] = useState("overview"); const [edit, setEdit] = useState(false);
+  const [busy, run] = useAction();
+  if (!p) return null;
+  const vit = (T.vitals || []).filter((x) => x.pid === id).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+  const vis = (T.visits || []).filter((v) => v.pid === id).sort(byStart).reverse();
+  const inv = (T.invoices || []).filter((i) => i.pid === id);
+  return (
+    <Sheet open wide title={p.name} onClose={onClose}>
+      <div className="row wrap"><Badge tone={p.status === "active" ? "green" : "grey"}>{p.status}</Badge><Badge tone={p.risk === "High" ? "red" : p.risk === "Medium" ? "amber" : "green"}>{p.risk} risk</Badge><span className="muted">{p.id} · {p.age} {p.g} · since {fmtDate(p.since)}</span>
+        <span className="grow" /><Btn kind="ghost" onClick={() => setEdit(true)}>Edit</Btn><Btn icon={Plus} onClick={() => { onClose(); ctx.newVisit({ pid: id, service: p.services?.[0] }); }}>Book visit</Btn></div>
+      <Tabs tabs={[["overview", "Overview"], ["vitals", `Vitals (${vit.length})`], ["visits", `Visits (${vis.length})`], ["bills", `Bills (${inv.length})`]]} value={tab} onChange={setTab} />
+      {tab === "overview" && <div className="grid2">
+        <Card title="Details"><dl className="kv">
+          <dt>Phone</dt><dd><a href={`tel:${p.phone}`}>{p.phone}</a></dd><dt>Address</dt><dd>{p.addr}</dd>
+          <dt>Conditions</dt><dd>{(p.dx || []).join(", ") || "—"}</dd><dt>Allergies</dt><dd style={{ color: p.allergies?.length ? "#B42328" : undefined }}>{(p.allergies || []).join(", ") || "None recorded"}</dd>
+          <dt>Blood</dt><dd>{p.blood || "—"}</dd><dt>Doctor</dt><dd>{p.doctor || "—"}</dd><dt>Payer</dt><dd>{p.payer || "—"}</dd>
+          <dt>Emergency</dt><dd>{p.contact?.name ? <>{p.contact.name} ({p.contact.rel}) · <a href={`tel:${p.contact.phone}`}>{p.contact.phone}</a></> : "—"}</dd>
+        </dl></Card>
+        <div>{p.lat ? <><GMap markers={[{ id: "h", kind: "patient", lat: p.lat, lng: p.lng, color: "#3FA34D", title: p.name, sub: p.addr }]} height={250} /><a className="link" style={{ display: "inline-block", marginTop: 8 }} href={gmapsAt(p)} target="_blank" rel="noreferrer">Open in Google Maps ↗</a></> : <Empty icon={MapPin} title="Home not pinned"><button className="link" onClick={() => setEdit(true)}>Pin the location</button> so staff get exact directions.</Empty>}
+          {p.status === "active" && <div style={{ marginTop: 12 }}><Btn kind="ghost" busy={busy === "d"} onClick={() => run("d", () => patch("patients", id, { status: "discharged" }), "Patient discharged")}>Discharge patient</Btn></div>}</div>
+      </div>}
+      {tab === "vitals" && <VitalsPanel vit={vit} />}
+      {tab === "visits" && (vis.length ? <VisitTable visits={vis} c={{ ...ctx, openVisit: (v) => { onClose(); ctx.openVisit(v); } }} /> : <Empty title="No visits yet" />)}
+      {tab === "bills" && <InvoiceTable inv={inv} T={T} />}
+      {edit && <PatientForm ctx={ctx} init={p} onClose={() => setEdit(false)} />}
+    </Sheet>
+  );
+}
+
+export function VitalsPanel({ vit }) {
+  if (!vit.length) return <Empty icon={Activity} title="No vitals recorded" />;
+  const last = vit.at(-1);
+  const rows = [["Blood pressure", "sys", "mmHg", (x) => `${x.sys}/${x.dia}`, (x) => x.sys >= 140 || x.dia >= 90], ["Pulse", "pulse", "bpm", (x) => x.pulse, (x) => x.pulse > 100 || x.pulse < 55], ["SpO₂", "spo2", "%", (x) => x.spo2, (x) => x.spo2 < 94], ["Blood sugar", "sugar", "mg/dL", (x) => x.sugar, (x) => x.sugar > 180 || x.sugar < 70], ["Temperature", "temp", "°F", (x) => x.temp, (x) => x.temp >= 100.4]];
+  return (
+    <div className="stack">
+      <div className="stats">{rows.map(([l, k, u, f, bad]) => last[k] != null && last[k] !== "" ? (
+        <div className="stat" key={k}><div className="stat-top">{l}</div><b style={{ color: bad(last) ? "#B42328" : undefined }}>{f(last)} <small style={{ fontSize: 13 }}>{u}</small></b><Spark values={vit.map((x) => +x[k] || null)} color={bad(last) ? "#E5484D" : "#2B6DE8"} /></div>) : null)}</div>
+      <div className="tbl-wrap"><table className="tbl"><thead><tr><th>Date</th><th>BP</th><th>Pulse</th><th>SpO₂</th><th>Sugar</th><th>Temp</th></tr></thead>
+        <tbody>{[...vit].reverse().map((x) => <tr key={x.id}><td className="num">{fmtDate(x.date)} {x.time}</td><td>{x.sys ? `${x.sys}/${x.dia}` : "—"}</td><td>{x.pulse || "—"}</td><td>{x.spo2 || "—"}</td><td>{x.sugar || "—"}</td><td>{x.temp || "—"}</td></tr>)}</tbody></table></div>
+    </div>
+  );
+}
+
+/* ------------------------------ Requests ------------------------------ */
+function Requests(c) {
+  const { T } = c;
+  const [tab, setTab] = useState("pending");
+  const [busy, run] = useAction();
+  const [newPt, setNewPt] = useState(null);
+  const list = (T.requests || []).filter((r) => tab === "all" || r.status === tab).sort((a, b) => (b.created || 0) - (a.created || 0));
+  const approve = (r) => c.newVisit({ pid: r.pid, service: r.service, date: r.date, start: r.slot || "09:00", onSaved: (v) => patch("requests", r.id, { status: "approved", sid: v.sid }) });
+  return (
+    <>
+      <div className="page-h"><div><h1>Visit requests</h1><p>From the patient app, the website and phone calls.</p></div></div>
+      <Tabs tabs={[["pending", "Pending"], ["approved", "Approved"], ["rejected", "Declined"], ["all", "All"]]} value={tab} onChange={setTab} />
+      <Card>{list.length ? <div className="list">{list.map((r) => { const p = byId(T.patients, r.pid); return (
+        <div className="li" key={r.id} style={{ alignItems: "flex-start" }}>
+          <Avatar name={p?.name || r.name || "?"} color={p ? "#12407c" : "#E5862B"} />
+          <div className="grow"><div className="row wrap"><span className="t">{p?.name || r.name || "New enquiry"}</span>{!p && <Badge tone="amber">New patient</Badge>}<ServiceTag s={r.service} /><span className="s">{r.source}</span></div>
+            <div className="s">Wants {fmtDate(r.date, { weekday: "long", day: "numeric", month: "short" })} at {fmtTime(r.slot)} · asked {ago(r.created)}</div>
+            {r.notes && <div style={{ marginTop: 4, fontSize: 13.5 }}>“{r.notes}”</div>}
+            {!p && r.phone && <div className="s"><a href={`tel:${r.phone}`}>{r.phone}</a></div>}</div>
+          {r.status === "pending" ? <div className="row">
+            {p ? <Btn kind="green" onClick={() => approve(r)}>Approve & schedule</Btn> : <Btn kind="green" onClick={() => setNewPt(r)}>Register patient</Btn>}
+            <Btn kind="ghost" busy={busy === r.id} onClick={() => run(r.id, () => patch("requests", r.id, { status: "rejected" }), "Request declined")}>Decline</Btn></div>
+            : <Badge tone={r.status === "approved" ? "green" : "grey"}>{r.status === "approved" ? "Approved" : r.status}</Badge>}
+        </div>); })}</div> : <Empty icon={Inbox} title="Nothing here">New requests appear instantly.</Empty>}</Card>
+      {newPt && <PatientForm ctx={c} init={{ name: newPt.name || "", phone: newPt.phone || "", age: "", g: "F", addr: "", area: "", dx: "", allergies: "", risk: "Low", payer: "Self pay", source: newPt.source, services: [newPt.service], contact: {} }} onClose={() => setNewPt(null)} />}
+    </>
+  );
+}
+
+/* ------------------------------ Staff ------------------------------ */
+function StaffPage(c) {
+  const { T } = c;
+  const d = today();
+  return (
+    <>
+      <div className="page-h"><div><h1>Care staff</h1><p>Shift status, today's work and live location.</p></div></div>
+      <div className="stats" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))" }}>{(T.staff || []).map((st) => {
+        const l = byId(T.staff_locations, st.id), sh = byId(T.shifts, st.id), ts = byId(T.timesheets, st.id)?.[d];
+        const vs = (T.visits || []).filter((v) => v.sid === st.id && v.date === d && v.status !== "cancelled");
+        const cur = vs.find((v) => ["enroute", "inprogress"].includes(v.status));
+        return (
+          <button key={st.id} className="card" style={{ textAlign: "left", cursor: "pointer", padding: 16, display: "grid", gap: 10 }} onClick={() => c.openStaff(st.id)}>
+            <div className="row"><Avatar name={st.name} color={st.color} size={42} /><div className="grow"><b>{st.name}</b><div className="muted" style={{ fontSize: 13 }}>{st.role} · {st.exp || 0} yrs</div></div>{isLive(l) ? <Badge tone="green" dot>Live</Badge> : sh?.on && sh.day === d ? <Badge tone="amber">On shift</Badge> : <Badge>Off</Badge>}</div>
+            <div style={{ fontSize: 13.5, fontWeight: 600 }}>{cur ? <>{STATUS[cur.status].label}: {byId(T.patients, cur.pid)?.name}</> : <span className="muted">{vs.length ? "Between visits" : "No visits today"}</span>}</div>
+            <div className="row" style={{ fontSize: 12.5, color: "var(--ink-3)", fontWeight: 600 }}><span>{vs.filter((v) => v.status === "completed").length}/{vs.length} visits</span><span>·</span><span>{ts ? `${Math.round(ts.mins / 60 * 10) / 10} h` : "0 h"} logged</span><span>·</span><span>{l ? ago(l.ts) : "no GPS"}</span></div>
+          </button>);
+      })}</div>
+    </>
+  );
+}
+
+function StaffSheet({ id, ctx, onClose }) {
+  const { T, cfg } = ctx;
+  const st = byId(T.staff, id);
+  if (!st) return null;
+  const vs = (T.visits || []).filter((v) => v.sid === id && v.date === today()).sort(byStart);
+  const ts = byId(T.timesheets, id) || {};
+  const days = Object.keys(ts).filter((k) => /^\d{4}-/.test(k)).sort().slice(-7);
+  return (
+    <Sheet open wide title={st.name} onClose={onClose}>
+      <div className="row wrap"><Avatar name={st.name} color={st.color} size={44} /><div className="grow"><b>{st.role}</b><div className="muted">{st.qual} · {st.exp || 0} yrs · joined {fmtDate(st.joined)}</div></div><a className="btn b-ghost" href={`tel:${st.phone}`}><Phone size={16} />{st.phone}</a></div>
+      <div className="chips">{(st.skills || []).map((s) => <ServiceTag key={s} s={s} />)}</div>
+      <GMap markers={liveMarkers(T, cfg, { onlyStaff: id })} paths={trails(T, id)} height={300} />
+      <div className="grid2">
+        <Card title="Today's visits">{vs.length ? <div className="list">{vs.map((v) => <div key={v.id} className="li click" onClick={() => { onClose(); ctx.openVisit(v.id); }}><b className="num">{fmtTime(v.start)}</b><div className="grow"><div className="t">{byId(T.patients, v.pid)?.name}</div><div className="s">{SERVICES[v.service]?.label}</div></div><StatusBadge s={v.status} /></div>)}</div> : <Empty title="No visits today" />}</Card>
+        <Card title="Timesheet (last days)">{days.length ? <div className="list">{days.map((d) => <div key={d} className="li"><span className="grow">{fmtDate(d)}</span><b className="num">{(ts[d].mins / 60).toFixed(1)} h</b><span className="muted num">{(ts[d].km || 0).toFixed?.(1) ?? ts[d].km} km</span></div>)}</div> : <Empty title="No timesheet yet" />}</Card>
+      </div>
+    </Sheet>
+  );
+}
+
+/* ------------------------------ Billing ------------------------------ */
+function InvoiceTable({ inv, T, onOpen }) {
+  const [busy, run] = useAction();
+  if (!inv.length) return <Empty icon={Receipt} title="No invoices" />;
+  return (
+    <div className="tbl-wrap"><table className="tbl"><thead><tr><th>Invoice</th><th>Patient</th><th>Items</th><th>Amount</th><th>Due</th><th>Status</th><th /></tr></thead>
+      <tbody>{inv.sort((a, b) => (b.date || "").localeCompare(a.date || "")).map((i) => (
+        <tr key={i.id}><td className="num"><b>{i.id}</b><div className="muted" style={{ fontSize: 12 }}>{fmtDate(i.date)}</div></td><td>{byId(T.patients, i.pid)?.name || i.pid}</td>
+          <td style={{ fontSize: 13 }}>{(i.items || []).map((x) => `${x.d} × ${x.q}`).join(", ")}</td><td className="num"><b>{rupee(i.amount)}</b></td><td className="num">{fmtDate(i.due)}</td>
+          <td>{i.status === "paid" ? <Badge tone="green">Paid {i.paidOn ? fmtDate(i.paidOn) : ""}</Badge> : i.status === "verifying" ? <Badge tone="amber">Verify · {i.payRef}</Badge> : i.due < today() ? <Badge tone="red">Overdue</Badge> : <Badge tone="blue">Due</Badge>}</td>
+          <td>{i.status !== "paid" && <Btn kind={i.status === "verifying" ? "green" : "ghost"} busy={busy === i.id} onClick={() => run(i.id, () => patch("invoices", i.id, { status: "paid", paidOn: today() }), "Marked as paid")}>{i.status === "verifying" ? "Confirm payment" : "Mark paid"}</Btn>}</td></tr>))}</tbody></table></div>
+  );
+}
+function Billing({ T, cfg }) {
+  const month = today().slice(0, 7);
+  const [busy, run] = useAction();
+  const inv = T.invoices || [];
+  const sum = (f) => inv.filter(f).reduce((a, i) => a + (+i.amount || 0), 0);
+  const generate = () => run("g", async () => {
+    const rates = cfg.rates || {};
+    const done = (T.visits || []).filter((v) => v.status === "completed" && v.date.startsWith(month));
+    const byP = {};
+    done.forEach((v) => { (byP[v.pid] ||= {})[v.service] = ((byP[v.pid] || {})[v.service] || 0) + 1; });
+    let n = 0;
+    for (const [pid, svc] of Object.entries(byP)) {
+      const id = `INV-${month.replace("-", "")}-${pid}`;
+      if (inv.some((i) => i.id === id && i.status === "paid")) continue;
+      const items = Object.entries(svc).map(([s, q]) => ({ d: SERVICES[s]?.label || s, q, r: rates[s] || 0 }));
+      await put("invoices", { id, pid, month, date: today(), due: addDays(today(), 10), items, amount: items.reduce((a, x) => a + x.q * x.r, 0), status: byId(inv, id)?.status === "verifying" ? "verifying" : "due" });
+      n++;
+    }
+    toast(n ? `${n} invoice${n > 1 ? "s" : ""} prepared for ${fmtDate(month + "-01", { month: "long" })}` : "No new completed visits to bill");
+  });
+  return (
+    <>
+      <div className="page-h"><div><h1>Billing</h1><p>Invoices are built from completed visits at your service rates. Patients pay by UPI to {cfg.company?.upi || "your UPI ID"}.</p></div><Btn icon={Receipt} busy={busy === "g"} onClick={generate}>Prepare this month's invoices</Btn></div>
+      <div className="stats">
+        <Stat icon={Receipt} label="Billed this month" value={rupee(sum((i) => i.month === month))} tone="blue" />
+        <Stat icon={CheckCircle2} label="Collected" value={rupee(sum((i) => i.status === "paid"))} tone="green" />
+        <Stat icon={ShieldCheck} label="Awaiting verification" value={rupee(sum((i) => i.status === "verifying"))} tone="amber" />
+        <Stat icon={Clock} label="Outstanding" value={rupee(sum((i) => i.status === "due"))} tone="red" />
+      </div>
+      <Card title="Invoices"><InvoiceTable inv={[...inv]} T={T} /></Card>
+    </>
+  );
+}
+
+/* ------------------------------ Alerts ------------------------------ */
+function Alerts(c) {
+  const [tab, setTab] = useState("open");
+  const list = (c.T.alerts || []).filter((a) => (tab === "open" ? !a.done : a.done)).sort((a, b) => b.ts - a.ts);
+  return (
+    <>
+      <div className="page-h"><div><h1>Alerts</h1><p>Geofence exceptions, abnormal vitals, payments, requests and staff notes.</p></div></div>
+      <Tabs tabs={[["open", "Open"], ["done", "Resolved"]]} value={tab} onChange={setTab} />
+      <Card>{list.length ? <div className="list">{list.map((a) => <AlertRow key={a.id} a={a} c={c} />)}</div> : <Empty icon={CheckCircle2} title={tab === "open" ? "All clear" : "Nothing resolved yet"} />}</Card>
+    </>
+  );
+}
+
+/* ------------------------------ Messages ------------------------------ */
+function Messages({ T }) {
+  const threads = useMemo(() => {
+    const g = {};
+    (T.messages || []).forEach((m) => { (g[m.thread] ||= []).push(m); });
+    [...(T.staff || []).map((s) => s.id), ...(T.patients || []).filter((p) => p.status === "active").map((p) => p.id)].forEach((id) => (g[id] ||= []));
+    return Object.entries(g).map(([id, ms]) => ({ id, ms: ms.sort((a, b) => a.ts - b.ts), last: ms.at(-1)?.ts || 0 })).sort((a, b) => b.last - a.last);
+  }, [T.messages, T.staff, T.patients]);
+  const [sel, setSel] = useState(threads[0]?.id);
+  const name = (id) => id === "all-staff" ? "All staff" : byId(T.staff, id)?.name || byId(T.patients, id)?.name || id;
+  const cur = threads.find((t) => t.id === sel);
+  return (
+    <>
+      <div className="page-h"><div><h1>Messages</h1><p>Chat with care staff and patient families.</p></div></div>
+      <div className="cols" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1.6fr)" }}>
+        <Card title="Conversations"><div className="list">{threads.map((t) => (
+          <div key={t.id} className="li click" onClick={() => setSel(t.id)} style={sel === t.id ? { background: "var(--bg)" } : undefined}>
+            <Avatar name={name(t.id)} color={t.id.startsWith("S") ? byId(T.staff, t.id)?.color || "#2B6DE8" : "#12407c"} size={34} />
+            <div className="grow"><div className="t">{name(t.id)}</div><div className="s" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.ms.at(-1)?.text || (t.id.startsWith("S") ? "Care staff" : "Patient")}</div></div>
+            {t.last ? <small className="muted">{ago(t.last)}</small> : null}
+          </div>))}</div></Card>
+        {cur ? <Chat title={name(cur.id)} msgs={cur.ms} me="office" thread={cur.id} /> : <Card><Empty icon={MessageSquare} title="Pick a conversation" /></Card>}
+      </div>
+    </>
+  );
+}
+export function Chat({ title, msgs, me, thread, extra = {} }) {
+  const [text, setText] = useState(""); const [busy, run] = useAction();
+  const send = (e) => { e.preventDefault(); if (!text.trim()) return; const t = text.trim(); setText(""); run("s", () => put("messages", { id: uid("M"), thread, from: me, text: t, ts: Date.now(), ...extra })); };
+  return (
+    <Card title={title}>
+      <div className="chat" style={{ maxHeight: 420, overflowY: "auto", padding: "4px 2px" }}>
+        {msgs.length ? msgs.map((m) => <div key={m.id} className={`msg ${m.from === me ? "me" : ""}`}>{m.text}<small>{new Date(m.ts).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}</small></div>) : <Empty icon={MessageSquare} title="No messages yet">Say hello.</Empty>}
+      </div>
+      <form className="row" style={{ marginTop: 12 }} onSubmit={send}><input id={`msg-${thread}`} placeholder="Write a message" value={text} onChange={(e) => setText(e.target.value)} /><Btn busy={busy === "s"}>Send</Btn></form>
+    </Card>
+  );
+}
+
+/* ------------------------------ Settings ------------------------------ */
+function SettingsPage({ cfg }) {
+  const [f, setF] = useState(() => JSON.parse(JSON.stringify(cfg)));
+  const [loc, setLoc] = useState(cfg.company?.officeLat ? `${cfg.company.officeLat}, ${cfg.company.officeLng}` : "");
+  const [busy, run] = useAction();
+  const co = f.company || {};
+  const setCo = (k) => (e) => setF({ ...f, company: { ...co, [k]: e.target.value } });
+  const pt = parseLatLng(loc);
+  const save = () => run("s", () => put("settings", { ...f, id: "main", geofence: +f.geofence || 75, lateMin: +f.lateMin || 15, company: { ...co, ...(pt ? { officeLat: pt.lat, officeLng: pt.lng, officeSet: true } : {}) }, rates: Object.fromEntries(Object.entries(f.rates || {}).map(([k, v]) => [k, +v || 0])) }), "Settings saved");
+  return (
+    <>
+      <div className="page-h"><div><h1>Settings</h1><p>Company details, visit verification and service rates.</p></div><Btn busy={busy === "s"} onClick={save}>Save settings</Btn></div>
+      <div className="cols">
+        <Card title="Company"><div className="stack">
+          <div className="grid2"><Field label="Name"><input value={co.name || ""} onChange={setCo("name")} /></Field><Field label="Phone"><input value={co.phone || ""} onChange={setCo("phone")} /></Field></div>
+          <div className="grid2"><Field label="City"><input value={co.city || ""} onChange={setCo("city")} /></Field><Field label="UPI ID for payments"><input value={co.upi || ""} onChange={setCo("upi")} /></Field></div>
+          <Field label="Office location" hint="Paste a Google Maps link or “lat, lng”. Staff distances and the map centre use this."><input value={loc} onChange={(e) => setLoc(e.target.value)} /></Field>
+          {pt && <GMap markers={[{ id: "o", kind: "office", ...pt, title: co.name }]} height={200} />}
+        </div></Card>
+        <div className="stack">
+          <Card title="Visit verification (EVV)"><div className="stack">
+            <Field label="Geofence radius (metres)" hint="Check-in/out farther than this from the patient's home is flagged."><input type="number" value={f.geofence || 75} onChange={(e) => setF({ ...f, geofence: e.target.value })} /></Field>
+            <Field label="Late after (minutes)"><input type="number" value={f.lateMin || 15} onChange={(e) => setF({ ...f, lateMin: e.target.value })} /></Field>
+            <label className="row" style={{ fontWeight: 600 }}><input type="checkbox" style={{ width: 18 }} checked={!!f.requireSig} onChange={(e) => setF({ ...f, requireSig: e.target.checked })} />Require patient/family signature at check-out</label>
+          </div></Card>
+          <Card title="Service rates (₹ per visit)"><div className="grid2">{Object.entries(SERVICES).map(([k, s]) => <Field key={k} label={s.label}><input type="number" value={f.rates?.[k] ?? ""} onChange={(e) => setF({ ...f, rates: { ...f.rates, [k]: e.target.value } })} /></Field>)}</div></Card>
+        </div>
+      </div>
+    </>
+  );
+}

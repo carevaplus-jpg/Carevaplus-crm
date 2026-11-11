@@ -3,3 +3,5 @@ dist/
 out/
 renders/
 public/edit/
+app/dist/
+app/.env
