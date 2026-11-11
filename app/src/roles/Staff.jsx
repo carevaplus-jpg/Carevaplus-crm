@@ -90,7 +90,7 @@ function ShiftCard({ sid, onShift, shift, pos, s }) {
     <div className="hero">
       <div className="shift">
         <div className="grow"><b style={{ fontSize: 16 }}>{onShift ? "You're on shift" : "Off shift"}</b>
-          <div className="muted" style={{ fontSize: 13 }}>{onShift ? <>Since {new Date(shift.start).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })} · {(shift.km || 0).toFixed(1)} km · {pos ? <span style={{ color: "#2B7A36", fontWeight: 700 }}><Signal size={12} /> GPS ±{pos.acc} m</span> : "finding GPS…"}</> : "Start your shift to share your location with the office and get directions."}</div></div>
+          <div className="muted" style={{ fontSize: 13 }}>{onShift ? <>Since {new Date(shift.start).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })} · {(shift.km || 0).toFixed(1)} km · {pos ? <span style={{ color: "var(--green)", fontWeight: 600 }}><Signal size={12} /> GPS ±{pos.acc} m</span> : "finding GPS…"}</> : "Start your shift to share your location with the office and get directions."}</div></div>
         <button className={`toggle ${onShift ? "on" : ""}`} aria-label={onShift ? "End shift" : "Start shift"} aria-pressed={onShift} disabled={busy === "t"} onClick={toggle} />
       </div>
     </div>
@@ -195,7 +195,7 @@ function VisitFlow({ id, ctx, onClose }) {
       <div className="row wrap"><StatusBadge s={v.status} /><ServiceTag s={v.service} /><span className="muted">{fmtDate(v.date)} · {fmtTime(v.start)} · {v.dur} min</span></div>
       <dl className="kv"><dt>Address</dt><dd>{p?.addr}</dd><dt>Conditions</dt><dd>{(p?.dx || []).join(", ") || "—"}</dd><dt>Allergies</dt><dd style={{ color: p?.allergies?.length ? "#B42328" : undefined }}>{(p?.allergies || []).join(", ") || "None recorded"}</dd><dt>Family</dt><dd>{p?.contact?.name ? <>{p.contact.name} ({p.contact.rel}) · <a href={`tel:${p.contact.phone}`}>{p.contact.phone}</a></> : "—"}</dd></dl>
       {["scheduled", "enroute"].includes(v.status) && <>
-        <div className="err" style={{ background: "#E8F0FE", color: "#1F57C4" }}><ShieldCheck size={14} /> Check in when you're at the door. Your GPS must be within {g} m of the patient's home.</div>
+        <div className="err" style={{ background: "color-mix(in srgb, var(--tint) 13%, transparent)", color: "var(--tint)" }}><ShieldCheck size={14} /> Check in when you're at the door. Your GPS must be within {g} m of the patient's home.</div>
         <Btn className="btn b-green block" icon={LogIn} busy={busy === "in"} onClick={checkIn}>Check in now</Btn>
       </>}
       {v.status === "inprogress" && <>

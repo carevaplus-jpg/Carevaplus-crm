@@ -35,6 +35,7 @@ export function Sheet({ open, onClose, title, children, wide }) {
   return (
     <div className="sheet-bg" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className={`sheet ${wide ? "wide" : ""}`} role="dialog" aria-modal="true" aria-label={title}>
+        <div className="grabber" aria-hidden="true" />
         <header><h2>{title}</h2><button className="icon-btn" onClick={onClose} aria-label="Close"><X size={20} /></button></header>
         <div className="sheet-b">{children}</div>
       </div>

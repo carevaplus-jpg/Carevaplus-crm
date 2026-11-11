@@ -1,10 +1,6 @@
+import LOGO from "./assets/logo.webp";
 import React, { useEffect } from "react";
 import ReactDOM from "react-dom/client";
-import "@fontsource/plus-jakarta-sans/400.css";
-import "@fontsource/plus-jakarta-sans/500.css";
-import "@fontsource/plus-jakarta-sans/600.css";
-import "@fontsource/plus-jakarta-sans/700.css";
-import "@fontsource/plus-jakarta-sans/800.css";
 import "./styles.css";
 import { boot, useStore, isOffice } from "./lib/store";
 import { Toaster } from "./components/ui";
@@ -18,7 +14,10 @@ const DEMO = new URLSearchParams(location.search).has("demo");
 function App() {
   const { ready, profile } = useStore((s) => s);
   useEffect(() => { boot(DEMO).catch((e) => console.error(e)); }, []);
-  if (!ready) return <div style={{ height: "100%", display: "grid", placeItems: "center" }}><img src="/logo.png" alt="Careva+" style={{ width: 200 }} /></div>;
+  // a new screen (sign-in → app, or sign-out) always starts at the top
+  useEffect(() => { window.scrollTo(0, 0); }, [profile?.id]);
+  useEffect(() => { document.body.classList.toggle("is-demo", DEMO && !!profile); }, [profile]);
+  if (!ready) return <div style={{ height: "100%", display: "grid", placeItems: "center" }}><img src={LOGO} alt="Careva+" style={{ width: 200 }} /></div>;
   let view;
   if (!profile) view = <Login demo={DEMO} />;
   else if (isOffice(profile)) view = <Office />;

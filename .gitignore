@@ -7,3 +7,4 @@ app/dist/
 app/.env
 *.idsig
 *.jks
+app/dist-html/

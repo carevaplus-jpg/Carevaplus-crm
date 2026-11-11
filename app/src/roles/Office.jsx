@@ -1,3 +1,4 @@
+import LOGO from "../assets/logo.webp";
 import React, { useMemo, useState } from "react";
 import {
   LayoutDashboard, Map as MapIcon, CalendarDays, Users, Inbox, Stethoscope, Receipt, Bell, MessageSquare, Settings as Cog,
@@ -34,17 +35,17 @@ export default function Office() {
   return (
     <div className="shell">
       <aside className="side">
-        <div className="brand"><span className="logo-plate"><img src="/logo.png" alt="Careva+" /></span></div>
+        <div className="brand"><span className="logo-plate"><img src={LOGO} alt="Careva+" /></span></div>
         <nav aria-label="Office">
           {NAV.map(([k, l, I]) => (
             <button key={k} className={page === k ? "on" : ""} onClick={() => setPage(k)}><I size={18} />{l}{counts[k] ? <span className="count">{counts[k]}</span> : null}</button>
           ))}
         </nav>
-        <div className="me"><Avatar name={s.profile.name || "Office"} color="#2B6DE8" size={32} /><div><div style={{ color: "#fff", fontWeight: 700, fontSize: 13 }}>{s.profile.name || "Office"}</div><small style={{ textTransform: "capitalize" }}>{s.profile.role}</small></div><button onClick={signOut} aria-label="Sign out"><LogOut size={18} /></button></div>
+        <div className="me"><Avatar name={s.profile.name || "Office"} color="#2B6DE8" size={32} /><div><div style={{ fontWeight: 600 }}>{s.profile.name || "Office"}</div><small className="muted" style={{ textTransform: "capitalize" }}>{s.profile.role}</small></div><button onClick={signOut} aria-label="Sign out"><LogOut size={18} /></button></div>
       </aside>
       <div style={{ minWidth: 0 }}>
         <div className="mobile-top">
-          <span className="logo-plate" style={{ padding: "3px 6px" }}><img src="/logo.png" alt="Careva+" style={{ height: 24 }} /></span>
+          <span className="logo-plate" style={{ padding: "3px 6px" }}><img src={LOGO} alt="Careva+" style={{ height: 24 }} /></span>
           <select aria-label="Section" value={page} onChange={(e) => setPage(e.target.value)} style={{ width: "auto", flex: 1 }}>
             {NAV.map(([k, l]) => <option key={k} value={k}>{l}{counts[k] ? ` (${counts[k]})` : ""}</option>)}
           </select>
@@ -194,7 +195,7 @@ function LiveMap({ T, cfg, openStaff }) {
             <div key={st.id} className="li click" onClick={() => openStaff(st.id)}>
               <Avatar name={st.name} color={isLive(l) ? st.color : "#9AA4B2"} />
               <div className="grow"><div className="t">{st.name}</div><div className="s">{v ? `${STATUS[v.status].label} → ${p?.name}` : "Available"} · {l ? ago(l.ts) : "no location yet"}</div>
-                {v?.status === "enroute" && l && p?.lat && <div className="s" style={{ color: "#1F57C4", fontWeight: 700 }}>{fmtDist(distM(l, p))} away</div>}</div>
+                {v?.status === "enroute" && l && p?.lat && <div className="s" style={{ color: "var(--tint)", fontWeight: 600 }}>{fmtDist(distM(l, p))} away</div>}</div>
               {isLive(l) ? <Badge tone="green" dot>Live</Badge> : <Badge>Offline</Badge>}
             </div>); })}</div>
         </Card>

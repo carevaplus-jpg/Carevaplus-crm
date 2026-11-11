@@ -18,7 +18,7 @@ export default function Patient() {
   const ctx = { s, pid, me, cfg, setTab };
   return (
     <div className="app">
-      <header className="app-h"><div className="row"><div className="grow"><div className="hello">Careva+ Home Health Care</div><h1>Vanakkam, {me.name?.split(" ")[0]}</h1></div><a className="icon-btn" style={{ background: "#ffffff1a", borderColor: "#ffffff33", color: "#fff" }} href={`tel:${cfg.company?.phone || "9655508881"}`} aria-label="Call Careva+"><Phone size={18} /></a></div></header>
+      <header className="app-h"><div className="row"><div className="grow"><div className="hello">Careva+ Home Health Care</div><h1>Vanakkam, {me.name?.split(" ")[0]}</h1></div><a className="icon-btn" href={`tel:${cfg.company?.phone || "9655508881"}`} aria-label="Call Careva+"><Phone size={18} /></a></div></header>
       <div className="app-b">
         {tab === "home" && <HomeTab {...ctx} />}
         {tab === "book" && <Book {...ctx} />}
@@ -84,7 +84,7 @@ function NextCard({ v, s }) {
   return (
     <div className="hero">
       <div className="row"><b className="grow">Next visit</b><ServiceTag s={v.service} /></div>
-      <div className="row"><div style={{ background: "#E8F0FE", color: "#1F57C4", borderRadius: 12, padding: "8px 12px", textAlign: "center", minWidth: 64 }}><div style={{ fontSize: 12, fontWeight: 700 }}>{fmtDate(v.date, { month: "short" })}</div><div style={{ fontSize: 24, fontWeight: 800, lineHeight: 1 }}>{v.date.slice(8)}</div></div>
+      <div className="row"><div style={{ background: "var(--glass-strong)", borderRadius: 16, padding: "8px 12px", textAlign: "center", minWidth: 64, boxShadow: "inset 0 0 0 .5px var(--sep)" }}><div style={{ fontSize: 12, fontWeight: 600, color: "var(--red)", textTransform: "uppercase" }}>{fmtDate(v.date, { month: "short" })}</div><div style={{ fontSize: 28, fontWeight: 300, lineHeight: 1.05 }}>{v.date.slice(8)}</div></div>
         <div className="grow"><b style={{ fontSize: 17 }}>{v.date === today() ? "Today" : fmtDate(v.date, { weekday: "long" })}, {fmtTime(v.start)}</b><div className="muted" style={{ fontSize: 13 }}>{v.dur || 45} min · {st ? `with ${st.name}` : "caregiver being assigned"}</div></div></div>
       <p className="muted" style={{ margin: 0, fontSize: 13 }}>You'll see your caregiver live on the map once they start travelling.</p>
       {v.status === "scheduled" && v.date > today() && <button className="link" onClick={() => run("c", () => patch("visits", v.id, { status: "cancelled" }), "Visit cancelled — the office has been told")} disabled={busy === "c"}>Cancel this visit</button>}
