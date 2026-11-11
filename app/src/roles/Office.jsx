@@ -1,5 +1,5 @@
 import LOGO from "../assets/logo.webp";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   LayoutDashboard, Map as MapIcon, CalendarDays, Users, Inbox, Stethoscope, Receipt, Bell, MessageSquare, Settings as Cog,
   LogOut, Plus, Navigation, Phone, CheckCircle2, AlertTriangle, Clock, IndianRupee, Activity, MapPin, Search, ShieldCheck, Route,
@@ -9,6 +9,7 @@ import { SERVICES, TASKS, STATUS } from "../lib/config";
 import { distM, fmtDist, gmapsAt } from "../lib/geo";
 import { uid, today, fmtDate, fmtTime, ago, rupee, byStart, addDays } from "../lib/util";
 import GMap from "../components/GMap";
+import { SOSOverlay, ApkButton } from "../components/alerts";
 import { Card, Badge, StatusBadge, ServiceTag, Avatar, Btn, Stat, Empty, Field, Sheet, Tabs, Spark, toast, useAction } from "../components/ui";
 
 const LIVE_MS = 10 * 60e3;
@@ -25,10 +26,16 @@ export default function Office() {
   const [visitId, setVisitId] = useState(null);
   const [patientId, setPatientId] = useState(null);
   const [staffId, setStaffId] = useState(null);
+  const [thread, setThread] = useState(null);
+  // tapping a notification / banner opens the right place
+  useEffect(() => {
+    const f = (e) => { const g = e.detail || ""; if (g.startsWith("messages:")) { setThread(g.slice(9)); setPage("messages"); } else if (g === "alerts") setPage("alerts"); else if (g === "requests") setPage("requests"); };
+    window.addEventListener("careva:go", f); return () => window.removeEventListener("careva:go", f);
+  }, []);
   const T = s.t;
   const openAlerts = (T.alerts || []).filter((a) => !a.done).length;
   const pending = (T.requests || []).filter((r) => r.status === "pending").length;
-  const ctx = { T, cfg: getSettings(s), setPage, newVisit: (v) => setVisitForm(v || {}), openVisit: setVisitId, openPatient: setPatientId, openStaff: setStaffId };
+  const ctx = { T, cfg: getSettings(s), setPage, thread, setThread, newVisit: (v) => setVisitForm(v || {}), openVisit: setVisitId, openPatient: setPatientId, openStaff: setStaffId };
   const counts = { alerts: openAlerts, requests: pending };
   const Page = { dash: Dashboard, map: LiveMap, visits: Schedule, patients: Patients, requests: Requests, staff: StaffPage, billing: Billing, alerts: Alerts, messages: Messages, settings: SettingsPage }[page];
 
@@ -57,6 +64,7 @@ export default function Office() {
       {visitId && <VisitSheet id={visitId} ctx={ctx} onClose={() => setVisitId(null)} />}
       {patientId && <PatientSheet id={patientId} ctx={ctx} onClose={() => setPatientId(null)} />}
       {staffId && <StaffSheet id={staffId} ctx={ctx} onClose={() => setStaffId(null)} />}
+      <SOSOverlay />
     </div>
   );
 }
@@ -116,7 +124,7 @@ function Dashboard(c) {
     <>
       <div className="page-h">
         <div><h1>Good {hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening"}</h1><p>{fmtDate(d, { weekday: "long", day: "numeric", month: "long" })} · {cfg.company?.name || "Careva Plus"}</p></div>
-        <Btn icon={Plus} onClick={() => c.newVisit()}>New visit</Btn>
+        <div className="row"><ApkButton compact /><Btn icon={Plus} onClick={() => c.newVisit()}>New visit</Btn></div>
       </div>
       <div className="stats">
         <Stat icon={CalendarDays} label="Visits today" value={todays.length} sub={`${done} completed`} tone="blue" />
@@ -545,14 +553,14 @@ function Alerts(c) {
 }
 
 /* ------------------------------ Messages ------------------------------ */
-function Messages({ T }) {
+function Messages({ T, thread, setThread }) {
   const threads = useMemo(() => {
     const g = {};
     (T.messages || []).forEach((m) => { (g[m.thread] ||= []).push(m); });
     [...(T.staff || []).map((s) => s.id), ...(T.patients || []).filter((p) => p.status === "active").map((p) => p.id)].forEach((id) => (g[id] ||= []));
     return Object.entries(g).map(([id, ms]) => ({ id, ms: ms.sort((a, b) => a.ts - b.ts), last: ms.at(-1)?.ts || 0 })).sort((a, b) => b.last - a.last);
   }, [T.messages, T.staff, T.patients]);
-  const [sel, setSel] = useState(threads[0]?.id);
+  const sel = thread || threads[0]?.id; const setSel = setThread;
   const name = (id) => id === "all-staff" ? "All staff" : byId(T.staff, id)?.name || byId(T.patients, id)?.name || id;
   const cur = threads.find((t) => t.id === sel);
   return (

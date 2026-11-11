@@ -77,7 +77,7 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
 .link { background: none; border: 0; color: var(--tint); font-weight: 400; cursor: pointer; padding: 0; font-size: inherit; }
 
 /* ---------- the glass material ---------- */
-.glass, .card, .stat, .hero, .tabbar > div, .side, .sheet, .toast, .login-card, .map-chip, .demo-ribbon, .tabs, .mobile-top {
+.glass, .card, .stat, .hero, .tabbar > div, .side, .sheet, .toast, .login-card, .map-chip, .tabs, .mobile-top {
   background: var(--glass);
   -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
   border: 0.5px solid var(--rim-2);
@@ -216,11 +216,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 15px; letter-spac
 .toast { padding: 13px 18px; border-radius: 999px; font-weight: 600; font-size: 15px; text-align: center; color: var(--label); animation: drop .5s var(--spring); background: var(--glass-strong); }
 .toast.t-err { color: var(--red); }
 @keyframes drop { from { transform: translateY(-30px) scale(.9); opacity: 0; } }
-.demo-ribbon { position: fixed; z-index: 90; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top, 0px) + 6px); color: var(--orange); font-size: 13px; font-weight: 600; padding: 5px 14px; border-radius: 999px; pointer-events: none; }
 
-body.is-demo .app-h { padding-top: calc(44px + env(safe-area-inset-top, 0px)); }
-body.is-demo .main { padding-top: 48px; }
-body.is-demo .mobile-top { top: calc(40px + env(safe-area-inset-top, 0px)); }
 
 /* ---------- sign in ---------- */
 .login { min-height: 100%; display: grid; grid-template-columns: 1.05fr 1fr; }
@@ -272,7 +268,7 @@ body.is-demo .mobile-top { top: calc(40px + env(safe-area-inset-top, 0px)); }
 
 /* ---------- iPhone apps (staff / patient) ---------- */
 .app { max-width: 600px; margin: 0 auto; min-height: 100%; padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px)); }
-.app-h { padding: calc(18px + env(safe-area-inset-top, 0px)) max(20px, env(safe-area-inset-right, 0px)) 14px max(20px, env(safe-area-inset-left, 0px)); }
+.app-h { padding: calc(18px + env(safe-area-inset-top, 0px)) calc(84px + env(safe-area-inset-right, 0px)) 14px max(20px, env(safe-area-inset-left, 0px)); }
 .app-h .hello { color: var(--label-2); font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: -.08px; font-size: 13px; }
 .app-h h1 { font-size: 34px; font-weight: 700; letter-spacing: .37px; }
 .app-h .icon-btn { background: var(--glass) !important; color: var(--tint) !important; }
@@ -321,3 +317,45 @@ body.is-demo .mobile-top { top: calc(40px + env(safe-area-inset-top, 0px)); }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   :root { --glass: rgba(255,255,255,.92); --glass-strong: #fff; --glass-thin: rgba(255,255,255,.8); }
 }
+
+/* ---------- notification banners (iOS style) ---------- */
+.banners { position: fixed; z-index: 120; top: calc(8px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); width: min(calc(100vw - 16px), 420px); display: grid; gap: 8px; }
+.banner { display: flex; gap: 12px; align-items: flex-start; text-align: left; width: 100%; border: 0; cursor: pointer; padding: 12px 14px; border-radius: 26px; color: var(--label);
+  background: var(--glass-strong); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
+  box-shadow: inset 0 1px 0 var(--rim), inset 0 0 0 .5px var(--rim-2), 0 18px 40px -12px rgba(0,0,0,.35); animation: drop .55s var(--spring); }
+.banner-icon { width: 38px; height: 38px; border-radius: 10px; flex: none; display: grid; place-items: center; background: #fff; overflow: hidden; box-shadow: inset 0 0 0 .5px rgba(0,0,0,.08); }
+.banner-icon img { width: 34px; height: 34px; object-fit: contain; object-position: left center; }
+.banner-text { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.banner-top { display: flex; justify-content: space-between; gap: 8px; } .banner-top b { font-size: 15px; font-weight: 600; letter-spacing: -.24px; } .banner-top small { color: var(--label-2); font-size: 13px; }
+.banner-body { font-size: 15px; letter-spacing: -.24px; color: var(--label); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.banner.sos { background: color-mix(in srgb, var(--red) 88%, black); color: #fff; } .banner.sos .banner-body, .banner.sos small { color: #fff; }
+.banner.sos .banner-icon { background: #fff; color: var(--red); }
+
+/* ---------- SOS button: fixed top-right, press & hold ---------- */
+.sos-btn { position: fixed; z-index: 40; top: calc(14px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); width: 58px; height: 58px; border-radius: 50%; border: 0; cursor: pointer; display: grid; place-items: center;
+  background: radial-gradient(circle at 35% 30%, #ff6b61, var(--red) 55%, #c4170d); color: #fff; font-weight: 800; font-size: 15px; letter-spacing: .5px;
+  box-shadow: 0 10px 24px -6px color-mix(in srgb, var(--red) 80%, transparent), inset 0 1.5px 0 rgba(255,255,255,.45), inset 0 -2px 4px rgba(0,0,0,.18);
+  transform: scale(calc(1 - var(--p, 0) * .08)); transition: transform .15s; touch-action: none; user-select: none; -webkit-user-select: none; }
+.sos-btn span { position: relative; z-index: 1; }
+.sos-btn svg { position: absolute; inset: -6px; width: calc(100% + 12px); height: calc(100% + 12px); transform: rotate(-90deg); }
+.sos-btn circle { fill: none; stroke: #fff; stroke-width: 4; stroke-linecap: round; stroke-dasharray: 182.2; stroke-dashoffset: calc(182.2 * (1 - var(--p, 0))); opacity: calc(var(--p, 0) * 4); filter: drop-shadow(0 0 4px rgba(255,59,48,.8)); }
+.sos-btn::after { content: ""; position: absolute; inset: -3px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--red) 60%, transparent); animation: ring 2.4s infinite; }
+@keyframes ring { 0% { transform: scale(1); opacity: .9; } 100% { transform: scale(1.35); opacity: 0; } }
+.b-danger-solid { background: var(--red); color: #fff; box-shadow: 0 6px 18px -6px color-mix(in srgb, var(--red) 70%, transparent), inset 0 1px 0 rgba(255,255,255,.35); }
+
+/* ---------- office SOS takeover ---------- */
+.sos-overlay { position: fixed; inset: 0; z-index: 110; display: grid; place-items: center; padding: 16px; background: radial-gradient(circle at 50% 30%, rgba(255,59,48,.45), rgba(80,0,0,.55)); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); animation: fade .3s; }
+.sos-card { width: min(100%, 560px); max-height: 94vh; overflow-y: auto; display: grid; gap: 14px; padding: 22px; border-radius: var(--r-xl); background: var(--glass-strong); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); box-shadow: inset 0 1px 0 var(--rim), 0 30px 80px -20px rgba(0,0,0,.6); animation: up .5s var(--spring); }
+.sos-card h2 { font-size: 28px; font-weight: 700; }
+.sos-k { color: var(--red); font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: .4px; }
+.sos-pulse { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; background: var(--red); color: #fff; animation: sospulse 1.2s infinite; flex: none; }
+@keyframes sospulse { 0% { box-shadow: 0 0 0 0 rgba(255,59,48,.6); } 100% { box-shadow: 0 0 0 18px rgba(255,59,48,0); } }
+
+/* ---------- download Android app ---------- */
+.apk-btn { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 16px; border-radius: 999px; font-size: 15px; font-weight: 600; color: var(--label); white-space: nowrap;
+  background: var(--glass); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); box-shadow: inset 0 1px 0 var(--rim), inset 0 0 0 .5px var(--rim-2), var(--glass-shadow); }
+.apk-btn svg { color: var(--green); }
+.apk-btn.compact { min-height: 44px; }
+.login { position: relative; }
+.login-apk { position: absolute; z-index: 5; top: calc(16px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); }
+@media (max-width: 860px) { .login-art { padding-top: 76px; } }

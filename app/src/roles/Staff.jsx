@@ -5,6 +5,7 @@ import { SERVICES } from "../lib/config";
 import { distM, fmtDist, gmapsDir, getPosition } from "../lib/geo";
 import { uid, today, fmtDate, fmtTime, ago, byStart, hm, minsBetween } from "../lib/util";
 import GMap from "../components/GMap";
+import { SOSButton } from "../components/alerts";
 import { Card, Badge, StatusBadge, ServiceTag, Avatar, Btn, Empty, Field, Sheet, SignaturePad, useAction, toast } from "../components/ui";
 import { Chat, vitalsLine } from "./Office";
 
@@ -14,6 +15,10 @@ export default function Staff() {
   const me = byId(s.t.staff, sid) || { name: s.profile.name || "Care staff" };
   const [tab, setTab] = useState("today");
   const [open, setOpen] = useState(null);
+  useEffect(() => {
+    const f = (e) => { const g = e.detail; if (["chat", "visits", "today", "me"].includes(g)) setTab(g); };
+    window.addEventListener("careva:go", f); return () => window.removeEventListener("careva:go", f);
+  }, []);
   const shift = byId(s.t.shifts, sid);
   const onShift = !!(shift?.on && shift.day === today());
   const pos = useLiveLocation(sid, onShift);
@@ -21,6 +26,7 @@ export default function Staff() {
   const ctx = { s, sid, me, pos, onShift, shift, open: setOpen, cfg: getSettings(s) };
   return (
     <div className="app">
+      <SOSButton who={{ id: sid, sid, name: me.name, label: "Care staff", phone: me.phone }} />
       <header className="app-h">
         <div className="row"><div className="grow"><div className="hello">{fmtDate(today(), { weekday: "long", day: "numeric", month: "long" })}</div><h1>Hi, {me.name.split(" ")[0]}</h1></div><Avatar name={me.name} color={me.color || "#2B6DE8"} size={40} /></div>
       </header>

@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Home, CalendarPlus, HeartPulse, Receipt, MessageSquare, Phone, Star, Bell, LogOut, CheckCircle2, Clock, MapPin, IndianRupee, ShieldCheck } from "lucide-react";
 import { useStore, put, patch, signOut, settings as getSettings, byId } from "../lib/store";
 import { SERVICES } from "../lib/config";
 import { distM, fmtDist } from "../lib/geo";
 import { uid, today, fmtDate, fmtTime, ago, rupee, byStart, addDays, hm } from "../lib/util";
 import GMap from "../components/GMap";
+import { SOSButton } from "../components/alerts";
 import { Card, Badge, StatusBadge, ServiceTag, Avatar, Btn, Empty, Field, Sheet, useAction, toast } from "../components/ui";
 import { Chat, VitalsPanel } from "./Office";
 
@@ -13,11 +14,16 @@ export default function Patient() {
   const pid = s.profile.patient_id;
   const me = byId(s.t.patients, pid) || { name: s.profile.name || "" };
   const [tab, setTab] = useState("home");
+  useEffect(() => {
+    const f = (e) => { const g = e.detail; if (["chat", "home", "book", "health", "bills"].includes(g)) setTab(g); };
+    window.addEventListener("careva:go", f); return () => window.removeEventListener("careva:go", f);
+  }, []);
   const cfg = getSettings(s);
   const due = (s.t.invoices || []).filter((i) => i.status === "due").length;
   const ctx = { s, pid, me, cfg, setTab };
   return (
     <div className="app">
+      <SOSButton who={{ id: pid, pid, name: me.name, label: "Patient", phone: me.phone, contact: me.contact }} />
       <header className="app-h"><div className="row"><div className="grow"><div className="hello">Careva+ Home Health Care</div><h1>Vanakkam, {me.name?.split(" ")[0]}</h1></div><a className="icon-btn" href={`tel:${cfg.company?.phone || "9655508881"}`} aria-label="Call Careva+"><Phone size={18} /></a></div></header>
       <div className="app-b">
         {tab === "home" && <HomeTab {...ctx} />}

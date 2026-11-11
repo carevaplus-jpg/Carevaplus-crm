@@ -1,7 +1,8 @@
 import { useSyncExternalStore } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { SUPABASE_URL, SUPABASE_KEY, STAFF_DOMAIN, PATIENT_DOMAIN } from "./config";
-import { createDemoBackend } from "./demo";
+import { notify, initNotifications } from "./notify";
+import { SERVICES as SVC } from "./config";
 
 /* ------------------------------------------------------------------ *
  * One cache for every table the signed-in user may read (row-level
@@ -15,7 +16,6 @@ const DOC_TABLES = ["settings", "staff", "patients", "visits", "requests", "invo
 function createLiveBackend() {
   const sb = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
   return {
-    demo: false,
     async session() {
       const { data } = await sb.auth.getSession();
       return data.session;
@@ -58,6 +58,10 @@ function createLiveBackend() {
     async trail(staffId, p) {
       await sb.from("location_trail").insert({ staff_id: staffId, lat: p.lat, lng: p.lng, acc: p.acc });
     },
+    async registerPush(token) {
+      const { error } = await sb.rpc("register_push_token", { p_token: token, p_platform: "android" });
+      if (error) throw error;
+    },
     async signedUrl(path) {
       const { data } = await sb.storage.from("careva").createSignedUrl(path, 600);
       return data?.signedUrl;
@@ -86,7 +90,8 @@ export const useStore = (sel = (s) => s) => sel(useSyncExternalStore((f) => (sub
 export const getState = () => state;
 export const api = () => backend;
 
-function applyRow(table, type, row, old) {
+function applyRow(table, type, row, old, remote = false) {
+  if (remote) maybeNotify(table, type, row);
   const cur = state.t[table] || [];
   let next;
   if (table === "location_trail") next = type === "INSERT" ? [...cur, row] : cur;
@@ -100,8 +105,9 @@ function applyRow(table, type, row, old) {
 }
 
 let unsub = null;
-export async function boot(demo) {
-  backend = demo ? createDemoBackend() : createLiveBackend();
+/** `testBackend` is only passed by local test builds (VITE_TEST_FIXTURES); real builds always use the live database. */
+export async function boot(testBackend) {
+  backend = testBackend || createLiveBackend();
   const session = await backend.session();
   if (!session) return set({ ready: true, profile: null, t: {} });
   await loadAll();
@@ -114,7 +120,32 @@ async function loadAll() {
   const rows = await Promise.all(tables.map((t) => backend.load(t, profile)));
   set({ ready: true, profile, t: Object.fromEntries(tables.map((t, i) => [t, rows[i]])) });
   unsub?.();
-  unsub = backend.subscribe(applyRow);
+  unsub = backend.subscribe((t, type, row, old) => applyRow(t, type, row, old, true));
+  initNotifications((tok) => backend.registerPush?.(tok));
+}
+
+/* --------------------------- notifications --------------------------- */
+const seen = new Set();
+const nameOf = (id) => id === "office" ? "Careva+ office" : (byId(state.t.staff, id) || byId(state.t.patients, id))?.name || id;
+function maybeNotify(table, type, row) {
+  const p = state.profile; if (!p || !row) return;
+  const doc = row.doc ? { ...row.doc, id: row.id } : row;
+  const key = table + ":" + doc.id + ":" + type;
+  if (seen.has(key)) return; seen.add(key);
+  const office = isOffice(p), me = office ? "office" : p.role === "staff" ? p.staff_id : p.patient_id;
+  if (table === "messages" && type === "INSERT" && doc.from !== me && Date.now() - (doc.ts || 0) < 120e3) {
+    if (office && doc.from === "office") return;
+    const where = office ? "messages:" + doc.thread : "chat";
+    const title = doc.thread === "all-staff" ? "Announcement · Careva+" : nameOf(doc.from);
+    const sos = /^🚨/.test(doc.text || "");
+    return notify({ id: key, title, body: doc.text, tone: sos ? "sos" : "msg", go: where });
+  }
+  if (table === "alerts" && type === "INSERT" && office && !doc.done) {
+    const sos = doc.kind === "sos";
+    return notify({ id: key, title: sos ? "🚨 SOS emergency" : ({ request: "New visit request", payment: "Payment reported", evv: "Visit verification", vitals: "Abnormal vitals", late: "Late arrival", resched: "Reschedule request" }[doc.kind] || "Alert"), body: doc.text, tone: sos ? "sos" : "alert", go: sos ? "sos:" + doc.id : "alerts" });
+  }
+  if (table === "notifications" && type === "INSERT" && p.role === "patient") return notify({ id: key, title: "Careva+", body: doc.text, tone: "msg", go: "home" });
+  if (table === "visits" && type === "INSERT" && p.role === "staff" && doc.sid === p.staff_id) return notify({ id: key, title: "New visit assigned", body: `${SVC[doc.service]?.label || "Visit"} · ${new Date(doc.date + "T" + (doc.start || "09:00")).toLocaleString("en-IN", { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}`, tone: "alert", go: "visits" });
 }
 
 export async function signIn(kind, ident, pw) {
@@ -122,7 +153,7 @@ export async function signIn(kind, ident, pw) {
   await loadAll();
 }
 export async function signOut() {
-  unsub?.(); unsub = null;
+  unsub?.(); unsub = null; seen.clear();
   await backend.signOut();
   set({ profile: null, t: {} });
 }

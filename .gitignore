@@ -8,3 +8,4 @@ app/.env
 *.idsig
 *.jks
 app/dist-html/
+app/dist-test/

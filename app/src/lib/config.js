@@ -7,6 +7,9 @@ export const SUPABASE_KEY = "sb_publishable_GSX6LQ_mVVtDaEaagS_fig_Dpa-FE2I";
 // in Google Cloud Console). Without a key the app falls back to keyless Google Maps embeds + directions links.
 export const GOOGLE_MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY || "";
 
+// Public download link for the Android app (Supabase Storage, public "downloads" bucket)
+export const APK_URL = `${SUPABASE_URL}/storage/v1/object/public/downloads/Careva-Plus.apk`;
+
 export const STAFF_DOMAIN = "staff.carevaplus.com";
 export const PATIENT_DOMAIN = "patient.carevaplus.com";
 

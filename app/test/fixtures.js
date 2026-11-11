@@ -1,5 +1,5 @@
-import { today, addDays, uid } from "./util";
-import { TASKS } from "./config";
+import { today, addDays, uid } from "../src/lib/util";
+import { TASKS } from "../src/lib/config";
 
 /* In-memory backend with sample data around Salem, for trying the app without touching real records.
    A caregiver on the way to a patient moves every 2.5 s so live tracking can be seen working. */
@@ -82,6 +82,7 @@ export function createDemoBackend() {
   let listeners = [];
   const store = JSON.parse(JSON.stringify(data));
   const fire = (t, type, row) => listeners.forEach((f) => f(t, type, row, row));
+  window.__careva_fire = fire; // tests: simulate incoming realtime events
   let step = 0;
   setInterval(() => {
     const v = store.visits.find((x) => x.id === "V2");
@@ -134,7 +135,7 @@ export function createDemoBackend() {
       const list = store[t] || (store[t] = []);
       const i = list.findIndex((r) => r.id === id);
       if (i < 0) list.push(doc); else list[i] = doc;
-      setTimeout(() => fire(t, "UPDATE", { id, doc }), 50);
+      setTimeout(() => fire(t, i < 0 ? "INSERT" : "UPDATE", { id, doc }), 50);
     },
     async trail(sid, p) { fire("location_trail", "INSERT", { id: Date.now(), staff_id: sid, ...p, recorded_at: new Date().toISOString() }); },
     async signedUrl() { return null; },
