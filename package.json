@@ -15,6 +15,9 @@
     "app:preview": "vite preview --config app/vite.config.js"
   },
   "dependencies": {
+    "@capacitor/android": "^7.2.0",
+    "@capacitor/cli": "^7.2.0",
+    "@capacitor/core": "^7.2.0",
     "@fontsource/plus-jakarta-sans": "^5.3.0",
     "@remotion/cli": "^4.0.541",
     "@remotion/player": "^4.0.541",

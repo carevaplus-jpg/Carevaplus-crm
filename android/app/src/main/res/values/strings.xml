@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Careva+</string>
+    <string name="title_activity_main">Careva+</string>
+    <string name="package_name">com.carevaplus.app</string>
+    <string name="custom_url_scheme">com.carevaplus.app</string>
+</resources>

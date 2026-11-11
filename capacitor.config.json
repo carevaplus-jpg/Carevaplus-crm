@@ -1,0 +1,12 @@
+{
+  "appId": "com.carevaplus.app",
+  "appName": "Careva+",
+  "webDir": "app/dist",
+  "android": {
+    "backgroundColor": "#0B2F5E",
+    "allowMixedContent": false
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}
