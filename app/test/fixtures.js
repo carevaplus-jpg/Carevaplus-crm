@@ -139,6 +139,7 @@ export function createDemoBackend() {
     },
     async trail(sid, p) { fire("location_trail", "INSERT", { id: Date.now(), staff_id: sid, ...p, recorded_at: new Date().toISOString() }); },
     async signedUrl() { return null; },
+    async admin(action, b) { if (action === "office_users") return { users: [{ id: "u1", name: "Office Admin", email: "admin@carevaplus.com", role: "admin" }] }; return { ok: true, code: b.staff_id, phone: b.phone }; },
     subscribe(f) { listeners.push(f); return () => { listeners = listeners.filter((x) => x !== f); }; },
   };
 }

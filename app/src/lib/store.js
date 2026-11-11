@@ -58,6 +58,17 @@ function createLiveBackend() {
     async trail(staffId, p) {
       await sb.from("location_trail").insert({ staff_id: staffId, lat: p.lat, lng: p.lng, acc: p.acc });
     },
+    /** Account management via the careva-admin edge function (it checks the caller is office/admin). */
+    async admin(action, body = {}) {
+      const { data, error } = await sb.functions.invoke("careva-admin", { body: { action, ...body } });
+      if (error) {
+        let msg = error.message;
+        try { msg = (await error.context.json()).error || msg; } catch {}
+        throw new Error(friendly(msg));
+      }
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
     async registerPush(token) {
       const { error } = await sb.rpc("register_push_token", { p_token: token, p_platform: "android" });
       if (error) throw error;
@@ -166,6 +177,7 @@ export async function put(table, doc) {
   try { await backend.put(table, doc.id, doc, exists); }
   catch (e) { set({ t: { ...state.t, [table]: prev } }); throw e; }
 }
+export const adminCall = (action, body) => backend.admin(action, body);
 export const patch = (table, id, changes) => {
   const row = (state.t[table] || []).find((r) => r.id === id) || { id };
   return put(table, { ...row, ...changes });

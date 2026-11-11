@@ -2,9 +2,9 @@ import LOGO from "../assets/logo.webp";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   LayoutDashboard, Map as MapIcon, CalendarDays, Users, Inbox, Stethoscope, Receipt, Bell, MessageSquare, Settings as Cog,
-  LogOut, Plus, Navigation, Phone, CheckCircle2, AlertTriangle, Clock, IndianRupee, Activity, MapPin, Search, ShieldCheck, Route,
+  LogOut, Plus, KeyRound, UserPlus, Share2, Trash2, Navigation, Phone, CheckCircle2, AlertTriangle, Clock, IndianRupee, Activity, MapPin, Search, ShieldCheck, Route,
 } from "lucide-react";
-import { useStore, put, patch, signOut, settings as getSettings, byId } from "../lib/store";
+import { useStore, put, patch, signOut, settings as getSettings, byId, adminCall } from "../lib/store";
 import { SERVICES, TASKS, STATUS } from "../lib/config";
 import { distM, fmtDist, gmapsAt } from "../lib/geo";
 import { uid, today, fmtDate, fmtTime, ago, rupee, byStart, addDays } from "../lib/util";
@@ -35,7 +35,7 @@ export default function Office() {
   const T = s.t;
   const openAlerts = (T.alerts || []).filter((a) => !a.done).length;
   const pending = (T.requests || []).filter((r) => r.status === "pending").length;
-  const ctx = { T, cfg: getSettings(s), setPage, thread, setThread, newVisit: (v) => setVisitForm(v || {}), openVisit: setVisitId, openPatient: setPatientId, openStaff: setStaffId };
+  const ctx = { T, cfg: getSettings(s), isAdmin: s.profile.role === "admin", setPage, thread, setThread, newVisit: (v) => setVisitForm(v || {}), openVisit: setVisitId, openPatient: setPatientId, openStaff: setStaffId };
   const counts = { alerts: openAlerts, requests: pending };
   const Page = { dash: Dashboard, map: LiveMap, visits: Schedule, patients: Patients, requests: Requests, staff: StaffPage, billing: Billing, alerts: Alerts, messages: Messages, settings: SettingsPage }[page];
 
@@ -325,7 +325,7 @@ function Patients(c) {
       <div className="page-h"><div><h1>Patients</h1><p>{(T.patients || []).filter((p) => p.status === "active").length} active patients</p></div><Btn icon={Plus} onClick={() => setAdd(true)}>Add patient</Btn></div>
       <div className="row wrap"><Tabs tabs={[["active", "Active"], ["discharged", "Discharged"], ["all", "All"]]} value={tab} onChange={setTab} /><div className="row grow" style={{ minWidth: 220 }}><Search size={16} className="muted" /><input placeholder="Search name, area, phone or ID" value={q} onChange={(e) => setQ(e.target.value)} /></div></div>
       <Card><div className="tbl-wrap"><table className="tbl">
-        <thead><tr><th>Patient</th><th>Area</th><th>Conditions</th><th>Risk</th><th>Next visit</th><th>Location</th></tr></thead>
+        <thead><tr><th>Patient</th><th>Area</th><th>Conditions</th><th>Risk</th><th>Next visit</th><th>Location</th><th>App login</th></tr></thead>
         <tbody>{list.map((p) => { const n = next(p.id); return (
           <tr key={p.id} className="click" onClick={() => c.openPatient(p.id)}>
             <td><div className="row"><Avatar name={p.name} size={32} color="#12407c" /><div><b>{p.name}</b><div className="muted" style={{ fontSize: 12 }}>{p.id} · {p.age || "—"}{p.g ? ` ${p.g}` : ""}</div></div></div></td>
@@ -333,6 +333,7 @@ function Patients(c) {
             <td><Badge tone={p.risk === "High" ? "red" : p.risk === "Medium" ? "amber" : "green"}>{p.risk || "—"}</Badge></td>
             <td className="num">{n ? `${fmtDate(n.date)} ${fmtTime(n.start)}` : <span className="muted">None</span>}</td>
             <td>{p.lat ? <Badge tone="green"><MapPin size={12} />Pinned</Badge> : <Badge tone="amber">Not pinned</Badge>}</td>
+            <td>{p.login ? <Badge tone="green">Active</Badge> : <Badge>None</Badge>}</td>
           </tr>); })}</tbody>
       </table>{!list.length && <Empty icon={Users} title="No patients match" />}</div></Card>
       {add && <PatientForm ctx={c} onClose={() => setAdd(false)} />}
@@ -397,6 +398,7 @@ function PatientSheet({ id, ctx, onClose }) {
           <dt>Emergency</dt><dd>{p.contact?.name ? <>{p.contact.name} ({p.contact.rel}) · <a href={`tel:${p.contact.phone}`}>{p.contact.phone}</a></> : "—"}</dd>
         </dl></Card>
         <div>{p.lat ? <><GMap markers={[{ id: "h", kind: "patient", lat: p.lat, lng: p.lng, color: "#3FA34D", title: p.name, sub: p.addr }]} height={250} /><a className="link" style={{ display: "inline-block", marginTop: 8 }} href={gmapsAt(p)} target="_blank" rel="noreferrer">Open in Google Maps ↗</a></> : <Empty icon={MapPin} title="Home not pinned"><button className="link" onClick={() => setEdit(true)}>Pin the location</button> so staff get exact directions.</Empty>}
+          <div style={{ marginTop: 12 }}><LoginCard kind="patient" rec={p} /></div>
           {p.status === "active" && <div style={{ marginTop: 12 }}><Btn kind="ghost" busy={busy === "d"} onClick={() => run("d", () => patch("patients", id, { status: "discharged" }), "Patient discharged")}>Discharge patient</Btn></div>}</div>
       </div>}
       {tab === "vitals" && <VitalsPanel vit={vit} />}
@@ -454,16 +456,18 @@ function Requests(c) {
 function StaffPage(c) {
   const { T } = c;
   const d = today();
+  const [add, setAdd] = useState(false);
   return (
     <>
-      <div className="page-h"><div><h1>Care staff</h1><p>Shift status, today's work and live location.</p></div></div>
+      {add && <StaffForm T={T} onClose={() => setAdd(false)} onSaved={(id) => { setAdd(false); c.openStaff(id); }} />}
+      <div className="page-h"><div><h1>Care staff</h1><p>Shift status, today's work and live location.</p></div><Btn icon={UserPlus} onClick={() => setAdd(true)}>Add staff</Btn></div>
       <div className="stats" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))" }}>{(T.staff || []).map((st) => {
         const l = byId(T.staff_locations, st.id), sh = byId(T.shifts, st.id), ts = byId(T.timesheets, st.id)?.[d];
         const vs = (T.visits || []).filter((v) => v.sid === st.id && v.date === d && v.status !== "cancelled");
         const cur = vs.find((v) => ["enroute", "inprogress"].includes(v.status));
         return (
           <button key={st.id} className="card" style={{ textAlign: "left", cursor: "pointer", padding: 16, display: "grid", gap: 10 }} onClick={() => c.openStaff(st.id)}>
-            <div className="row"><Avatar name={st.name} color={st.color} size={42} /><div className="grow"><b>{st.name}</b><div className="muted" style={{ fontSize: 13 }}>{st.role} · {st.exp || 0} yrs</div></div>{isLive(l) ? <Badge tone="green" dot>Live</Badge> : sh?.on && sh.day === d ? <Badge tone="amber">On shift</Badge> : <Badge>Off</Badge>}</div>
+            <div className="row"><Avatar name={st.name} color={st.color} size={42} /><div className="grow"><b>{st.name}</b><div className="muted" style={{ fontSize: 13 }}>{st.id} · {st.role} · {st.exp || 0} yrs{st.active === false ? " · inactive" : ""}</div>{!st.login && <Badge tone="amber">No app login</Badge>}</div>{isLive(l) ? <Badge tone="green" dot>Live</Badge> : sh?.on && sh.day === d ? <Badge tone="amber">On shift</Badge> : <Badge>Off</Badge>}</div>
             <div style={{ fontSize: 13.5, fontWeight: 600 }}>{cur ? <>{STATUS[cur.status].label}: {byId(T.patients, cur.pid)?.name}</> : <span className="muted">{vs.length ? "Between visits" : "No visits today"}</span>}</div>
             <div className="row" style={{ fontSize: 12.5, color: "var(--ink-3)", fontWeight: 600 }}><span>{vs.filter((v) => v.status === "completed").length}/{vs.length} visits</span><span>·</span><span>{ts ? `${Math.round(ts.mins / 60 * 10) / 10} h` : "0 h"} logged</span><span>·</span><span>{l ? ago(l.ts) : "no GPS"}</span></div>
           </button>);
@@ -475,20 +479,108 @@ function StaffPage(c) {
 function StaffSheet({ id, ctx, onClose }) {
   const { T, cfg } = ctx;
   const st = byId(T.staff, id);
+  const [edit, setEdit] = useState(false);
   if (!st) return null;
   const vs = (T.visits || []).filter((v) => v.sid === id && v.date === today()).sort(byStart);
   const ts = byId(T.timesheets, id) || {};
   const days = Object.keys(ts).filter((k) => /^\d{4}-/.test(k)).sort().slice(-7);
   return (
     <Sheet open wide title={st.name} onClose={onClose}>
-      <div className="row wrap"><Avatar name={st.name} color={st.color} size={44} /><div className="grow"><b>{st.role}</b><div className="muted">{st.qual} · {st.exp || 0} yrs · joined {fmtDate(st.joined)}</div></div><a className="btn b-ghost" href={`tel:${st.phone}`}><Phone size={16} />{st.phone}</a></div>
+      <div className="row wrap"><Avatar name={st.name} color={st.color} size={44} /><div className="grow"><b>{st.role}</b><div className="muted">{[st.id, st.qual, `${st.exp || 0} yrs`, `joined ${fmtDate(st.joined)}`].filter(Boolean).join(" · ")}</div></div><a className="btn b-ghost" href={`tel:${st.phone}`}><Phone size={16} />{st.phone}</a><Btn kind="ghost" onClick={() => setEdit(true)}>Edit</Btn></div>
       <div className="chips">{(st.skills || []).map((s) => <ServiceTag key={s} s={s} />)}</div>
+      <LoginCard kind="staff" rec={st} />
+      {edit && <StaffForm T={T} init={st} onClose={() => setEdit(false)} onSaved={() => setEdit(false)} />}
       <GMap markers={liveMarkers(T, cfg, { onlyStaff: id })} paths={trails(T, id)} height={300} />
       <div className="grid2">
         <Card title="Today's visits">{vs.length ? <div className="list">{vs.map((v) => <div key={v.id} className="li click" onClick={() => { onClose(); ctx.openVisit(v.id); }}><b className="num">{fmtTime(v.start)}</b><div className="grow"><div className="t">{byId(T.patients, v.pid)?.name}</div><div className="s">{SERVICES[v.service]?.label}</div></div><StatusBadge s={v.status} /></div>)}</div> : <Empty title="No visits today" />}</Card>
         <Card title="Timesheet (last days)">{days.length ? <div className="list">{days.map((d) => <div key={d} className="li"><span className="grow">{fmtDate(d)}</span><b className="num">{(ts[d].mins / 60).toFixed(1)} h</b><span className="muted num">{(ts[d].km || 0).toFixed?.(1) ?? ts[d].km} km</span></div>)}</div> : <Empty title="No timesheet yet" />}</Card>
       </div>
     </Sheet>
+  );
+}
+
+const COLORS = ["#2B6DE8", "#8E4EC6", "#3FA34D", "#E5862B", "#0E9AA7", "#E5484D", "#5856D6", "#C2410C"];
+function StaffForm({ T, init, onClose, onSaved }) {
+  const [f, setF] = useState(init || { name: "", phone: "", role: "Staff Nurse", short: "", qual: "", exp: "", area: "", skills: ["nursing"], color: COLORS[(T.staff || []).length % COLORS.length], active: true });
+  const [busy, run] = useAction();
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  const toggle = (k) => setF({ ...f, skills: (f.skills || []).includes(k) ? f.skills.filter((x) => x !== k) : [...(f.skills || []), k] });
+  const save = () => run("s", async () => {
+    if (!f.name.trim()) throw new Error("Enter the staff member's name.");
+    if (String(f.phone).replace(/\D/g, "").length < 10) throw new Error("Enter a 10-digit mobile number.");
+    const id = init?.id || "S" + (Math.max(100, ...(T.staff || []).map((x) => +x.id.slice(1) || 0)) + 1);
+    await put("staff", { ...f, id, exp: +f.exp || 0, joined: init?.joined || today(), active: f.active !== false });
+    onSaved?.(id);
+  }, init ? "Staff updated" : "Staff member added — now create their app login");
+  return (
+    <Sheet open title={init ? `Edit ${init.name}` : "Add care staff"} onClose={onClose}>
+      <div className="grid2"><Field label="Full name"><input id="st-name" value={f.name} onChange={set("name")} /></Field><Field label="Mobile"><input id="st-phone" type="tel" value={f.phone} onChange={set("phone")} /></Field></div>
+      <div className="grid3"><Field label="Role"><select value={f.role} onChange={set("role")}>{["Staff Nurse", "Senior Nurse", "Physiotherapist", "Care Assistant", "Doctor", "Lab Technician"].map((r) => <option key={r}>{r}</option>)}</select></Field>
+        <Field label="Qualification"><input value={f.qual} onChange={set("qual")} placeholder="e.g. GNM, B.Sc Nursing" /></Field><Field label="Experience (yrs)"><input type="number" min="0" value={f.exp} onChange={set("exp")} /></Field></div>
+      <Field label="Area they cover"><input value={f.area} onChange={set("area")} placeholder="e.g. Fairlands, Hasthampatti" /></Field>
+      <Field label="Services they can do"><div className="chips">{Object.entries(SERVICES).map(([k, x]) => <button key={k} type="button" className={`chip ${(f.skills || []).includes(k) ? "on" : ""}`} onClick={() => toggle(k)}>{x.label}</button>)}</div></Field>
+      <Field label="Map colour"><div className="chips">{COLORS.map((c) => <button key={c} type="button" aria-label={c} className="chip" onClick={() => setF({ ...f, color: c })} style={{ width: 34, height: 34, padding: 0, background: c, boxShadow: f.color === c ? "0 0 0 3px var(--glass-strong), 0 0 0 5px " + c : "none" }} />)}</div></Field>
+      {init && <label className="row"><input type="checkbox" checked={f.active !== false} onChange={(e) => setF({ ...f, active: e.target.checked })} />Active (can be assigned visits)</label>}
+      <Btn className="btn b-primary block" busy={busy === "s"} onClick={save}>{init ? "Save" : "Add staff member"}</Btn>
+    </Sheet>
+  );
+}
+
+/** Create / reset / remove an app login (via the careva-admin edge function). */
+const sixDigits = () => String(Math.floor(100000 + Math.random() * 900000));
+function LoginCard({ kind, rec }) {
+  const staff = kind === "staff";
+  const [secret, setSecret] = useState("");
+  const [phone, setPhone] = useState((rec.login?.phone || rec.phone || "").replace(/\D/g, "").slice(-10));
+  const [done, setDone] = useState(null);
+  const [busy, run] = useAction();
+  const create = () => run("c", async () => {
+    if (!/^\d{6}$/.test(secret)) throw new Error(`${staff ? "PIN" : "Access code"} must be exactly 6 digits.`);
+    if (staff) await adminCall("staff_login", { staff_id: rec.id, pin: secret });
+    else { if (phone.length !== 10) throw new Error("Enter the 10-digit mobile number they'll sign in with."); await adminCall("patient_login", { patient_id: rec.id, phone, code: secret }); }
+    setDone({ id: staff ? rec.id : phone, secret });
+  }, rec.login ? "Login reset" : "Login created");
+  const remove = () => run("r", () => adminCall("remove_login", { kind, id: rec.id }), "Login removed — they can no longer sign in");
+  const msg = done && `Careva+ app login for ${rec.name}\n${staff ? "Staff ID" : "Mobile number"}: ${done.id}\n${staff ? "PIN" : "Access code"}: ${done.secret}\nOpen the Careva+ app, choose “${staff ? "Care staff" : "Patient & family"}” and sign in.`;
+  const waTo = String(staff ? rec.phone : phone).replace(/\D/g, "").slice(-10);
+  return (
+    <Card title="App login" action={rec.login ? <Badge tone="green">Active</Badge> : <Badge tone="amber">Not set up</Badge>}>
+      <div className="stack">
+        <p className="muted" style={{ margin: 0, fontSize: 15 }}>{rec.login ? <>Signs in as <b>{staff ? rec.id : rec.login.phone}</b>{rec.login.at ? ` · since ${fmtDate(rec.login.at.slice(0, 10))}` : ""}. Set a new {staff ? "PIN" : "code"} to reset it.</> : `${staff ? "Staff sign in with their Staff ID" : "Patients and family sign in with their mobile number"} and a 6-digit ${staff ? "PIN" : "access code"}.`}</p>
+        {!staff && <Field label="Mobile number for sign-in"><input type="tel" inputMode="numeric" value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))} /></Field>}
+        <Field label={staff ? "6-digit PIN" : "6-digit access code"}><div className="row"><input id={`secret-${rec.id}`} inputMode="numeric" value={secret} onChange={(e) => setSecret(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="••••••" /><Btn kind="ghost" type="button" onClick={() => setSecret(sixDigits())}>Generate</Btn></div></Field>
+        <div className="row wrap"><Btn icon={KeyRound} busy={busy === "c"} onClick={create}>{rec.login ? "Reset login" : "Create login"}</Btn>{rec.login && <Btn kind="danger" icon={Trash2} busy={busy === "r"} onClick={remove}>Remove login</Btn>}</div>
+        {done && <div className="hero" style={{ gap: 10 }}>
+          <b>Send these details to {rec.name.split(" ")[0]}</b>
+          <pre style={{ margin: 0, whiteSpace: "pre-wrap", font: "inherit", fontSize: 15 }}>{msg}</pre>
+          <div className="row wrap">{waTo.length === 10 && <a className="btn b-green" href={`https://wa.me/91${waTo}?text=${encodeURIComponent(msg)}`} target="_blank" rel="noreferrer"><Share2 size={16} />Send on WhatsApp</a>}
+            <Btn kind="ghost" type="button" onClick={() => navigator.clipboard?.writeText(msg).then(() => toast("Copied"), () => toast("Select the text above to copy it", "err"))}>Copy</Btn></div>
+        </div>}
+      </div>
+    </Card>
+  );
+}
+
+function OfficeUsers({ isAdmin }) {
+  const [users, setUsers] = useState(null);
+  const [f, setF] = useState({ name: "", email: "", password: "", role: "coordinator" });
+  const [busy, run] = useAction();
+  const load = () => adminCall("office_users").then((r) => setUsers(r.users || []), () => setUsers([]));
+  useEffect(() => { load(); }, []);
+  const add = () => run("a", async () => { await adminCall("office_user", f); setF({ name: "", email: "", password: "", role: "coordinator" }); await load(); }, "Office user added");
+  const del = (u) => run(u.id, async () => { await adminCall("remove_office_user", { id: u.id }); await load(); }, "Office user removed");
+  return (
+    <Card title="Office users">
+      {users === null ? <div className="muted">Loading…</div> : <div className="list">{users.map((u) => (
+        <div key={u.id} className="li"><Avatar name={u.name || u.email} color="#5856D6" size={32} /><div className="grow"><div className="t">{u.name || u.email}</div><div className="s">{u.email} · <span style={{ textTransform: "capitalize" }}>{u.role}</span></div></div>
+          {isAdmin && <Btn kind="ghost" busy={busy === u.id} onClick={() => del(u)} aria-label={`Remove ${u.email}`}><Trash2 size={16} /></Btn>}</div>))}</div>}
+      {isAdmin ? <div className="stack" style={{ marginTop: 14 }}>
+        <div className="grid2"><Field label="Name"><input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field><Field label="Email"><input type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></Field></div>
+        <div className="grid2"><Field label="Password (8+ characters)"><input type="password" autoComplete="new-password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></Field>
+          <Field label="Role"><select value={f.role} onChange={(e) => setF({ ...f, role: e.target.value })}><option value="coordinator">Coordinator — schedule & patients</option><option value="supervisor">Supervisor</option><option value="billing">Billing</option><option value="admin">Admin — full access</option></select></Field></div>
+        <Btn icon={UserPlus} busy={busy === "a"} onClick={add}>Add office user</Btn>
+      </div> : <p className="muted" style={{ fontSize: 15 }}>Only an admin can add office users.</p>}
+    </Card>
   );
 }
 
@@ -592,7 +684,7 @@ export function Chat({ title, msgs, me, thread, extra = {} }) {
 }
 
 /* ------------------------------ Settings ------------------------------ */
-function SettingsPage({ cfg }) {
+function SettingsPage({ cfg, isAdmin }) {
   const [f, setF] = useState(() => JSON.parse(JSON.stringify(cfg)));
   const [loc, setLoc] = useState(cfg.company?.officeLat ? `${cfg.company.officeLat}, ${cfg.company.officeLng}` : "");
   const [busy, run] = useAction();
@@ -616,6 +708,7 @@ function SettingsPage({ cfg }) {
             <Field label="Late after (minutes)"><input type="number" value={f.lateMin || 15} onChange={(e) => setF({ ...f, lateMin: e.target.value })} /></Field>
             <label className="row" style={{ fontWeight: 600 }}><input type="checkbox" style={{ width: 18 }} checked={!!f.requireSig} onChange={(e) => setF({ ...f, requireSig: e.target.checked })} />Require patient/family signature at check-out</label>
           </div></Card>
+          <OfficeUsers isAdmin={isAdmin} />
           <Card title="Service rates (₹ per visit)"><div className="grid2">{Object.entries(SERVICES).map(([k, s]) => <Field key={k} label={s.label}><input type="number" value={f.rates?.[k] ?? ""} onChange={(e) => setF({ ...f, rates: { ...f.rates, [k]: e.target.value } })} /></Field>)}</div></Card>
         </div>
       </div>
