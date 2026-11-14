@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Careva+ — The Plus Comes Home</title>
+<style>
+@font-face{font-family:'Inter';font-weight:100 900;src:url(assets/inter-latin-wght-normal.woff2) format('woff2')}
+@font-face{font-family:'Montserrat';font-weight:600;src:url(assets/montserrat-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'Montserrat';font-weight:700;src:url(assets/montserrat-latin-700-normal.woff2) format('woff2')}
+:root{--canvas:#F2F5EF;--dot:#D3DBCF;--surf:#FFFFFF;--key:#EDF1EA;--navy:#0E2D5C;--sec:#6A7B8E;--green:#4E9A1B;--lime:#A3CF2A;--blue:#1E74CF;--line:#E0E6DC}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#15181d;overflow:hidden}
+#stage{position:absolute;left:0;top:0;width:1920px;height:1080px;overflow:hidden;background:var(--canvas);perspective:2600px;perspective-origin:50% 50%;transform-origin:0 0;font-family:'Inter',sans-serif;color:var(--navy)}
+#cam{position:absolute;left:0;top:0;width:0;height:0}
+#floor{position:absolute;left:-3000px;top:-3000px;width:12000px;height:9600px;background-image:radial-gradient(circle,var(--dot) 3px,transparent 3.6px);background-size:80px 80px}
+#world{position:absolute;left:0;top:0;width:0;height:0}
+#world *{position:absolute;white-space:nowrap}
+.card{background:var(--surf);border-radius:32px;box-shadow:0 2px 0 rgba(14,45,92,.04),0 26px 60px -24px rgba(14,45,92,.30)}
+.lbl{font-weight:600;font-size:28px;color:var(--sec);letter-spacing:.01em}
+svg.ic{overflow:visible;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.app{width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center}
+#world svg.ic,#world span{position:static}
+/* keyboard */
+.key{width:104px;height:120px;border-radius:18px;background:var(--key);box-shadow:0 5px 0 #D5DCD0;display:flex;align-items:center;justify-content:center;font-weight:500;font-size:46px;color:var(--navy)}
+.key.fn{font-size:30px;color:var(--sec);font-weight:600}
+/* hero */
+#hero{left:0;top:0;width:0;height:0;z-index:50}
+#halo{left:-150px;top:-150px;width:300px;height:300px;border-radius:50%;background:radial-gradient(closest-side,rgba(229,51,42,.34),rgba(229,51,42,.10) 55%,rgba(229,51,42,0));opacity:0}
+#hshadow{left:-30px;top:-22px;width:60px;height:60px;border-radius:50%;background:rgba(120,20,10,.28);filter:blur(7px)}
+#ball{left:-32px;top:-32px;width:64px;height:64px;border-radius:50%;background:radial-gradient(circle at 34% 28%,#FF7A6C 0%,#EE3A2E 42%,#C9211A 100%);box-shadow:inset 0 -5px 9px rgba(120,10,5,.35),inset 0 3px 5px rgba(255,255,255,.35)}
+#plus{left:0;top:0;width:64px;height:64px}
+#plus i{left:15px;top:27.5px;width:34px;height:9px;border-radius:3px;background:#fff}
+#plus i+i{left:27.5px;top:15px;width:9px;height:34px}
+#hcross{left:-45px;top:-37.5px;width:90px;height:75px}
+/* preview controls */
+#ui{position:fixed;left:0;right:0;bottom:0;display:flex;gap:12px;align-items:center;padding:10px 16px;background:rgba(0,0,0,.6);color:#fff;font:14px Inter,sans-serif;z-index:9}
+#ui input{flex:1}
+#ui button{font:inherit;padding:6px 14px;border-radius:8px;border:0;cursor:pointer}
+</style>
+</head>
+<body>
+<div id="stage"><div id="cam"><div id="floor"></div><div id="world"></div></div></div>
+<div id="ui"><button id="pp">Play</button><input id="scrub" type="range" min="0" max="1" step="0.0005" value="0"><span id="tc">0.00</span></div>
+<script>
+/* =====================================================================================
+   CAREVA+ — "THE PLUS COMES HOME"   one take · 112 BPM · 52 beats (27.86 s) · loops
+   Hero: the red + from the Careva+ logo. It leaves the wordmark, travels through one
+   family's care journey, and comes home.
+
+   BEAT SHEET (beat = 0.5357 s)
+   beat   time    what happens                                         sound
+   0      0.00    Logo complete, tagline shown (loop seam, held)       pad
+   2.5    1.34    + hops out of the wordmark, becomes the ball         soft pluck
+   4      2.14    Card 1 pops: "Dad can come home today"               marimba D4 + pop
+   6      3.21    Card 2: "Medicines & dressing, daily"                marimba F#4 + pop
+   8      4.29    Card 3: "Who will care for him?"                     marimba A4 + pop
+   10-13  5.36    Keyboard: types h · o · m · e  ("Where do you need   key clicks, rising notes
+                  care?" -> home)
+   14     7.50    return: "Care at home" confirmed, hero launched      ding
+   16-19  8.57    Tiles light up: Seniors, After surgery,              marimba D5 E5 F#5 A5
+                  Ongoing care, Families
+   21     11.25   Lands in the Care plan, rolls the rows               marimba B4
+   22,24,26       Bounces off the rails, each row ticks                marimba D5 F#5 A5
+   28     15.00   Drops into the slider as its thumb                   marimba D5
+   28-32          Rolls "Finding your nurse" 0 -> 100 %                ticks that speed up
+   32     17.14   100 %: "Nurse matched"                               chord ding
+   33     17.68   Lands on "Book a home visit" -> "Visit booked",      thump + triad
+                  toast "Your nurse is on the way" (payoff hold)
+   34     18.21   Launched. Camera pulls out: the whole journey        whoosh up, drums drop
+   36-40.5        Slow-motion arc over the course; stations reset      soft descending blips
+   40.5   21.70   Camera dives back to the logo                        whoosh down
+   44     23.57   + lands in the wordmark: CAREVA+ complete            chord + soft impact
+   44-52          End card held: logo + "Care that comes home."        pad tail
+   ===================================================================================== */
+
+/* ---------- helpers (from the guide) ---------- */
+function spring(t, w = 14, z = 0.82) {
+  if (t <= 0) return 0;
+  if (z >= 1) return 1 - Math.exp(-w * t) * (1 + w * t);
+  const wd = w * Math.sqrt(1 - z * z);
+  return 1 - Math.exp(-z * w * t) * (Math.cos(wd * t) + (z * w / wd) * Math.sin(wd * t));
+}
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const ease = x => (x = clamp(x), x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+const lerp = (a, b, k) => a + (b - a) * k;
+const seg = (t, a, b) => clamp((t - a) / (b - a));
+const kf = keys => t => { if (t <= keys[0][0]) return keys[0][1]; for (let i = 1; i < keys.length; i++) { const [a, va] = keys[i - 1], [b, vb, e = ease] = keys[i]; if (t <= b) return lerp(va, vb, e((t - a) / (b - a))); } return keys[keys.length - 1][1]; };
+const rng = s => () => (s = (s + 0x6D2B79F5) | 0, s = Math.imul(s ^ (s >>> 15), 1 | s), s ^= s + Math.imul(s ^ (s >>> 7), 61 | s), ((s ^ (s >>> 14)) >>> 0) / 4294967296);
+// impulse response: 0 -> peak (~1) -> rings back to 0
+const kick = (t, w = 28, z = .35) => t <= 0 ? 0 : Math.exp(-z * w * t) * Math.sin(w * Math.sqrt(1 - z * z) * t) / .62;
+
+/* ---------- time ---------- */
+const BPM = 112, B = 60 / BPM, bt = b => b * B, BEATS = 52, D = BEATS * B;
+window.VIDEO = { w: 1920, h: 1080, duration: D };
+const G = 3000, R = 32;
+
+/* ---------- layout (world px) ---------- */
+const LOGO = [420, 470], SLOT = [1268, 612];
+const CARD = [[1960, 760], [2680, 890], [3400, 1020]];           // hero contact points (card top = y + R)
+const KP = [3980, 900], KX = 4040, KROW = [1250, 1384, 1518, 1652];
+const KEY = { h: [KX + 59 + 5 * 118 + 52, KROW[1]], o: [KX + 8 * 118 + 52, KROW[0]], m: [KX + 177 + 6 * 118 + 52, KROW[2]], e: [KX + 2 * 118 + 52, KROW[0]], ret: [5070, KROW[3]] };
+const TILE = [[4260, 2010], [3720, 2140], [3180, 2270], [2640, 2400]];
+const RY = k => 2540 + 160 * k, WL = 700, WR = 1800, AIR = 170;  // care plan rows, rail contact x, row gap before rail
+const SX0 = 1960, SX1 = 3960;                                     // slider
+const BTNX = 4660;
+
+/* ---------- hero path: pure function of time ---------- */
+const segs = [], contacts = [];   // contacts: {t, kind:'floor'|'wall'|'key', dir}
+const hold = (t0, t1, p) => segs.push({ t0, t1, f: () => p });
+const hop = (t0, p0, t1, p1) => { const T = t1 - t0, vx = (p1[0] - p0[0]) / T, vy = (p1[1] - p0[1] - .5 * G * T * T) / T; segs.push({ t0, t1, f: t => { const u = t - t0; return [p0[0] + vx * u, p0[1] + vy * u + .5 * G * u * u]; } }); };
+const free = (t0, p0, v0, t1) => segs.push({ t0, t1, f: t => { const u = t - t0; return [p0[0] + v0[0] * u, p0[1] + v0[1] * u + .5 * G * u * u]; } });
+const roll = (t0, x0, t1, x1, y, e = x => x) => segs.push({ t0, t1, f: t => [lerp(x0, x1, e((t - t0) / (t1 - t0))), y] });
+
+const T_OFF = bt(2.5), T_LAND = bt(44);
+hold(0, T_OFF, SLOT);
+hop(T_OFF, SLOT, bt(4), CARD[0]);
+hop(bt(4), CARD[0], bt(6), CARD[1]);
+hop(bt(6), CARD[1], bt(8), CARD[2]);
+hop(bt(8), CARD[2], bt(10), KEY.h);
+hop(bt(10), KEY.h, bt(11), KEY.o);
+hop(bt(11), KEY.o, bt(12), KEY.m);
+hop(bt(12), KEY.m, bt(13), KEY.e);
+hop(bt(13), KEY.e, bt(14), KEY.ret);
+hop(bt(14), KEY.ret, bt(16), TILE[0]);
+hop(bt(16), TILE[0], bt(17), TILE[1]);
+hop(bt(17), TILE[1], bt(18), TILE[2]);
+hop(bt(18), TILE[2], bt(19), TILE[3]);
+[4, 6, 8].forEach(b => contacts.push({ t: bt(b), kind: 'floor' }));
+[10, 11, 12, 13, 14].forEach(b => contacts.push({ t: bt(b), kind: 'key' }));
+[16, 17, 18, 19].forEach(b => contacts.push({ t: bt(b), kind: 'floor' }));
+
+// Care plan: a small marble run. Constant gravity, vertical rails; every rail hit is on a beat.
+const ROWIN = [], ROWOUT = [], ROWSPAN = [];                       // per row: time the hero lands / leaves, pill x-range
+const vM = (1250 - WL) / B;
+hop(bt(19), TILE[3], bt(21), [1250, RY(0)]);
+contacts.push({ t: bt(21), kind: 'floor' });
+let mt = bt(21), mx = 1250, dir = -1;
+for (let k = 0; k < 3; k++) {
+  const edge = dir < 0 ? WL + AIR : WR - AIR, tEdge = mt + Math.abs(edge - mx) / vM, tWall = bt(22 + 2 * k), wx = dir < 0 ? WL : WR;
+  ROWIN[k] = mt; ROWOUT[k] = tEdge; ROWSPAN[k] = dir < 0 ? [edge, WR + R] : [WL - R, edge];
+  roll(mt, mx, tEdge, edge, RY(k));
+  free(tEdge, [edge, RY(k)], [dir * vM, 0], tWall);
+  const da = tWall - tEdge, yw = RY(k) + .5 * G * da * da, vyw = G * da;
+  contacts.push({ t: tWall, kind: 'wall', dir });
+  dir = -dir;
+  const tl = (-vyw + Math.sqrt(vyw * vyw + 2 * G * (RY(k + 1) - yw))) / G;
+  free(tWall, [wx, yw], [dir * vM, vyw], tWall + tl);
+  contacts.push({ t: tWall + tl, kind: 'floor', soft: true });
+  mx = wx + dir * vM * tl; mt = tWall + tl;
+}
+const SDROP = 38, sAir = Math.sqrt(2 * SDROP / G), SY = RY(3) + SDROP, v3 = (SX0 - mx) / (bt(28) - mt), xExit = SX0 - v3 * sAir;
+ROWIN[3] = mt; ROWOUT[3] = bt(28) - sAir; ROWSPAN[3] = [WL - R, xExit];
+roll(mt, mx, bt(28) - sAir, xExit, RY(3));
+free(bt(28) - sAir, [xExit, RY(3)], [v3, 0], bt(28));
+contacts.push({ t: bt(28), kind: 'floor' });
+const slideP = u => .6 * u + .4 * u * u;
+roll(bt(28), SX0, bt(32), SX1, SY, slideP);
+const BTN = [BTNX, SY + (-700 * B) + .5 * G * B * B];
+hop(bt(32), [SX1, SY], bt(33), BTN);
+contacts.push({ t: bt(33), kind: 'floor' });
+hold(bt(33), bt(34), BTN);
+
+// The launch: a real parabola under the same gravity, played in slow motion (slowest at the apex).
+const YA = 250, LVY = -Math.sqrt(2 * G * (BTN[1] - YA)), LUP = -LVY / G, LDN = Math.sqrt(2 * (SLOT[1] - YA) / G), LTF = LUP + LDN, LVX = (SLOT[0] - BTN[0]) / LTF;
+const NQ = 4000, QA = LUP / LTF, cum = new Float64Array(NQ + 1);
+for (let i = 0; i < NQ; i++) { const q = (i + .5) / NQ; cum[i + 1] = cum[i] + 1 + 7 * Math.exp(-Math.pow((q - QA) / .13, 2)); }
+const warp = s => { const target = clamp(s) * cum[NQ]; let lo = 0, hi = NQ; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (cum[m] < target) lo = m; else hi = m; } return (lo + (target - cum[lo]) / (cum[hi] - cum[lo])) / NQ; };
+segs.push({ t0: bt(34), t1: T_LAND, f: t => { const u = warp((t - bt(34)) / (T_LAND - bt(34))) * LTF; return [BTN[0] + LVX * u, BTN[1] + LVY * u + .5 * G * u * u]; } });
+contacts.push({ t: T_LAND, kind: 'floor', dock: true });
+hold(T_LAND, D + 1, SLOT);
+
+function heroPos(t) { t = clamp(t, 0, D); for (const s of segs) if (t < s.t1) return s.f(Math.max(t, s.t0)); return SLOT; }
+function heroVel(t) { const h = 1 / 480, a = heroPos(t - h), b = heroPos(t + h); return [(b[0] - a[0]) / (2 * h), (b[1] - a[1]) / (2 * h)]; }
+
+/* ---------- icons (64 grid, line) ---------- */
+const ICONS = {
+  bed: ['M8 16v40', 'M8 44h50v12', 'c18,32,5', 'M28 36v-4a4 4 0 0 1 4-4h18a8 8 0 0 1 8 8v8', 'M8 38h20'],
+  clock: ['c32,32,22', 'M32 18v14l9 6'],
+  chat: ['M12 14h40a6 6 0 0 1 6 6v20a6 6 0 0 1-6 6H30l-12 10V46h-6a6 6 0 0 1-6-6V20a6 6 0 0 1 6-6z'],
+  senior: ['c27,12,6', 'M27 20c-3 7-3 15-1 23', 'M26 43l-7 14M26 43l6 14', 'M27 27l9 6', 'M36 30c5 0 5 4 5 4v23'],
+  heart: ['M32 54C15 43 8 33 8 23a12 12 0 0 1 24-5a12 12 0 0 1 24 5c0 10-7 20-24 31z', 'M15 32h10l4-7 6 13 4-6h11'],
+  family: ['c19,15,6', 'M9 43v-5a10 10 0 0 1 20 0v5', 'c45,15,6', 'M35 43v-5a10 10 0 0 1 20 0v5', 'c32,33,5', 'M24 57v-4a8 8 0 0 1 16 0v4'],
+  nurse: ['M16 9h8M36 9h8', 'M20 9v14a10 10 0 0 0 20 0V9', 'M30 33v7a10 10 0 0 0 20 0v-3', 'c50,32,5'],
+  carer: ['c26,19,8', 'M10 55v-4a14 14 0 0 1 14-14h4a14 14 0 0 1 14 14v4', 'M51 19v12M45 25h12'],
+  plan: ['M19 12h26a5 5 0 0 1 5 5v34a5 5 0 0 1-5 5H19a5 5 0 0 1-5-5V17a5 5 0 0 1 5-5z', 'M24 12V9a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v3', 'M23 35l6 6 12-12'],
+  calendar: ['M13 12h38a5 5 0 0 1 5 5v32a5 5 0 0 1-5 5H13a5 5 0 0 1-5-5V17a5 5 0 0 1 5-5z', 'M8 24h48M20 6v10M44 6v10', 'M24 39l6 6 11-11'],
+  check: ['M17 33l10 10 20-21']
+};
+const icon = (n, size, color, sw = 3.2) => `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 64 64" style="stroke:${color};stroke-width:${sw}">` +
+  ICONS[n].map(d => d[0] === 'c' ? (([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}"/>`)(d.slice(1).split(',')) : `<path d="${d}"/>`).join('') + '</svg>';
+
+/* ---------- build the world ---------- */
+const world = document.getElementById('world'), cam = document.getElementById('cam');
+const add = html => { const d = document.createElement('div'); d.innerHTML = html.trim(); const e = d.firstChild; world.appendChild(e); return e; };
+
+// trail of the whole journey (shown in the pull-out)
+const trailPts = []; for (let t = T_OFF; t <= bt(34); t += 1 / 90) trailPts.push(heroPos(t).map(v => v.toFixed(1)).join(','));
+const trail = add(`<svg width="6000" height="3600" style="left:0;top:0;overflow:visible"><polyline points="${trailPts.join(' ')}" fill="none" stroke="#4E9A1B" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="2 26" opacity=".55"/></svg>`);
+
+// S0 logo
+const logo = add(`<div style="left:${LOGO[0]}px;top:${LOGO[1]}px;width:893px;height:276px;transform-origin:50% 50%">
+  <img src="assets/logo-icon.png" style="left:0;top:0;width:407.5px;height:276.5px">
+  <img src="assets/logo-word.png" style="left:430px;top:106.5px;width:374.5px;height:71.5px">
+  <img id="slot" src="assets/logo-cross.png" style="left:803px;top:104.5px;width:90px;height:75px;filter:grayscale(1) brightness(1.5);opacity:.22">
+  <div id="tag" style="left:431px;top:201px;font:600 35.5px 'Montserrat';letter-spacing:-.005em;color:#35507A">Care that comes home.</div>
+</div>`);
+const slot = logo.querySelector('#slot'), tag = logo.querySelector('#tag');
+
+// S1 the family's moment
+const CARDS = [['bed', '#1E74CF', 'Hospital', 'Dad can come home today'], ['clock', '#0E2D5C', 'Reminders', 'Medicines & dressing, daily'], ['chat', '#4E9A1B', 'Family', 'Who will care for him?']];
+const cards = CARDS.map((c, i) => add(`<div class="card" style="left:${CARD[i][0] - 280}px;top:${CARD[i][1] + R}px;width:560px;height:148px;transform-origin:50% 0">
+  <div class="app" style="left:26px;top:26px;background:${c[1]}">${icon(c[0], 34, '#fff', 4)}</div>
+  <div style="left:102px;top:24px;font-weight:600;font-size:23px;color:var(--sec);letter-spacing:.06em;text-transform:uppercase">${c[2]}</div>
+  <div style="right:28px;top:24px;font-weight:500;font-size:22px;color:#A3AEBB">now</div>
+  <div style="left:102px;top:62px;font-weight:650;font-size:31px;letter-spacing:-.012em">${c[3]}</div></div>`));
+
+// S2 keyboard
+const kp = add(`<div class="card" style="left:${KP[0]}px;top:${KP[1]}px;width:1286px;height:860px;border-radius:48px"></div>`);
+kp.insertAdjacentHTML('beforeend', `<div class="lbl" style="left:64px;top:52px;font-size:31px">Where do you need care?</div>
+  <div id="inp" style="left:60px;top:112px;width:1166px;height:124px;border-radius:26px;background:#F5F7F3;border:3px solid var(--line)"></div>
+  <div id="typed" style="left:98px;top:139px;font-weight:650;font-size:60px;letter-spacing:-.02em"></div>
+  <div id="caret" style="left:98px;top:144px;width:4px;height:62px;border-radius:2px;background:var(--green)"></div>
+  <div id="okb" style="left:1026px;top:142px;width:172px;height:64px;border-radius:32px;background:var(--green);color:#fff;font-weight:650;font-size:27px;display:flex;align-items:center;justify-content:center;gap:10px;transform-origin:50% 50%">${icon('check', 30, '#fff', 6.5)}<span style="position:static">At home</span></div>`);
+const keyEls = {};
+const mkKey = (ch, x, y, w = 104, cls = '') => { kp.insertAdjacentHTML('beforeend', `<div class="key ${cls}" style="left:${x}px;top:${y - 60}px;width:${w}px">${ch}</div>`); return kp.lastChild; };
+const kpy = r => KROW[r] - KP[1];
+'qwertyuiop'.split('').forEach((c, i) => keyEls[c] = mkKey(c, 60 + i * 118, kpy(0)));
+'asdfghjkl'.split('').forEach((c, i) => keyEls[c] = mkKey(c, 119 + i * 118, kpy(1)));
+mkKey('⇧', 60, kpy(2), 163, 'fn');
+'zxcvbnm'.split('').forEach((c, i) => keyEls[c] = mkKey(c, 237 + i * 118, kpy(2)));
+mkKey('⌫', 1063, kpy(2), 163, 'fn');
+mkKey('123', 60, kpy(3), 200, 'fn'); mkKey('', 274, kpy(3), 666);
+keyEls.ret = mkKey('return', 954, kpy(3), 272, 'fn'); keyEls.ret.style.cssText += 'background:var(--green);color:#fff;box-shadow:0 5px 0 #3B7A12';
+const inp = kp.querySelector('#inp'), typed = kp.querySelector('#typed'), caret = kp.querySelector('#caret'), okb = kp.querySelector('#okb');
+
+// S3 who it's for
+const TILES = [['senior', 'Seniors'], ['bed', 'After surgery'], ['heart', 'Ongoing care'], ['family', 'Families']];
+const tiles = TILES.map((c, i) => add(`<div class="card" style="left:${TILE[i][0] - 215}px;top:${TILE[i][1] + R}px;width:430px;height:176px;border-radius:36px;transform-origin:50% 0">
+  <div class="tico" style="left:28px;top:40px;width:96px;height:96px;border-radius:50%;background:#EEF2EB;display:flex;align-items:center;justify-content:center">${icon(c[0], 58, '#7C8B9C', 3)}</div>
+  <div class="tico on" style="left:28px;top:40px;width:96px;height:96px;border-radius:50%;background:linear-gradient(135deg,#A3CF2A,#4E9A1B);display:flex;align-items:center;justify-content:center;opacity:0">${icon(c[0], 58, '#fff', 3)}</div>
+  <div style="left:146px;top:48px;font-weight:600;font-size:20px;letter-spacing:.14em;color:var(--sec)">CARE FOR</div>
+  <div style="left:146px;top:78px;font-weight:700;font-size:35px;letter-spacing:-.018em">${c[1]}</div>
+  <div class="ring" style="left:0;top:0;width:430px;height:176px;border-radius:36px;border:4px solid var(--green);opacity:0"></div></div>`));
+
+// S4 care plan (marble run)
+const CPX = 608, CPY = 2334, CPW = 1284, CPH = 848;
+const cp = add(`<div class="card" style="left:${CPX}px;top:${CPY}px;width:${CPW}px;height:${CPH}px;border-radius:48px"></div>`);
+cp.insertAdjacentHTML('beforeend', `<div style="left:64px;top:44px;font-weight:700;font-size:40px;letter-spacing:-.02em">Care plan</div>
+  <div class="lbl" style="left:274px;top:55px;font-size:27px">built around the patient</div>
+  <div id="railL" style="left:${WL - R - 14 - CPX}px;top:${RY(0) - 70 - CPY}px;width:14px;height:${RY(3) + R + 84 - (RY(0) - 70)}px;border-radius:7px;background:#DCE4D7"></div>
+  <div id="railR" style="left:${WR + R - CPX}px;top:${RY(0) - 70 - CPY}px;width:14px;height:${RY(2) + R + 84 - (RY(0) - 70)}px;border-radius:7px;background:#DCE4D7"></div>`);
+const ROWS = [['nurse', 'Trained nurses'], ['carer', 'Caretaker support'], ['plan', 'Personalised care'], ['calendar', 'Organised follow-ups']];
+const rows = ROWS.map((c, k) => { const [a, b] = ROWSPAN[k]; cp.insertAdjacentHTML('beforeend', `<div class="row" style="left:${a - CPX}px;top:${RY(k) + R - CPY}px;width:${b - a}px;height:84px;border-radius:24px;background:#EEF2EB;overflow:hidden">
+    <div class="fill" style="left:0;top:0;width:100%;height:100%;background:linear-gradient(90deg,#DDEFC4,#E9F5D9);opacity:0"></div>
+    <div class="rico" style="left:24px;top:16px;width:52px;height:52px;display:flex;align-items:center;justify-content:center">${icon(c[0], 44, '#3E8A16', 3.4)}</div>
+    <div style="left:94px;top:22px;font-weight:650;font-size:31px;letter-spacing:-.012em">${c[1]}</div>
+    <div class="chk" style="right:20px;top:18px;width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#A3CF2A,#4E9A1B);display:flex;align-items:center;justify-content:center;transform:scale(0)">${icon('check', 32, '#fff', 6.5)}</div></div>`); return cp.lastChild; });
+rows.forEach(r => r.querySelectorAll('svg').forEach(s => s.style.position = 'static'));
+const railL = cp.querySelector('#railL'), railR = cp.querySelector('#railR');
+
+// S5 slider
+const sl = add(`<div style="left:${SX0}px;top:${SY}px;width:${SX1 - SX0}px;height:0"></div>`);
+sl.insertAdjacentHTML('beforeend', `<div style="left:-8px;top:-9px;width:${SX1 - SX0 + 16}px;height:18px;border-radius:9px;background:#DCE4D7"></div>
+  <div id="sfill" style="left:-8px;top:-9px;width:0;height:18px;border-radius:9px;background:linear-gradient(90deg,#A3CF2A,#4E9A1B)"></div>
+  ${Array.from({ length: 11 }, (_, i) => `<div class="tk" style="left:${i * 200 - 2}px;top:26px;width:4px;height:${i % 5 ? 12 : 20}px;border-radius:2px;background:#C3CDBD"></div>`).join('')}
+  <div class="lbl" style="left:0;top:62px;font-size:30px">Finding your nurse</div>
+  <div id="ring0" style="left:-34px;top:-34px;width:68px;height:68px;border-radius:50%;border:4px dashed #C3CDBD;background:var(--canvas)"></div>
+  <div id="ring1" style="left:${SX1 - SX0 - 34}px;top:-34px;width:68px;height:68px;border-radius:50%;border:4px dashed #8DBF4A;background:var(--canvas);opacity:0"></div>
+  <div id="tip" style="left:0;top:-128px;height:64px;padding:0 26px;border-radius:32px;background:var(--navy);color:#fff;font-weight:700;font-size:32px;display:flex;align-items:center;gap:12px;transform-origin:50% 100%;box-shadow:0 14px 26px -12px rgba(14,45,92,.6)"><span id="tipt" style="position:static;font-variant-numeric:tabular-nums"></span></div>`);
+const sfill = sl.querySelector('#sfill'), ring0 = sl.querySelector('#ring0'), ring1 = sl.querySelector('#ring1'), tip = sl.querySelector('#tip'), tipt = sl.querySelector('#tipt');
+
+// S6 book + toast
+const btn = add(`<div style="left:${BTNX - 290}px;top:${BTN[1] + R}px;width:580px;height:124px;border-radius:62px;background:var(--navy);box-shadow:0 26px 50px -22px rgba(14,45,92,.7);overflow:hidden">
+  <div id="bgreen" style="left:0;top:0;width:100%;height:100%;background:linear-gradient(100deg,#5DAA1F,#3E8A16);opacity:0"></div>
+  <div id="bl0" style="left:0;top:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:40px;color:#fff;letter-spacing:-.01em">Book a home visit</div>
+  <div id="bl1" style="left:0;top:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;gap:14px;font-weight:700;font-size:40px;color:#fff;letter-spacing:-.01em;opacity:0">${icon('check', 44, '#fff', 6.5)}<span style="position:static">Visit booked</span></div></div>`);
+btn.querySelector('svg').style.position = 'static';
+const toast = add(`<div class="card" style="left:${BTNX + 150}px;top:${BTN[1] - 270}px;width:640px;height:156px;transform-origin:10% 100%">
+  <div style="left:26px;top:26px;width:104px;height:104px;border-radius:26px;background:#F3F7EF;border:1px solid var(--line)"></div>
+  <img src="assets/logo-icon.png" style="left:36px;top:49px;width:84px;height:57px">
+  <div style="left:152px;top:30px;font-weight:600;font-size:23px;color:var(--sec);letter-spacing:.06em;text-transform:uppercase">Careva+</div>
+  <div style="right:28px;top:30px;font-weight:500;font-size:22px;color:#A3AEBB">now</div>
+  <div style="left:152px;top:70px;font-weight:650;font-size:32px;letter-spacing:-.012em">Your nurse is on the way</div></div>`);
+
+// hero
+const hero = add(`<div id="hero"><div id="halo"></div><div id="hsq"><div id="hshadow"></div><div id="ball"><div id="plus"><i></i><i></i></div></div><img id="hcross" src="assets/logo-cross.png"></div></div>`);
+const halo = hero.querySelector('#halo'), hsq = hero.querySelector('#hsq'), ball = hero.querySelector('#ball'), plus = hero.querySelector('#plus'), hcross = hero.querySelector('#hcross'), hshadow = hero.querySelector('#hshadow');
+hsq.style.cssText = 'left:0;top:0;width:0;height:0';
+
+/* ---------- reset schedule (during the pull-out hold, in reverse order) ---------- */
+const RST = { toast: bt(37.2), btn: bt(37.4), slider: [bt(37.6), bt(38.7)], rows: [bt(39.15), bt(39.0), bt(38.85), bt(38.7)], tiles: [bt(39.6), bt(39.5), bt(39.4), bt(39.3)], keys: bt(39.7), cards: [bt(40.4), bt(40.25), bt(40.1)] };
+const offk = (t, t0) => 1 - clamp(spring(t - t0, 16, 1));          // 1 -> 0 at t0
+
+/* ---------- camera: baked at load (spring-smoothed follow), then blended with fixed framings ---------- */
+const CL = { x: 880, y: 620, z: 1.2 }, CR = { x: 2900, y: 1830, z: .305 };
+const zoomF = kf([[0, 1.2], [bt(2.3), 1.2], [bt(4.2), 1.06], [bt(8.6), 1.06], [bt(10.4), .9], [bt(14), .9], [bt(15.6), .86], [bt(19.4), .86], [bt(21.4), .9], [bt(27.4), .9], [bt(29), 1.0], [bt(32), 1.0], [bt(33.2), 1.04], [bt(34), 1.04]]);
+const ANCH = [  // [from, to, x, y, weight]
+  [bt(9.4), bt(14.2), KP[0] + 643, KP[1] + 430, .72],
+  [bt(20.6), bt(27.4), CPX + CPW / 2, CPY + CPH / 2 + 10, .72],
+  [bt(32.8), bt(34), BTNX + 170, BTN[1] - 80, .88]];
+const offY = kf([[0, 0], [bt(3), 0], [bt(4.5), 70], [bt(8.5), 70], [bt(10), 0], [bt(15), 0], [bt(16.5), 70], [bt(19.5), 70], [bt(21), 0], [bt(28), 0], [bt(29), -30], [bt(32.5), -30], [bt(33.5), 0]]);
+function followTarget(t) {
+  const p = heroPos(t), v = heroVel(t); let x = p[0] + .15 * v[0], y = p[1] + .1 * v[1] + offY(t);
+  for (const [a, b, ax, ay, w] of ANCH) { const k = w * ease(seg(t, a, a + .55)) * (1 - ease(seg(t, b - .1, b + .5))); x = lerp(x, ax, k); y = lerp(y, ay, k); }
+  return [x, y];
+}
+const HZ = 240, NB = Math.ceil(D * HZ) + 2, camX = new Float32Array(NB), camY = new Float32Array(NB);
+{ let x = CL.x, y = CL.y, vx = 0, vy = 0; const w = 6.2, dt = 1 / HZ;
+  for (let i = 0; i < NB; i++) { const [tx, ty] = followTarget(i * dt); vx += (w * w * (tx - x) - 2 * w * vx) * dt; vy += (w * w * (ty - y) - 2 * w * vy) * dt; x += vx * dt; y += vy * dt; camX[i] = x; camY[i] = y; } }
+const bake = (arr, t) => { const f = clamp(t, 0, D) * HZ, i = Math.floor(f); return lerp(arr[i], arr[Math.min(NB - 1, i + 1)], f - i); };
+const wLogoIn = t => 1 - ease(seg(t, bt(2.2), bt(4.0)));             // logo framing -> follow
+const wReveal = t => ease(seg(t, bt(34.05), bt(36.3)));              // follow -> whole course
+const wDive = t => ease(seg(t, bt(40.5), bt(44)));                   // whole course -> logo
+function camera(t) {
+  let x = bake(camX, t), y = bake(camY, t), lz = Math.log(zoomF(t)), a = wLogoIn(t), r = wReveal(t), d = wDive(t);
+  x = lerp(x, CL.x, a); y = lerp(y, CL.y, a); lz = lerp(lz, Math.log(CL.z), a);
+  x = lerp(x, CR.x, r); y = lerp(y, CR.y, r); lz = lerp(lz, Math.log(CR.z), r);
+  // dive: move fast in screen terms by zooming on an exponential while panning
+  x = lerp(x, CL.x, d); y = lerp(y, CL.y, d); lz = lerp(lz, Math.log(CL.z), d);
+  return { x, y, z: Math.exp(lz), tilt: 17 * r * (1 - d), rev: r * (1 - ease(seg(t, bt(40.5), bt(42.6)))) };
+}
+
+/* ---------- seek ---------- */
+const setT = (el, s) => { el.style.transform = s; };
+function seek(t) {
+  t = ((t % D) + D) % D;
+  const c = camera(t);
+  setT(cam, `translate(960px,540px) rotateX(${c.tilt.toFixed(3)}deg) scale(${c.z}) translate(${-c.x}px,${-c.y}px)`);
+  trail.style.opacity = c.rev * offk(t, bt(40.2));
+
+  /* hero */
+  const p = heroPos(t), v = heroVel(t), sp = Math.hypot(v[0], v[1]);
+  let sqF = 0, sqW = 0, wdir = 0;
+  for (const k of contacts) { const u = t - k.t; if (u < -.035 || u > .6) continue; const s = (u < 0 ? Math.pow(1 + u / .035, 2) : Math.exp(-u * 16) * Math.cos(u * 34)) * (k.soft ? .45 : 1); if (k.kind === 'wall') { sqW += s; wdir = k.dir; } else sqF += s; }
+  const crouch = Math.sin(Math.PI * seg(t, T_OFF - .2, T_OFF)) * (t < T_OFF ? 1 : 0); sqF += crouch * .7;
+  const docked = t < bt(20) ? 1 - ease(seg(t, T_OFF - .01, T_OFF + .13)) : ease(seg(t, T_LAND - .06, T_LAND + .07));
+  const inAir = clamp(sp / 3200) * (1 - clamp(Math.abs(sqF) + Math.abs(sqW))) * (1 - docked);
+  const phi = Math.atan2(v[1], v[0]) * 180 / Math.PI;
+  const btnPush = 12 * kick(t - bt(33), 24, .4) + 7 * seg(t, bt(33), bt(33) + .1) * (1 - seg(t, bt(34) - .04, bt(34)));
+  const hs = 1 + 1.15 * c.rev;
+  const hx = p[0] - (wdir ? wdir * -R * .2 * sqW : 0) * 0, hy = p[1] + R * .2 * sqF + (t >= bt(33) && t < bt(34) ? btnPush : 0);
+  setT(hero, `translate(${hx}px,${hy}px) scale(${hs})`);
+  setT(hsq, `rotate(${phi}deg) scale(${1 + .16 * inAir},${1 - .1 * inAir}) rotate(${-phi}deg) scale(${1 + .25 * sqF - .2 * sqW},${1 - .2 * sqF + .25 * sqW})`);
+  setT(plus, `rotate(${(.5 * (p[0] - SLOT[0]) / R * 180 / Math.PI) % 360}deg)`);
+  ball.style.opacity = 1 - docked; hshadow.style.opacity = (1 - docked) * (1 - c.rev * .6);
+  setT(ball, `scale(${lerp(1, 1.25, docked)})`);
+  hcross.style.opacity = docked; setT(hcross, `scale(${lerp(.72, 1, docked) * (1 + .22 * kick(t - T_LAND, 22, .32))})`);
+  halo.style.opacity = c.rev;
+
+  /* S0 logo */
+  const home = t < bt(20) ? 1 - ease(seg(t, T_OFF, T_OFF + .25)) : spring(t - T_LAND, 12, .8);
+  slot.style.opacity = .22 * (1 - docked);
+  tag.style.opacity = clamp(home); setT(tag, `translateY(${lerp(14, 0, home)}px)`);
+  setT(logo, `scale(${1 + .028 * kick(t - T_LAND, 18, .35) - .012 * crouch})`);
+
+  /* S1 cards */
+  cards.forEach((el, i) => {
+    const tc = bt(4 + 2 * i), a = spring(t - tc + .075, 20, .68) * offk(t, RST.cards[i]);
+    el.style.opacity = clamp(a * 1.6); setT(el, `translateY(${14 * kick(t - tc, 26, .38)}px) scale(${lerp(.72, 1, a)})`);
+  });
+
+  /* S2 keyboard */
+  const kt = [['h', bt(10)], ['o', bt(11)], ['m', bt(12)], ['e', bt(13)]];
+  let n = 0; for (const [, tk] of kt) if (t >= tk) n++;
+  if (t >= RST.keys) n = Math.max(0, 4 - Math.floor((t - RST.keys) / .07) - 1);
+  typed.textContent = 'home'.slice(0, n);
+  const sub = spring(t - bt(14), 20, .7) * offk(t, RST.keys);
+  caret.style.left = (98 + typed.offsetWidth + 6) + 'px'; caret.style.opacity = (Math.floor(t / .42) % 2 ? .25 : 1) * (1 - clamp(sub));
+  inp.style.borderColor = sub > .5 ? '#4E9A1B' : '#E0E6DC'; inp.style.background = sub > .5 ? '#F1F8E8' : '#F5F7F3';
+  okb.style.opacity = clamp(sub * 2); setT(okb, `scale(${lerp(.5, 1, sub)})`);
+  for (const [k, tk] of [...kt, ['ret', bt(14)]]) { const a = kick(t - tk, 30, .42); setT(keyEls[k], `translateY(${5 * a}px) scale(${1 - .06 * a})`); if (k !== 'ret') keyEls[k].style.background = a > .25 ? '#DDEFC4' : ''; }
+
+  /* S3 tiles */
+  tiles.forEach((el, i) => {
+    const tc = bt(16 + i), lit = clamp(spring(t - tc, 22, .8)) * offk(t, RST.tiles[i]);
+    setT(el, `translateY(${12 * kick(t - tc, 26, .38)}px)`);
+    el.children[1].style.opacity = lit; el.lastChild.style.opacity = lit;
+  });
+
+  /* S4 care plan */
+  rows.forEach((el, k) => {
+    const o = offk(t, RST.rows[k]);
+    el.firstElementChild.style.opacity = clamp(spring(t - ROWIN[k], 18, 1)) * o;
+    setT(el.lastElementChild, `scale(${spring(t - ROWOUT[k], 22, .55) * o})`);
+    setT(el, `translateY(${5 * kick(t - ROWIN[k], 26, .4)}px)`);
+  });
+  const fl = Math.max(kick(t - bt(22), 20, .5), kick(t - bt(26), 20, .5)), fr = kick(t - bt(24), 20, .5);
+  railL.style.background = fl > .2 ? '#A3CF2A' : '#DCE4D7'; setT(railL, `translateX(${-5 * fl}px)`);
+  railR.style.background = fr > .2 ? '#A3CF2A' : '#DCE4D7'; setT(railR, `translateX(${5 * fr}px)`);
+
+  /* S5 slider */
+  let val = t < bt(28) ? 0 : t < bt(32) ? (p[0] - SX0) / (SX1 - SX0) : 1 - ease(seg(t, RST.slider[0], RST.slider[1]));
+  val = clamp(val);
+  sfill.style.width = (val * (SX1 - SX0) + 16) * (val > 0 ? 1 : 0) + 'px';
+  const onSl = t >= bt(28) && t < bt(32), gone = t >= bt(32);
+  ring0.style.opacity = (!onSl && val < .001) ? 1 : 0;
+  ring1.style.opacity = (gone && val >= .001) ? 1 : 0;
+  setT(ring1, `translateX(${(val - 1) * (SX1 - SX0)}px)`);
+  const tipOn = spring(t - bt(28), 20, .7) * (t < RST.slider[1] ? 1 : 0) * (val > .001 || t < bt(29) ? 1 : 0);
+  const matched = t >= bt(32) && val >= .999;
+  tipt.textContent = matched ? 'Nurse matched' : Math.round(val * 100) + '%';
+  tip.style.background = matched ? '#3E8A16' : '#0E2D5C';
+  tip.style.opacity = clamp(tipOn * 2);
+  setT(tip, `translateX(${val * (SX1 - SX0) - tip.offsetWidth / 2}px) scale(${lerp(.5, 1, clamp(tipOn)) * (1 + .12 * kick(t - bt(32), 22, .4))})`);
+
+  /* S6 book + toast */
+  const booked = clamp(spring(t - bt(33) - .03, 20, .9)) * offk(t, RST.btn);
+  btn.children[0].style.opacity = booked; btn.children[1].style.opacity = 1 - booked; btn.children[2].style.opacity = booked;
+  setT(btn, `translateY(${(t < bt(34) ? btnPush : -9 * kick(t - bt(34), 22, .4))}px)`);
+  const ta = spring(t - bt(33) - .14, 17, .66) * offk(t, RST.toast);
+  toast.style.opacity = clamp(ta * 1.8); setT(toast, `translateY(${lerp(30, 0, ta)}px) scale(${lerp(.7, 1, ta)})`);
+}
+window.seek = seek;
+
+/* =====================================================================================
+   SOUND — synthesised, scheduled from the same timeline numbers as the picture
+   ===================================================================================== */
+const N = { D4: 293.66, E4: 329.63, Fs4: 369.99, G4: 392, A4: 440, B4: 493.88, D5: 587.33, E5: 659.25, Fs5: 739.99, A5: 880, B5: 987.77, D6: 1174.66 };
+window.buildAudio = async function (out) {
+  const sr = 48000, TAIL = 3, ctx = new OfflineAudioContext(2, Math.ceil(sr * (D + TAIL)), sr);
+  const master = ctx.createGain(); master.gain.value = .9; master.connect(ctx.destination);
+  // simple feedback-delay "room"
+  const wet = ctx.createGain(); wet.gain.value = .22; const dl = ctx.createDelay(1), dr = ctx.createDelay(1), fb = ctx.createGain(), lp = ctx.createBiquadFilter(), mrg = ctx.createChannelMerger(2);
+  dl.delayTime.value = .173; dr.delayTime.value = .241; fb.gain.value = .42; lp.type = 'lowpass'; lp.frequency.value = 2600;
+  wet.connect(dl); wet.connect(dr); dl.connect(lp); dr.connect(lp); lp.connect(fb); fb.connect(dl); fb.connect(dr); dl.connect(mrg, 0, 0); dr.connect(mrg, 0, 1); mrg.connect(master);
+  const bus = (g, pan = 0, send = 1) => { const gn = ctx.createGain(); gn.gain.value = g; const pn = ctx.createStereoPanner(); pn.pan.value = pan; gn.connect(pn); pn.connect(master); if (send) { const s = ctx.createGain(); s.gain.value = send; pn.connect(s); s.connect(wet); } return gn; };
+  const r = rng(20261114), nb = ctx.createBuffer(1, sr * 2, sr), nd = nb.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = r() * 2 - 1;
+  const env = (g, t, a, d, peak) => { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + d); };
+  const osc = (type, f, t, a, d, peak, dest, f1) => { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + a + d); env(g, t, a, d, peak); o.connect(g); g.connect(dest); o.start(t); o.stop(t + a + d + .05); };
+  const noise = (t, a, d, peak, type, f0, f1, q, dest) => { const s = ctx.createBufferSource(); s.buffer = nb; s.loop = true; const f = ctx.createBiquadFilter(); f.type = type; f.Q.value = q; f.frequency.setValueAtTime(f0, t); if (f1) f.frequency.exponentialRampToValueAtTime(f1, t + a + d); const g = ctx.createGain(); env(g, t, a, d, peak); s.connect(f); f.connect(g); g.connect(dest); s.start(t, r() * 1.5); s.stop(t + a + d + .05); };
+  const marimba = (f, t, vol = 1, pan = 0) => { const b = bus(.5 * vol, pan, .9); osc('sine', f, t, .004, .42, 1, b); osc('sine', f * 4, t, .002, .09, .28, b); osc('triangle', f * 2, t, .003, .16, .12, b); };
+  const pop = (t, vol = 1, pan = 0) => { const b = bus(.22 * vol, pan, .5); osc('sine', 420, t, .004, .07, 1, b, 900); noise(t, .002, .03, .5, 'bandpass', 2400, 0, 1.2, b); };
+  const click = (t, vol = 1, pan = 0) => { const b = bus(.2 * vol, pan, .3); noise(t, .001, .018, 1, 'highpass', 2600, 0, .7, b); osc('square', 1500, t, .001, .012, .18, b); };
+  const tick = (t, f, vol = 1, pan = 0) => { const b = bus(.12 * vol, pan, .4); osc('sine', f, t, .002, .05, 1, b); noise(t, .001, .01, .4, 'highpass', 5000, 0, .7, b); };
+  const kickD = (t, vol = 1) => { const b = bus(.5 * vol, 0, 0); osc('sine', 118, t, .003, .2, 1, b, 44); };
+  const hat = (t, vol = 1) => { const b = bus(.045 * vol, .15, .1); noise(t, .001, .028, 1, 'highpass', 8200, 0, .7, b); };
+  const bass = (f, t, vol = 1) => { const b = bus(.2 * vol, 0, 0), lp2 = ctx.createBiquadFilter(); lp2.type = 'lowpass'; lp2.frequency.value = 420; lp2.connect(b); osc('triangle', f, t, .006, .2, 1, lp2); };
+  const pad = (fs, t, dur, vol = 1) => { const b = bus(.075 * vol, 0, .7), lp3 = ctx.createBiquadFilter(); lp3.type = 'lowpass'; lp3.frequency.value = 1500; lp3.connect(b); for (const f of fs) for (const det of [-5, 5]) { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'triangle'; o.frequency.value = f; o.detune.value = det; g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(1 / fs.length, t + dur * .35); g.gain.linearRampToValueAtTime(.0001, t + dur + .5); o.connect(g); g.connect(lp3); o.start(t); o.stop(t + dur + .6); } };
+  const whoosh = (t, dur, up, vol = 1) => { const b = bus(.2 * vol, 0, .5); noise(t, dur * (up ? .7 : .3), dur * (up ? .3 : .7), 1, 'bandpass', up ? 260 : 3000, up ? 3200 : 240, 1.4, b); };
+
+  // harmony: one chord per bar (4 beats)
+  const CH = { D: [146.83, 220, 293.66, 369.99], Bm: [123.47, 185, 293.66, 369.99], G: [98, 196, 293.66, 392], A: [110, 220, 277.18, 329.63] };
+  const BARS = ['D', 'D', 'Bm', 'G', 'D', 'A', 'Bm', 'G', 'D', 'G', 'A', 'D', 'D'];
+  BARS.forEach((c, i) => pad(CH[c], bt(i * 4), 4 * B, (i >= 9 && i <= 10) ? 1.5 : 1));
+  for (let b = 4; b < 34; b++) { kickD(bt(b), b % 2 ? .55 : 1); if (b >= 8) bass(CH[BARS[b >> 2]][0] * (b % 4 === 3 ? 1.5 : 1), bt(b) + (b % 2 ? B / 2 : 0), .9); }
+  for (let b = 10; b < 34; b += .5) hat(bt(b), (b % 1) ? 1 : .55);
+
+  // the hero's contacts are the lead instrument
+  osc('sine', 330, T_OFF, .004, .12, .16, bus(.5, -.3, .6), 620);
+  [[4, N.D4], [6, N.Fs4], [8, N.A4]].forEach(([b, f], i) => { marimba(f, bt(b), 1, -.3 + i * .25); pop(bt(b) - .05, 1, -.3 + i * .25); });
+  [[10, N.B4], [11, N.D5], [12, N.E5], [13, N.Fs5]].forEach(([b, f]) => { marimba(f, bt(b), .8, .25); click(bt(b), 1, .25); });
+  marimba(N.A5, bt(14), .9, .3); click(bt(14), 1.2, .3); osc('sine', N.D6, bt(14) + .05, .004, .5, .1, bus(.5, .3, 1));
+  [N.D5, N.E5, N.Fs5, N.A5].forEach((f, i) => { marimba(f, bt(16 + i), .85, .3 - i * .2); pop(bt(16 + i), .6, .3 - i * .2); });
+  marimba(N.B4, bt(21), .9, -.35);
+  [[22, N.D5], [24, N.Fs5], [26, N.A5]].forEach(([b, f]) => { marimba(f, bt(b), .9, -.35); click(bt(b), .8, -.35); });
+  contacts.filter(k => k.soft).forEach(k => tick(k.t, 900, .9, -.35));
+  ROWOUT.forEach((tt, i) => pop(tt, .5, -.35));
+  marimba(N.D5, bt(28), .9, -.2);
+  for (let i = 1; i <= 20; i++) { const u = i / 20, uu = (-.6 + Math.sqrt(.36 + 1.6 * u)) / .8; tick(bt(28) + uu * 4 * B, 600 + 900 * u, .7 + .5 * u, -.2 + u * .4); }
+  [N.A5, N.D6, N.Fs5].forEach(f => marimba(f, bt(32), .6, .15));
+  kickD(bt(33), 1.1); [N.D4, N.A4, N.D5, N.Fs5].forEach((f, i) => marimba(f, bt(33) + i * .045, .7, .3)); pop(bt(33) + .14, .9, .4);
+  whoosh(bt(34) - .05, 1.5, true, 1.2); kickD(bt(34), 1.2);
+  // resets: soft descending blips
+  [...RST.rows, ...RST.tiles, ...RST.cards, RST.toast, RST.btn, RST.keys].sort((a, b) => a - b).forEach((tt, i) => tick(tt, 1300 - i * 55, .55, (i % 2 ? .3 : -.3)));
+  for (let i = 0; i < 10; i++) tick(lerp(RST.slider[0], RST.slider[1], i / 10), 1400 - i * 70, .4, 0);
+  whoosh(bt(41.2), 1.5, false, 1.1);
+  // home
+  [N.D4, N.Fs4, N.A4, N.D5, N.Fs5].forEach((f, i) => marimba(f, T_LAND + i * .012, 1 - i * .08, -.2 + i * .1));
+  kickD(T_LAND, 1.2); noise(T_LAND, .004, .5, .05, 'highpass', 6000, 0, .7, bus(1, 0, 1));
+
+  const b = await ctx.startRendering(), nD = Math.round(sr * D), ob = out.createBuffer(2, nD, sr);
+  for (let ch = 0; ch < 2; ch++) { const src = b.getChannelData(ch), dst = ob.getChannelData(ch); dst.set(src.subarray(0, nD)); for (let i = nD; i < src.length; i++) dst[i - nD] += src[i]; }   // fold the tail onto the start (loop)
+  const s = out.createBufferSource(); s.buffer = ob; s.connect(out.destination); s.start(0);
+};
+
+/* ---------- preview ---------- */
+if (location.search.includes('render')) { document.getElementById('ui').remove(); seek(0); }
+else {
+  const stage = document.getElementById('stage'), fit = () => { const k = Math.min(innerWidth / 1920, (innerHeight - 50) / 1080); stage.style.transform = `scale(${k})`; }; addEventListener('resize', fit); fit();
+  let buf, ac, src, startAt = 0, offset = 0, playing = false; const pp = document.getElementById('pp'), scrub = document.getElementById('scrub'), tcEl = document.getElementById('tc');
+  async function play() { ac ??= new AudioContext(); if (!buf) { const off = new OfflineAudioContext(2, Math.ceil(48000 * D), 48000); await buildAudio(off); buf = await off.startRendering(); } src = ac.createBufferSource(); src.buffer = buf; src.loop = true; src.connect(ac.destination); src.start(0, offset % D); startAt = ac.currentTime; playing = true; pp.textContent = 'Pause'; }
+  function pause() { if (!playing) return; offset += ac.currentTime - startAt; src.stop(); playing = false; pp.textContent = 'Play'; }
+  const now = () => playing ? (offset + ac.currentTime - startAt) % D : offset;
+  pp.onclick = () => playing ? pause() : play();
+  scrub.oninput = () => { const was = playing; pause(); offset = scrub.value * D; if (was) play(); };
+  (function loop() { const t = now(); seek(t); if (playing) scrub.value = t / D; tcEl.textContent = t.toFixed(2) + ' s'; requestAnimationFrame(loop); })();
+}
+</script>
+</body>
+</html>
