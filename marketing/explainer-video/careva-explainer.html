@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Careva+ Explainer</title>
+<!--
+  Careva+ home health care — 63s explainer (1920x1080 @ 30fps).
+  Fully deterministic: everything is driven by window.seek(t).
+  Open in a browser to preview (plays in real time), or render with render.js.
+-->
+<style>
+@font-face{font-family:'Montserrat';font-weight:600;src:url(assets/montserrat-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'Montserrat';font-weight:700;src:url(assets/montserrat-latin-700-normal.woff2) format('woff2')}
+@font-face{font-family:'Montserrat';font-weight:800;src:url(assets/montserrat-latin-800-normal.woff2) format('woff2')}
+
+:root{
+  --bg:#F4F7F2;
+  --navy:#0E2D5C;
+  --night:#0A1E3A;
+  --slate:#4B5D74;
+  --green:#4E9A1B;
+  --lime:#A3CF2A;
+  --blue:#1E74CF;
+  --sky:#47B6F0;
+  --warm:#FFD58A;
+  --card:#FFFFFF;
+}
+*{box-sizing:border-box}
+html,body{margin:0;width:1920px;height:1080px;overflow:hidden;background:var(--bg)}
+#stage{position:relative;width:1920px;height:1080px;overflow:hidden;font-family:'Inter',sans-serif;color:var(--navy);background:var(--bg)}
+.layer,.scene{position:absolute;inset:0}
+.scene{display:none}
+.abs{position:absolute}
+.ln{display:block;overflow:hidden;padding:0 .04em .1em;margin:0 -.04em -.1em}
+.ln>span{display:inline-block;transform:translateY(110%)}
+.hd{font-family:'Montserrat';font-weight:800;letter-spacing:-0.025em;line-height:1.06;margin:0}
+.eyebrow{font-family:'Inter';font-weight:600;font-size:22px;letter-spacing:.24em;text-transform:uppercase;color:var(--green)}
+.body{font-size:34px;line-height:1.45;color:var(--slate);font-weight:400}
+.grad{background:linear-gradient(100deg,var(--green),var(--lime));-webkit-background-clip:text;background-clip:text;color:transparent}
+.gradb{background:linear-gradient(100deg,var(--blue),var(--sky));-webkit-background-clip:text;background-clip:text;color:transparent}
+svg.ic{overflow:visible}
+svg.ic *{fill:none;stroke-linecap:round;stroke-linejoin:round}
+.draw{stroke-dasharray:1 1;stroke-dashoffset:1}
+
+/* background */
+.blob{position:absolute;border-radius:50%}
+#grain{position:absolute;inset:0;background:url(assets/grain.png);opacity:.045;mix-blend-mode:multiply;pointer-events:none}
+
+/* logo */
+.logo{position:absolute;width:1786px;height:553px;left:0;top:0;transform-origin:50% 50%}
+.logo img{position:absolute;display:block}
+.logo .i{left:0;top:0;width:815px;height:553px}
+.logo .w{left:860px;top:213px;width:749px;height:143px}
+.logo .c{left:1606px;top:209px;width:180px;height:150px;transform-origin:50% 50%}
+.logo .sweep{position:absolute;inset:0;-webkit-mask:url(assets/logo-full.png) 0 0/100% 100% no-repeat;mask:url(assets/logo-full.png) 0 0/100% 100% no-repeat;
+  background:linear-gradient(105deg,transparent 45%,rgba(255,255,255,.5) 50%,transparent 55%);background-size:300% 100%;background-repeat:no-repeat;mix-blend-mode:screen}
+
+/* cards */
+.card{position:absolute;background:var(--card);border-radius:30px;box-shadow:0 1px 0 rgba(14,45,92,.04),0 18px 50px -18px rgba(14,45,92,.22);border:1px solid rgba(14,45,92,.06)}
+.chip{position:absolute;display:flex;align-items:center;gap:14px;padding:16px 26px 16px 18px;background:#fff;border-radius:999px;box-shadow:0 14px 34px -14px rgba(14,45,92,.28);font:600 24px 'Inter';color:var(--navy);white-space:nowrap}
+.dot{width:14px;height:14px;border-radius:50%;background:linear-gradient(135deg,var(--lime),var(--green))}
+.icbg{position:absolute;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.t-green{background:linear-gradient(135deg,#EEF7DD,#DDEFC4)}
+.t-blue{background:linear-gradient(135deg,#E4F1FC,#D1E6F8)}
+</style>
+</head>
+<body>
+<div id="stage">
+
+  <!-- ===== background ===== -->
+  <div class="layer" id="bgl">
+    <div class="blob" id="blobA" style="width:1300px;height:1300px;background:radial-gradient(closest-side,rgba(163,207,42,.20),rgba(163,207,42,0))"></div>
+    <div class="blob" id="blobB" style="width:1400px;height:1400px;background:radial-gradient(closest-side,rgba(71,182,240,.18),rgba(71,182,240,0))"></div>
+  </div>
+  <div class="layer" id="cool" style="background:linear-gradient(180deg,#E6ECF3,#DCE4EE);opacity:0"></div>
+  <div class="layer" id="night" style="background:radial-gradient(1200px 900px at 72% 60%,#14345F 0%,var(--night) 70%);opacity:0">
+  </div>
+
+  <!-- ===== S1 · Hook ===== -->
+  <div class="scene" id="s1">
+    <svg class="abs" width="1920" height="1080" style="left:0;top:0">
+      <defs><linearGradient id="thr" x1="0" x2="1"><stop offset="0" stop-color="#A3CF2A"/><stop offset=".55" stop-color="#4E9A1B"/><stop offset="1" stop-color="#1E74CF"/></linearGradient></defs>
+      <path id="s1thread" class="draw" pathLength="1" d="M-40 800 C 380 720, 700 880, 1000 790 S 1600 660, 1960 740" fill="none" stroke="url(#thr)" stroke-width="6" stroke-linecap="round"/>
+    </svg>
+    <div class="abs" id="s1t" style="left:0;right:0;top:330px;text-align:center">
+      <h1 class="hd" style="font-size:118px">
+        <span class="ln"><span>When someone you <span class="grad">love</span></span></span>
+        <span class="ln"><span>needs care…</span></span>
+      </h1>
+    </div>
+  </div>
+
+  <!-- ===== S2 · Problem ===== -->
+  <div class="scene" id="s2">
+    <div class="abs" id="s2t" style="left:200px;top:210px">
+      <div class="eyebrow" id="s2e" style="color:var(--slate)">The reality today</div>
+      <h1 class="hd" style="font-size:96px;margin-top:26px">
+        <span class="ln"><span>Hospital trips can be</span></span>
+        <span class="ln"><span style="color:#6E8098">exhausting.</span></span>
+      </h1>
+    </div>
+    <div class="card s2c" style="left:200px;top:620px;width:460px;height:190px"></div>
+    <div class="card s2c" style="left:730px;top:620px;width:460px;height:190px"></div>
+    <div class="card s2c" style="left:1260px;top:620px;width:460px;height:190px"></div>
+  </div>
+
+  <!-- ===== S3 · Pivot ===== -->
+  <div class="scene" id="s3">
+    <div class="abs" id="s3t" style="left:200px;top:340px;color:#fff">
+      <h1 class="hd" style="font-size:124px;color:#fff">
+        <span class="ln"><span>What if care</span></span>
+        <span class="ln"><span>came <span style="color:var(--lime)">home?</span></span></span>
+      </h1>
+    </div>
+    <svg class="abs ic" id="house" viewBox="0 0 400 300" width="640" height="480" style="left:1080px;top:300px">
+      <defs>
+        <linearGradient id="hs" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#C9EA7A"/><stop offset="1" stop-color="#7CC6F2"/></linearGradient>
+        <filter id="glow" x="-200%" y="-200%" width="500%" height="500%"><feGaussianBlur stdDeviation="9"/></filter>
+      </defs>
+      <rect id="winGlow" x="236" y="146" width="58" height="52" rx="6" filter="url(#glow)" opacity="0" style="stroke:none;fill:#FFD58A"/>
+      <rect id="win" x="240" y="150" width="50" height="44" rx="5" opacity="0" style="stroke:none;fill:#FFD58A"/>
+      <path id="doorGlow" d="M180 262 V214 a20 20 0 0 1 40 0 V262 Z" filter="url(#glow)" opacity="0" style="stroke:none;fill:#FFD58A"/>
+      <path id="doorFill" d="M180 262 V214 a20 20 0 0 1 40 0 V262 Z" opacity="0" style="stroke:none;fill:#FFE2A8"/>
+      <path class="draw hp" pathLength="1" d="M40 146 L200 34 L360 146" stroke="url(#hs)" stroke-width="7"/>
+      <path class="draw hp" pathLength="1" d="M80 122 V262 H320 V122" stroke="url(#hs)" stroke-width="7"/>
+      <path class="draw hp" pathLength="1" d="M180 262 V214 a20 20 0 0 1 40 0 V262" stroke="url(#hs)" stroke-width="6"/>
+      <path class="draw hp" pathLength="1" d="M240 150 h50 v44 h-50 Z M265 150 v44 M240 172 h50" stroke="url(#hs)" stroke-width="5"/>
+      <path class="draw hp" pathLength="1" d="M8 262 H392" stroke="url(#hs)" stroke-width="5" opacity=".6"/>
+    </svg>
+    <div class="abs" id="s3m" style="left:206px;top:640px;font:600 40px 'Montserrat';color:var(--sky);letter-spacing:-.01em;opacity:0">Meet Careva+.</div>
+  </div>
+
+  <!-- ===== S5 · What it is ===== -->
+  <div class="scene" id="s5">
+    <div class="abs" style="left:200px;top:300px;width:820px">
+      <div class="eyebrow" id="s5e">What is Careva+</div>
+      <h1 class="hd" id="s5h" style="font-size:84px;margin-top:26px">
+        <span class="ln"><span>Trained nurses &amp;</span></span>
+        <span class="ln"><span>caretakers, right</span></span>
+        <span class="ln"><span>at your <span class="grad">doorstep.</span></span></span>
+      </h1>
+      <p class="body" id="s5b" style="margin-top:38px;width:760px">Compassionate, professional home health care, planned around each patient’s comfort and safety.</p>
+    </div>
+    <div class="abs" id="s5v" style="left:1170px;top:250px;width:560px;height:560px">
+      <div class="abs" id="s5ring" style="inset:0;border-radius:50%;background:conic-gradient(from 200deg,rgba(163,207,42,.55),rgba(71,182,240,.55),rgba(30,116,207,.35),rgba(163,207,42,.55));-webkit-mask:radial-gradient(closest-side,transparent calc(100% - 3px),#000 calc(100% - 2px));mask:radial-gradient(closest-side,transparent calc(100% - 3px),#000 calc(100% - 2px))"></div>
+      <div class="abs" id="s5disc" style="left:70px;top:70px;width:420px;height:420px;border-radius:50%;background:#fff;box-shadow:0 40px 90px -40px rgba(14,45,92,.35)"></div>
+      <img class="abs" id="s5icon" src="assets/logo-icon.png" style="left:118px;top:150px;width:330px">
+    </div>
+    <div class="chip s5chip" style="left:1050px;top:300px"><span class="dot"></span>Home visits</div>
+    <div class="chip s5chip" style="left:1560px;top:470px"><span class="dot" style="background:linear-gradient(135deg,var(--sky),var(--blue))"></span>Trained staff</div>
+    <div class="chip s5chip" style="left:1100px;top:770px"><span class="dot"></span>Personal care plans</div>
+  </div>
+
+  <!-- ===== S6 · Services ===== -->
+  <div class="scene" id="s6">
+    <div class="abs" id="s6t" style="left:200px;top:180px">
+      <div class="eyebrow">Our services</div>
+      <h1 class="hd" style="font-size:72px;margin-top:22px"><span class="ln"><span>Care for every need, <span class="gradb">at home</span></span></span></h1>
+    </div>
+    <div id="s6grid"></div>
+  </div>
+
+  <!-- ===== S7 · Who it's for ===== -->
+  <div class="scene" id="s7">
+    <div class="abs" id="s7t" style="left:0;right:0;top:170px;text-align:center">
+      <div class="eyebrow">Who it’s for</div>
+      <h1 class="hd" style="font-size:76px;margin-top:22px"><span class="ln"><span>Made for the people <span class="grad">you love</span></span></span></h1>
+    </div>
+    <svg class="abs" width="1920" height="1080" style="left:0;top:0">
+      <defs><linearGradient id="thr2" x1="0" x2="1"><stop offset="0" stop-color="#A3CF2A"/><stop offset=".5" stop-color="#4E9A1B"/><stop offset="1" stop-color="#1E74CF"/></linearGradient></defs>
+      <path id="s7thread" class="draw" pathLength="1" d="M120 560 C 260 520, 300 600, 360 560 S 560 520, 760 560 S 960 600, 1160 560 S 1360 520, 1560 560 S 1700 600, 1800 560" fill="none" stroke="url(#thr2)" stroke-width="4" stroke-linecap="round" opacity=".7"/>
+    </svg>
+    <div id="s7row"></div>
+  </div>
+
+  <!-- ===== S8 · Why + how ===== -->
+  <div class="scene" id="s8">
+    <div class="abs" id="s8t" style="left:200px;top:200px">
+      <div class="eyebrow">Why Careva+</div>
+      <h1 class="hd" style="font-size:80px;margin-top:22px">
+        <span class="ln"><span>Why families</span></span>
+        <span class="ln"><span>choose <span class="grad">Careva+</span></span></span>
+      </h1>
+    </div>
+    <div id="s8list" class="abs" style="left:200px;top:540px"></div>
+    <div class="card" id="s8card" style="left:1130px;top:200px;width:590px;height:680px">
+      <div class="abs" style="left:52px;top:50px;font:700 32px 'Montserrat';letter-spacing:-.01em">Your care, organised</div>
+      <div class="abs" style="left:52px;top:96px;font:500 21px 'Inter';color:var(--slate)">Smart coordination from first call to follow-up</div>
+      <div class="abs" style="left:52px;top:150px;right:52px;height:1px;background:rgba(14,45,92,.08)"></div>
+      <div class="abs" id="s8rail" style="left:87px;top:236px;width:3px;height:340px;background:rgba(14,45,92,.08);border-radius:3px"></div>
+      <div class="abs" id="s8fill" style="left:87px;top:236px;width:3px;height:0;background:linear-gradient(180deg,var(--lime),var(--green));border-radius:3px"></div>
+      <div id="s8steps"></div>
+    </div>
+  </div>
+
+  <!-- ===== Logo (shared by S4, header, S9) ===== -->
+  <div class="layer" id="logoLayer" style="display:none">
+    <div class="logo" id="logo">
+      <img class="i" src="assets/logo-icon.png">
+      <img class="w" src="assets/logo-word.png">
+      <img class="c" src="assets/logo-cross.png">
+      <div class="sweep" id="sweep"></div>
+    </div>
+  </div>
+
+  <!-- ===== S4 · Reveal text ===== -->
+  <div class="scene" id="s4">
+    <div class="abs" id="s4tag" style="left:0;right:0;top:730px;text-align:center;font:500 40px 'Inter';color:var(--slate);letter-spacing:-.005em">
+      Professional health care, <span style="color:var(--navy);font-weight:600">right at home.</span>
+    </div>
+  </div>
+
+  <!-- ===== S9 · End card ===== -->
+  <div class="scene" id="s9">
+    <svg class="abs" width="1920" height="1080" style="left:0;top:0">
+      <path id="s9line" class="draw" pathLength="1" d="M760 676 C 860 660, 1060 692, 1160 676" fill="none" stroke="url(#thr)" stroke-width="5" stroke-linecap="round"/>
+    </svg>
+    <div class="abs" id="s9tag" style="left:0;right:0;top:590px;text-align:center">
+      <div class="hd" style="font-size:60px;font-weight:700">Care that comes home.</div>
+    </div>
+    <div class="abs" id="s9cta" style="left:0;right:0;top:730px;display:flex;justify-content:center">
+      <div style="display:flex;align-items:center;gap:16px;padding:26px 46px;border-radius:999px;background:linear-gradient(100deg,#5DAA1F,#3E8A16);color:#fff;font:700 30px 'Montserrat';letter-spacing:.005em;box-shadow:0 24px 50px -20px rgba(62,138,22,.65)">
+        Book a home visit today
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </div>
+    </div>
+    <div class="abs" id="s9foot" style="left:0;right:0;top:880px;text-align:center;font:600 22px 'Inter';letter-spacing:.24em;text-transform:uppercase;color:var(--slate)">
+      Compassionate <span style="color:var(--lime)">·</span> Reliable <span style="color:var(--sky)">·</span> Professional
+    </div>
+  </div>
+
+  <div id="grain"></div>
+</div>
+
+<script>
+/* ------------------------------------------------------------------ *
+ *  Icon library (64-unit grid, line style)                            *
+ * ------------------------------------------------------------------ */
+const ICONS = {
+  car:      ['M10 40v-8l7-11h30l7 11v8a2 2 0 0 1-2 2H12a2 2 0 0 1-2-2z','M16 31h32','circle:21,44,5','circle:43,44,5'],
+  clock:    ['circle:32,32,22','M32 18v14l9 6'],
+  moon:     ['M46 41A19 19 0 1 1 27 13a15 15 0 0 0 19 28z','M48 12v6M45 15h6'],
+  nurse:    ['M16 9h8M36 9h8','M20 9v14a10 10 0 0 0 20 0V9','M30 33v7a10 10 0 0 0 20 0v-3','circle:50,32,5'],
+  elder:    ['M32 31c-7-5-13-9-13-15a6.5 6.5 0 0 1 13-2a6.5 6.5 0 0 1 13 2c0 6-6 10-13 15z','M6 42h10c4 0 8 2 10 4h8a3.5 3.5 0 0 1 0 7H24','M34 53l13-6a3.5 3.5 0 0 1 4 6L38 60H6'],
+  bandage:  ['rect:8,22,48,20,10,-45','rect:24,24,16,16,3,-45','circle:29,29,.6','circle:35,35,.6','circle:35,29,.6','circle:29,35,.6'],
+  carer:    ['circle:26,19,8','M10 55v-4a14 14 0 0 1 14-14h4a14 14 0 0 1 14 14v4','M51 19v12M45 25h12'],
+  vitals:   ['rect:8,12,48,34,5,0','M24 56h16M32 46v10','M14 30h9l4-8 6 15 4-7h13'],
+  plan:     ['rect:14,12,36,44,5,0','M24 12V9a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v3','M23 35l6 6 12-12'],
+  senior:   ['circle:27,12,6','M27 20c-3 7-3 15-1 23','M26 43l-7 14M26 43l6 14','M27 27l9 6','M36 30c5 0 5 4 5 4v23'],
+  bed:      ['M8 16v40','M8 44h50v12','circle:18,32,5','M28 36v-4a4 4 0 0 1 4-4h18a8 8 0 0 1 8 8v8','M8 38h20'],
+  heart:    ['M32 54C15 43 8 33 8 23a12 12 0 0 1 24-5a12 12 0 0 1 24 5c0 10-7 20-24 31z','M15 32h10l4-7 6 13 4-6h11'],
+  family:   ['circle:19,15,6','M9 43v-5a10 10 0 0 1 20 0v5','circle:45,15,6','M35 43v-5a10 10 0 0 1 20 0v5','circle:32,33,5','M24 57v-4a8 8 0 0 1 16 0v4'],
+  phone:    ['rect:18,6,28,52,6,0','M28 50h8','M27 20c6-4 4 8 10 4'],
+  usercheck:['circle:26,20,8','M10 55v-4a14 14 0 0 1 14-14h4a14 14 0 0 1 9 3','M40 47l5 5 10-10'],
+  calendar: ['rect:8,12,48,42,5,0','M8 24h48M20 6v10M44 6v10','M24 39l6 6 11-11'],
+  check:    ['M18 33l9 9 19-19']
+};
+function iconSVG(name, size, color, sw=3){
+  const parts = ICONS[name].map(d=>{
+    if(d.startsWith('circle:')){const [cx,cy,r]=d.slice(7).split(',');return `<circle class="draw" pathLength="1" cx="${cx}" cy="${cy}" r="${r}"/>`;}
+    if(d.startsWith('rect:')){const [x,y,w,h,rx,rot]=d.slice(5).split(',');return `<rect class="draw" pathLength="1" x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" transform="rotate(${rot} 32 32)"/>`;}
+    return `<path class="draw" pathLength="1" d="${d}"/>`;
+  }).join('');
+  return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 64 64" style="stroke:${color};stroke-width:${sw}">${parts}</svg>`;
+}
+
+/* ------------------------------------------------------------------ *
+ *  Build data-driven scenes                                           *
+ * ------------------------------------------------------------------ */
+// S2 problem cards
+const S2 = [['car','Long commutes'],['clock','Hours of waiting'],['moon','Less time to rest']];
+document.querySelectorAll('.s2c').forEach((c,i)=>{
+  c.innerHTML = `<div class="icbg" style="left:40px;top:53px;width:84px;height:84px;background:#E8EEF5">${iconSVG(S2[i][0],48,'#5C7391',3)}</div>
+  <div class="abs" style="left:150px;top:0;bottom:0;display:flex;align-items:center;font:700 32px 'Montserrat';letter-spacing:-.01em;color:#2B4466">${S2[i][1]}</div>`;
+});
+
+// S6 services
+const SERVICES = [
+  ['nurse','Home Nursing','Skilled care from trained nurses','t-green','#3E8A16'],
+  ['elder','Elder Care','Daily support & companionship','t-blue','#1E6AC0'],
+  ['bandage','Post-Surgery Recovery','Gentle care after a hospital stay','t-green','#3E8A16'],
+  ['carer','Patient Caretakers','Trained attendants for daily living','t-blue','#1E6AC0'],
+  ['vitals','Vitals & Medication','Regular checks, medicines on time','t-green','#3E8A16'],
+  ['plan','Personalised Care Plans','Built around each patient','t-blue','#1E6AC0'],
+];
+document.getElementById('s6grid').innerHTML = SERVICES.map((s,i)=>{
+  const x=200+(i%3)*520, y=400+Math.floor(i/3)*280;
+  return `<div class="card s6c" style="left:${x}px;top:${y}px;width:480px;height:250px">
+    <div class="icbg ${s[3]}" style="left:36px;top:34px;width:88px;height:88px">${iconSVG(s[0],52,s[4],3)}</div>
+    <div class="abs" style="left:36px;top:146px;font:700 31px 'Montserrat';letter-spacing:-.012em">${s[1]}</div>
+    <div class="abs" style="left:36px;top:192px;font:400 23px 'Inter';color:var(--slate)">${s[2]}</div>
+  </div>`;
+}).join('');
+
+// S7 audiences
+const WHO = [
+  ['senior','Seniors','who wish to age comfortably at home','#3E8A16','t-green'],
+  ['bed','Recovering patients','after surgery or a hospital stay','#1E6AC0','t-blue'],
+  ['heart','Long-term conditions','that need regular, ongoing care','#3E8A16','t-green'],
+  ['family','Busy families','who want trusted support for loved ones','#1E6AC0','t-blue'],
+];
+document.getElementById('s7row').innerHTML = WHO.map((w,i)=>{
+  const cx=360+i*400;
+  return `<div class="abs s7b" style="left:${cx-110}px;top:450px;width:220px;height:220px">
+      <div class="abs" style="inset:0;border-radius:50%;background:#fff;box-shadow:0 26px 60px -26px rgba(14,45,92,.35)"></div>
+      <div class="icbg ${w[4]}" style="left:22px;top:22px;width:176px;height:176px">${iconSVG(w[0],96,w[3],2.6)}</div>
+    </div>
+    <div class="abs s7l" style="left:${cx-180}px;top:700px;width:360px;text-align:center">
+      <div style="font:700 32px 'Montserrat';letter-spacing:-.012em">${w[1]}</div>
+      <div style="margin-top:12px;font:400 25px/1.4 'Inter';color:var(--slate)">${w[2]}</div>
+    </div>`;
+}).join('');
+
+// S8 why list + steps
+const WHY = ['Trained, verified nurses & caretakers','Care plans built around each patient','Quick response & organised follow-ups','The comfort and safety of home'];
+document.getElementById('s8list').innerHTML = WHY.map((t,i)=>`
+  <div class="abs s8r" style="left:0;top:${i*86}px;display:flex;align-items:center;gap:24px;white-space:nowrap">
+    <div style="width:50px;height:50px;border-radius:50%;background:linear-gradient(135deg,var(--lime),var(--green));display:flex;align-items:center;justify-content:center;box-shadow:0 10px 22px -10px rgba(62,138,22,.7)">${iconSVG('check',34,'#fff',5.5)}</div>
+    <div style="font:500 32px 'Inter';color:var(--navy);letter-spacing:-.01em">${t}</div>
+  </div>`).join('');
+const STEPS = [['phone','Enquiry received','Within minutes'],['usercheck','Caregiver matched','Trained & verified'],['calendar','Follow-ups scheduled','Never miss a visit']];
+document.getElementById('s8steps').innerHTML = STEPS.map((s,i)=>`
+  <div class="abs s8s" style="left:52px;top:${206+i*170}px;width:486px;height:120px">
+    <div class="abs s8sc" style="left:0;top:0;width:72px;height:72px;border-radius:50%;background:#EEF2F6;display:flex;align-items:center;justify-content:center">
+      <div class="abs s8on" style="inset:0;border-radius:50%;background:linear-gradient(135deg,var(--lime),var(--green));opacity:0"></div>
+      <div style="position:relative">${iconSVG(s[0],40,'#fff',3.4)}</div>
+      <div class="abs s8off" style="inset:0;display:flex;align-items:center;justify-content:center">${iconSVG(s[0],40,'#8A9AAE',3.4)}</div>
+    </div>
+    <div class="abs" style="left:100px;top:2px;font:700 27px 'Montserrat';letter-spacing:-.01em">${s[1]}</div>
+    <div class="abs" style="left:100px;top:42px;font:400 21px 'Inter';color:var(--slate)">${s[2]}</div>
+    <div class="abs s8p" style="left:396px;top:40px;padding:8px 16px;border-radius:999px;background:#E9F5D9;color:#3E8A16;font:600 18px 'Inter';display:flex;gap:8px;align-items:center">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3E8A16" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Done</div>
+  </div>`).join('');
+
+/* ------------------------------------------------------------------ *
+ *  Timeline engine                                                    *
+ * ------------------------------------------------------------------ */
+function bez(x1,y1,x2,y2){
+  const X=(u)=>3*x1*u*(1-u)*(1-u)+3*x2*u*u*(1-u)+u*u*u;
+  const Y=(u)=>3*y1*u*(1-u)*(1-u)+3*y2*u*u*(1-u)+u*u*u;
+  return t=>{ if(t<=0)return 0; if(t>=1)return 1; let lo=0,hi=1,u=t;
+    for(let i=0;i<28;i++){ u=(lo+hi)/2; if(X(u)<t)lo=u; else hi=u; } return Y(u); };
+}
+const OUT=bez(.16,1,.3,1), IN=bez(.7,0,.84,0), IO=bez(.65,0,.35,1), BACK=bez(.34,1.56,.64,1), SOFT=bez(.45,0,.2,1);
+const cl=(v,a=0,b=1)=>Math.min(b,Math.max(a,v));
+const P=(t,s,d,e=OUT)=>e(cl((t-s)/d));
+const L=(a,b,k)=>a+(b-a)*k;
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+
+function st(el,{o=1,x=0,y=0,s=1,r=0,b=0}={}){
+  el.style.opacity=o;
+  el.style.transform=`translate(${x}px,${y}px) scale(${s}) rotate(${r}deg)`;
+  el.style.filter=b>0.05?`blur(${b}px)`:'none';
+}
+// standard element entrance / exit
+function enter(el,t,a,out,{dy=36,dx=0,dur=.8,od=.5,oy=-22,blur=8,s0=1}={}){
+  const k=P(t,a,dur), q=P(t,out,od,IN);
+  st(el,{o:k*(1-q), x:L(dx,0,k), y:L(dy,0,k)+oy*q, b:blur*(1-k)+6*q, s:L(s0,1,k)});
+}
+// masked line reveal for .ln children
+function lines(root,t,a,out,{stag=.11,dur=.95,od=.55}={}){
+  root.querySelectorAll('.ln>span').forEach((sp,i)=>{
+    const k=P(t,a+i*stag,dur), q=P(t,out+i*.05,od,IN);
+    sp.style.transform=`translateY(${L(112,0,k)-112*q}%)`;
+  });
+}
+// stroke draw-on (and optional draw-off)
+function draw(el,t,a,d,off=null,od=.6){
+  const k=P(t,a,d,IO); let q=off===null?0:P(t,off,od,IO);
+  el.style.strokeDashoffset = q>0 ? -q : 1-k;
+  el.style.opacity = (k>0.002 && q<0.998) ? '' : 0;
+}
+function drawAll(root,t,a,d,stag=.08,off=null){ root.querySelectorAll('.draw').forEach((p,i)=>draw(p,t,a+i*stag,d,off)); }
+function show(id,t,a,b){ const el=document.getElementById(id); el.style.display=(t>=a&&t<b)?'block':'none'; return el; }
+
+/* logo placement: centre (cx,cy) + scale */
+function placeLogo(cx,cy,s){ const el=$('#logo'); el.style.left=(cx-893)+'px'; el.style.top=(cy-276.5)+'px'; el.style.transform=`scale(${s})`; }
+
+/* ------------------------------------------------------------------ *
+ *  Scene timings (seconds) — music is 80 BPM, beat = 0.75s            *
+ * ------------------------------------------------------------------ */
+const T = { s1:[0,6], s2:[6,13.5], s3:[13.5,18], s4:[17.8,24.6], s5:[24,30], s6:[30,39.75], s7:[39.75,48.75], s8:[48.75,57], s9:[57,63] };
+const DURATION = 63;
+
+function seek(t){
+  /* ---------- background ---------- */
+  st($('#blobA'),{x:-260+Math.sin(t*.21)*90, y:-420+Math.cos(t*.17)*70});
+  st($('#blobB'),{x:1000+Math.cos(t*.19)*110, y:260+Math.sin(t*.15)*80});
+  $('#cool').style.opacity = P(t,5.8,1.2,IO)*(1-P(t,13.2,.8,IO));
+  const night=P(t,13.0,.6,SOFT);
+  $('#night').style.opacity = night;
+  // circle wipe (door light floods the frame)
+  const wipeR = L(0,1800,P(t,16.95,1.05,bez(.7,0,.25,1)));
+  const m = wipeR>0.5 ? `radial-gradient(circle at 1400px 670px, transparent ${wipeR}px, #000 ${wipeR+60}px)` : 'none';
+  for(const id of ['night','s3']){ const e=document.getElementById(id); e.style.webkitMaskImage=m; e.style.maskImage=m; }
+  $('#night').style.display = t<18.1 ? 'block':'none';
+
+  /* ---------- S1 hook ---------- */
+  if(show('s1',t,...T.s1).style.display==='block'){
+    draw($('#s1thread'),t,.15,2.6,5.0,.9);
+    lines($('#s1t'),t,.55,5.3,{stag:.16,dur:1.1});
+  }
+
+  /* ---------- S2 problem ---------- */
+  if(show('s2',t,...T.s2).style.display==='block'){
+    enter($('#s2e'),t,6.25,12.55,{dy:16});
+    lines($('#s2t'),t,6.4,12.6,{stag:.13});
+    $$('.s2c').forEach((c,i)=>{
+      enter(c,t,7.6+i*.14,12.4+i*.06,{dy:60,dur:.9,oy:40,blur:10});
+      drawAll(c,t,7.9+i*.14,1.0,.1);
+      // weight settles: the cards lose colour as the scene turns
+      const g=P(t,11.2,1.0,IO); c.style.filter += ` grayscale(${g})`;
+    });
+  }
+
+  /* ---------- S3 pivot ---------- */
+  if(show('s3',t,...T.s3).style.display==='block'){
+    lines($('#s3t'),t,13.85,99,{stag:.15,dur:1.1});
+    $$('#house .hp').forEach((p,i)=>draw(p,t,14.0+i*.22,1.25));
+    const w=P(t,15.4,.8,SOFT); $('#win').setAttribute('opacity',w); $('#winGlow').setAttribute('opacity',w*.9);
+    const d=P(t,16.2,.7,SOFT); $('#doorFill').setAttribute('opacity',d); $('#doorGlow').setAttribute('opacity',d);
+    enter($('#s3m'),t,15.9,99,{dy:18});
+    st($('#house'),{s:L(1,1.04,P(t,14,4,IO)), o:1});
+  }
+
+  /* ---------- Logo (S4 reveal → header bug → S9 end card) ---------- */
+  const logoOn = t>=17.8;
+  $('#logoLayer').style.display = logoOn?'block':'none';
+  if(logoOn){
+    const toHeader=P(t,24.0,1.05,IO), toEnd=P(t,57.0,1.1,IO);
+    let cx=L(960,253,toHeader), cy=L(450,104,toHeader), s=L(.70,.16,toHeader);
+    cx=L(cx,960,toEnd); cy=L(cy,390,toEnd); s=L(s,.60,toEnd);
+    s *= 1 + .02*P(t,19.5,4.5,SOFT)*(1-toHeader) + .015*P(t,58.4,4.6,SOFT);  // gentle breathe on holds
+    placeLogo(cx,cy,s);
+    // icon grows up from the hand
+    const ki=P(t,18.0,1.35,OUT);
+    const ic=$('#logo .i'); ic.style.clipPath=`inset(${(1-ki)*100}% 0 0 0)`; st(ic,{o:Math.min(1,ki*2), y:L(40,0,ki), s:L(.94,1,ki), b:10*(1-ki)});
+    // wordmark wipes in
+    const kw=P(t,18.85,1.0,OUT);
+    const wm=$('#logo .w'); wm.style.clipPath=`inset(0 ${(1-kw)*100}% 0 0)`; st(wm,{o:kw>0?1:0, x:L(-30,0,kw)});
+    // the red cross — the one playful beat
+    const kc=P(t,19.65,.75,BACK); st($('#logo .c'),{o:cl(kc*3), s:kc, r:L(-90,0,P(t,19.65,.75,OUT))});
+    // light sweep across the full logo
+    const sw=P(t,20.5,1.3,IO), sw2=P(t,58.6,1.3,IO);
+    const sweep=$('#sweep'); const pos = (sw2>0&&sw2<1)? sw2 : sw;
+    sweep.style.backgroundPosition = `${L(120,-20,pos)}% 0`; sweep.style.opacity=(pos>0&&pos<1)?1:0;
+  }
+  if(show('s4',t,...T.s4).style.display==='block'){
+    enter($('#s4tag'),t,20.6,23.55,{dy:24});
+  }
+
+  /* ---------- S5 what is Careva+ ---------- */
+  if(show('s5',t,...T.s5).style.display==='block'){
+    const out=29.35;
+    enter($('#s5e'),t,24.8,out,{dy:16});
+    lines($('#s5h'),t,24.95,out,{stag:.12});
+    enter($('#s5b'),t,25.75,out+.05,{dy:24});
+    const kv=P(t,24.9,1.2,OUT), qv=P(t,out,.55,IN);
+    st($('#s5v'),{o:kv*(1-qv), s:L(.86,1,kv)*L(1,.96,qv), b:8*(1-kv)});
+    $('#s5ring').style.transform=`rotate(${t*14}deg)`;
+    st($('#s5icon'),{y:Math.sin(t*1.1)*6});
+    $$('.s5chip').forEach((c,i)=>{
+      const k=P(t,25.8+i*.22,.75,BACK), q=P(t,out-.1+i*.04,.45,IN);
+      st(c,{o:cl(k*2)*(1-q), s:L(.6,1,k)*L(1,.9,q), y:Math.sin(t*1.3+i*2)*7});
+    });
+  }
+
+  /* ---------- S6 services ---------- */
+  if(show('s6',t,...T.s6).style.display==='block'){
+    const out=39.15;
+    enter($('#s6t .eyebrow'),t,30.25,out,{dy:16});
+    lines($('#s6t'),t,30.35,out);
+    $$('.s6c').forEach((c,i)=>{
+      const a=31.0+i*.13;
+      enter(c,t,a,out+i*.03,{dy:70,dur:.95,blur:10,s0:.97});
+      drawAll(c,t,a+.35,1.0,.09);
+    });
+  }
+
+  /* ---------- S7 who it's for ---------- */
+  if(show('s7',t,...T.s7).style.display==='block'){
+    const out=48.15;
+    enter($('#s7t .eyebrow'),t,40.0,out,{dy:16});
+    lines($('#s7t'),t,40.1,out);
+    draw($('#s7thread'),t,40.5,2.0,out-.1,.7);
+    $$('.s7b').forEach((b,i)=>{
+      const a=40.8+i*.32;
+      const k=P(t,a,.9,BACK), q=P(t,out+i*.04,.5,IN);
+      st(b,{o:cl(k*2)*(1-q), s:L(.5,1,k)*L(1,.9,q)});
+      drawAll(b,t,a+.25,1.1,.08);
+    });
+    $$('.s7l').forEach((l,i)=>enter(l,t,41.15+i*.32,out+i*.04,{dy:22}));
+  }
+
+  /* ---------- S8 why + how ---------- */
+  if(show('s8',t,...T.s8).style.display==='block'){
+    const out=56.35;
+    enter($('#s8t .eyebrow'),t,49.0,out,{dy:16});
+    lines($('#s8t'),t,49.1,out);
+    $$('.s8r').forEach((r,i)=>{ enter(r,t,50.0+i*.3,out+i*.03,{dx:-30,dy:0,blur:6}); drawAll(r,t,50.25+i*.3,.6); });
+    enter($('#s8card'),t,49.6,out,{dy:80,dur:1.0,blur:10});
+    const fill=P(t,51.6,3.6,IO); $('#s8fill').style.height=(340*fill)+'px';
+    $$('.s8s').forEach((s,i)=>{
+      const a=51.2+i*1.25;
+      const on=P(t,a,.5,OUT);
+      s.querySelector('.s8on').style.opacity=on; s.querySelector('.s8off').style.opacity=1-on;
+      const kp=P(t,a+.25,.6,BACK); st(s.querySelector('.s8p'),{o:cl(kp*2), s:L(.5,1,kp)});
+    });
+    $$('.s8s .draw').forEach(p=>{p.style.strokeDashoffset=0;p.style.opacity='';});
+  }
+
+  /* ---------- S9 end card ---------- */
+  if(show('s9',t,...T.s9).style.display==='block'){
+    enter($('#s9tag'),t,58.0,99,{dy:26});
+    draw($('#s9line'),t,58.4,1.2);
+    enter($('#s9cta'),t,58.55,99,{dy:26,s0:.94});
+    enter($('#s9foot'),t,59.0,99,{dy:14});
+  }
+}
+window.seek = seek;
+window.DURATION = DURATION;
+
+/* live preview when opened in a browser (renderer passes ?render) */
+if(!location.search.includes('render')){
+  let t0=null; const loop=(ts)=>{ if(t0===null)t0=ts; seek(((ts-t0)/1000)%DURATION); requestAnimationFrame(loop); };
+  document.fonts.ready.then(()=>requestAnimationFrame(loop));
+} else { seek(0); }
+</script>
+</body>
+</html>
