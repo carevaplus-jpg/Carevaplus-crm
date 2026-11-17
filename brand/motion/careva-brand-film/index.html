@@ -1,0 +1,919 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Careva+ Brand Film</title>
+<meta name="viewport" content="width=1920">
+<!--
+  Careva+ Home Health — 30s brand film (1920x1080, 30fps)
+  Concept: one continuous line. A heartbeat becomes a home, the home becomes care,
+  and care resolves into the Careva+ mark.
+
+  Deterministic: everything is a pure function of time t via window.seek(t).
+  Open this file in a browser to preview (autoplays). Add ?t=12.5 to freeze on a frame.
+-->
+<style>
+@font-face{font-family:"Fraunces";src:url("fonts/fraunces-latin-full-normal.woff2") format("woff2");font-weight:100 900;font-style:normal}
+@font-face{font-family:"Fraunces";src:url("fonts/fraunces-latin-full-italic.woff2") format("woff2");font-weight:100 900;font-style:italic}
+@font-face{font-family:"InterV";src:url("fonts/inter-latin-wght-normal.woff2") format("woff2");font-weight:100 900;font-style:normal}
+
+:root{
+  --ink:#03130F;      /* rich emerald-black */
+  --emerald:#0B3A31;  /* dominant */
+  --mint:#9AF3D6;     /* line accent */
+  --teal:#2DD4BF;     /* glow */
+  --gold:#E9C27E;     /* warmth accent */
+  --cream:#F4EFE6;    /* text */
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1920px;height:1080px;overflow:hidden;background:var(--ink)}
+#stage{position:relative;width:1920px;height:1080px;overflow:hidden;background:var(--ink);color:var(--cream)}
+#bg,#svg,.layer{position:absolute;left:0;top:0;width:1920px;height:1080px}
+.layer{pointer-events:none}
+
+.serif{font-family:"Fraunces",Georgia,serif;font-variation-settings:"SOFT" 100,"WONK" 0;font-optical-sizing:auto}
+.sans{font-family:"InterV",system-ui,sans-serif}
+i{font-style:italic}
+
+/* masked word reveals */
+.m{display:inline-block;overflow:hidden;vertical-align:top;padding:.12em .06em .24em;margin:-.12em -.06em -.24em}
+.w{display:inline-block;will-change:transform,opacity}
+
+.headline{position:absolute;left:0;width:1920px;text-align:center;font-weight:330;letter-spacing:-.012em;line-height:1.1}
+#s1,#s2{top:742px;font-size:86px}
+#s3{top:748px;font-size:80px}
+#s1 i{color:#B9F7E2;font-weight:300}
+#s2 i,#s3 i{color:var(--gold);font-weight:300}
+
+/* pillars */
+.pillar{position:absolute;left:820px;top:392px;width:1000px}
+.pillar .idx{font-size:21px;letter-spacing:.34em;color:var(--gold);font-weight:500}
+.pillar .word{font-size:128px;font-weight:340;letter-spacing:-.018em;line-height:1;margin-top:26px}
+.pillar .rule{height:2px;margin-top:22px;transform-origin:0 50%;background:linear-gradient(90deg,#CFFBEA 0%,var(--teal) 55%,rgba(45,212,191,0) 100%)}
+.pillar .sup{font-size:34px;font-weight:300;color:rgba(244,239,230,.74);margin-top:30px;letter-spacing:.005em}
+
+/* network */
+#nhead{top:688px;font-size:76px}
+#nhead i{color:var(--gold);font-weight:300}
+#nsup{position:absolute;left:0;width:1920px;text-align:center;top:800px;font-size:28px;font-weight:350;color:rgba(244,239,230,.72);letter-spacing:.01em}
+.nlabel{position:absolute;font-size:17px;letter-spacing:.32em;font-weight:500;color:rgba(244,239,230,.78);white-space:nowrap}
+
+/* end card */
+#wm{position:absolute;left:0;width:1920px;text-align:center;top:452px;font-size:156px;font-weight:420;letter-spacing:-.02em;line-height:1}
+#wm .w{color:transparent;-webkit-background-clip:text;background-clip:text;
+  background-image:linear-gradient(100deg,#F4EFE6 0%,#F4EFE6 46%,#FFFFFF 50%,#F4EFE6 54%,#F4EFE6 100%)}
+#wm .w.plus{font-weight:300;margin-left:.02em;
+  background-image:linear-gradient(100deg,#E9C27E 0%,#E9C27E 46%,#FFF4DA 50%,#E9C27E 54%,#E9C27E 100%)}
+#desc{position:absolute;left:0;width:1920px;text-align:center;top:640px;font-size:23px;font-weight:500;letter-spacing:.42em;color:rgba(244,239,230,.78);padding-left:.42em}
+#cta{position:absolute;left:0;width:1920px;top:738px;text-align:center}
+#cta .pill{display:inline-block;padding:19px 44px 20px;border-radius:999px;border:1.5px solid rgba(233,194,126,.75);
+  background:rgba(233,194,126,.07);font-size:24px;font-weight:500;letter-spacing:.03em;color:var(--cream)}
+#cta .pill b{color:var(--gold);font-weight:500;margin-left:14px}
+
+#vignette{background:radial-gradient(ellipse 75% 75% at 50% 50%,rgba(0,0,0,0) 55%,rgba(0,6,4,.55) 100%)}
+#fade{background:#010806}
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="bg" width="1920" height="1080"></canvas>
+
+  <svg id="svg" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <filter id="fGlow" filterUnits="userSpaceOnUse" x="0" y="0" width="1920" height="1080"><feGaussianBlur stdDeviation="6"/></filter>
+      <filter id="fGlowBig" filterUnits="userSpaceOnUse" x="0" y="0" width="1920" height="1080"><feGaussianBlur stdDeviation="20"/></filter>
+      <filter id="fSoft" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation="3.5"/></filter>
+      <filter id="fGlowSm" x="-1.5" y="-1.5" width="4" height="4"><feGaussianBlur stdDeviation="6"/></filter>
+      <filter id="fGlowBox" x="-.6" y="-.6" width="2.2" height="2.2"><feGaussianBlur stdDeviation="6"/></filter>
+    </defs>
+
+    <!-- distant neighbourhood -->
+    <g id="hoodCam"><g id="hood"></g></g>
+
+    <!-- hero-house plus (scene 3) -->
+    <g id="heroCam">
+      <g id="heroPlus" stroke-linecap="round" fill="none">
+        <g filter="url(#fGlowBox)" opacity=".55"><path id="hpVg" d="M960 463 L960 549" stroke="#E9C27E" stroke-width="16"/>
+        <path id="hpHg" d="M917 506 L1003 506" stroke="#E9C27E" stroke-width="16"/></g>
+        <path id="hpV"  d="M960 463 L960 549" stroke="#F3D59C" stroke-width="7"/>
+        <path id="hpH"  d="M917 506 L1003 506" stroke="#F3D59C" stroke-width="7"/>
+      </g>
+    </g>
+
+    <!-- shield plus (pillar 3) -->
+    <g id="shieldPlus" stroke-linecap="round" fill="none">
+      <g filter="url(#fGlowBox)" opacity=".5"><path id="spVg" stroke="#E9C27E" stroke-width="14"/>
+      <path id="spHg" stroke="#E9C27E" stroke-width="14"/></g>
+      <path id="spV" stroke="#F3D59C" stroke-width="6"/>
+      <path id="spH" stroke="#F3D59C" stroke-width="6"/>
+    </g>
+
+    <!-- care network (scene 5) -->
+    <g id="net"></g>
+
+    <!-- the one line -->
+    <path id="lnBig"  fill="none" stroke="#14B8A6" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" filter="url(#fGlowBig)"/>
+    <path id="lnGlow" fill="none" stroke="#5EEAD4" stroke-width="6"  stroke-linecap="round" stroke-linejoin="round" filter="url(#fGlow)"/>
+    <path id="lnCore" fill="none" stroke="#ECFFF8" stroke-width="3"  stroke-linecap="round" stroke-linejoin="round"/>
+    <circle id="headGlow" r="22" fill="#5EEAD4" filter="url(#fGlowSm)"/>
+    <circle id="head" r="5" fill="#FFFFFF"/>
+
+    <!-- emblem plus (end card) -->
+    <g id="emPlus" stroke-linecap="round" fill="none">
+      <g id="epGlow" filter="url(#fGlowBox)" opacity=".55"><path id="epVg" d="M960 352 L960 404" stroke="#E9C27E" stroke-width="15"/>
+      <path id="epHg" d="M934 378 L986 378" stroke="#E9C27E" stroke-width="15"/></g>
+      <path id="epV" d="M960 352 L960 404" stroke="#F3D59C" stroke-width="6.5"/>
+      <path id="epH" d="M934 378 L986 378" stroke="#F3D59C" stroke-width="6.5"/>
+    </g>
+
+    <circle id="shock" cx="960" cy="400" r="10" fill="none" stroke="#9AF3D6" stroke-width="2"/>
+  </svg>
+
+  <!-- copy -->
+  <div class="layer">
+    <div id="s1" class="headline serif">Every <i>heartbeat</i> matters.</div>
+    <div id="s2" class="headline serif">Every <i>home</i> deserves care.</div>
+    <div id="s3" class="headline serif">Expert care <i>that comes home.</i></div>
+
+    <div id="p0" class="pillar">
+      <div class="idx sans">01&#8202;&#8202;/&#8202;&#8202;03</div>
+      <div class="word serif">Compassionate.</div>
+      <div class="rule"></div>
+      <div class="sup sans">Personalised care, with dignity</div>
+    </div>
+    <div id="p1" class="pillar">
+      <div class="idx sans">02&#8202;&#8202;/&#8202;&#8202;03</div>
+      <div class="word serif">Reliable.</div>
+      <div class="rule"></div>
+      <div class="sup sans">Quick response, organised follow-ups</div>
+    </div>
+    <div id="p2" class="pillar">
+      <div class="idx sans">03&#8202;&#8202;/&#8202;&#8202;03</div>
+      <div class="word serif">Professional.</div>
+      <div class="rule"></div>
+      <div class="sup sans">Trained nurses &amp; caretakers</div>
+    </div>
+
+    <div id="labels"></div>
+    <div id="nhead" class="headline serif">Care, <i>coordinated</i> around you.</div>
+    <div id="nsup" class="sans">AI-assisted scheduling &amp; follow-ups</div>
+
+    <div id="wm" class="serif"></div>
+    <div id="desc" class="sans">HOME HEALTH CARE</div>
+    <div id="cta" class="sans"><span class="m"><span class="w pill">Book a home visit<b>&rarr;</b></span></span></div>
+  </div>
+
+  <div id="vignette" class="layer"></div>
+  <div id="fade" class="layer"></div>
+</div>
+
+<script>
+/* ================================================================
+   Timing + easing
+   ================================================================ */
+const W = 1920, H = 1080, DURATION = 30;
+
+function cubicBezier(x1, y1, x2, y2) {
+  const cx = 3 * x1, bx = 3 * (x2 - x1) - cx, ax = 1 - cx - bx;
+  const cy = 3 * y1, by = 3 * (y2 - y1) - cy, ay = 1 - cy - by;
+  const sx = t => ((ax * t + bx) * t + cx) * t;
+  const sy = t => ((ay * t + by) * t + cy) * t;
+  return x => {
+    if (x <= 0) return 0;
+    if (x >= 1) return 1;
+    let lo = 0, hi = 1, t = x;
+    for (let i = 0; i < 40; i++) {           // robust bisection
+      const v = sx(t);
+      if (Math.abs(v - x) < 1e-7) break;
+      if (v < x) lo = t; else hi = t;
+      t = (lo + hi) / 2;
+    }
+    return sy(t);
+  };
+}
+const E = {
+  out:  cubicBezier(.16, 1, .3, 1),    // expo-out: arrivals
+  in:   cubicBezier(.7, 0, .84, 0),    // expo-in: exits
+  io:   cubicBezier(.65, 0, .35, 1),   // moves / morphs
+  soft: cubicBezier(.45, 0, .25, 1),   // long camera drifts
+};
+const clamp = (x, a = 0, b = 1) => x < a ? a : x > b ? b : x;
+const lerp = (a, b, k) => a + (b - a) * k;
+const P = (t, s, d, e = E.out) => e(clamp((t - s) / d));
+function kf(t, keys, e = E.io) {
+  if (t <= keys[0][0]) return keys[0][1];
+  for (let i = 1; i < keys.length; i++) {
+    if (t <= keys[i][0]) {
+      const [t0, v0] = keys[i - 1], [t1, v1] = keys[i];
+      return lerp(v0, v1, e((t - t0) / (t1 - t0)));
+    }
+  }
+  return keys[keys.length - 1][1];
+}
+// a soft "lub-dub" envelope (x in seconds since the beat)
+function bump(x, rise = .07, decay = 7) {
+  if (x < 0) return 0;
+  if (x < rise) return Math.sin((x / rise) * Math.PI / 2);
+  return Math.exp(-(x - rise) * decay);
+}
+const beat = x => Math.min(1, bump(x) + .55 * bump(x - .24));
+
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+/* ================================================================
+   Geometry helpers (polylines as [[x,y],...])
+   ================================================================ */
+function lengths(pts) {
+  const L = [0];
+  for (let i = 1; i < pts.length; i++) L.push(L[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+  return L;
+}
+function resample(pts, N) {
+  const L = lengths(pts), total = L[L.length - 1], out = [];
+  let j = 1;
+  for (let i = 0; i < N; i++) {
+    const d = total * i / (N - 1);
+    while (j < pts.length - 1 && L[j] < d) j++;
+    const l0 = L[j - 1], l1 = L[j], k = l1 > l0 ? clamp((d - l0) / (l1 - l0)) : 0;
+    out.push([lerp(pts[j - 1][0], pts[j][0], k), lerp(pts[j - 1][1], pts[j][1], k)]);
+  }
+  return out;
+}
+function pointAt(pts, d) {
+  const L = lengths(pts);
+  if (d <= 0) return pts[0];
+  for (let j = 1; j < pts.length; j++) {
+    if (L[j] >= d) {
+      const k = (d - L[j - 1]) / Math.max(1e-9, L[j] - L[j - 1]);
+      return [lerp(pts[j - 1][0], pts[j][0], k), lerp(pts[j - 1][1], pts[j][1], k)];
+    }
+  }
+  return pts[pts.length - 1];
+}
+const mix = (A, B, k) => k <= 0 ? A : k >= 1 ? B : A.map((p, i) => [lerp(p[0], B[i][0], k), lerp(p[1], B[i][1], k)]);
+const scaleAround = (pts, cx, cy, s) => s === 1 ? pts : pts.map(p => [cx + (p[0] - cx) * s, cy + (p[1] - cy) * s]);
+const translate = (pts, dx, dy) => pts.map(p => [p[0] + dx, p[1] + dy]);
+function toD(pts) {
+  let d = 'M' + pts[0][0].toFixed(2) + ' ' + pts[0][1].toFixed(2);
+  for (let i = 1; i < pts.length; i++) d += 'L' + pts[i][0].toFixed(2) + ' ' + pts[i][1].toFixed(2);
+  return d;
+}
+function chain(segs, counts) {
+  let out = [];
+  segs.forEach((s, i) => {
+    const r = resample(s, counts[i] + 1);
+    out = out.concat(i < segs.length - 1 ? r.slice(0, -1) : r);
+  });
+  return out;
+}
+function bumpSeg(x0, x1, y, h, n = 24, skew = 0) {
+  const pts = [];
+  for (let i = 0; i <= n; i++) {
+    const u = i / n, uu = Math.pow(u, 1 + skew);
+    pts.push([lerp(x0, x1, u), y - h * Math.sin(Math.PI * uu)]);
+  }
+  return pts;
+}
+function quad(a, c, b, n = 24) {
+  const pts = [];
+  for (let i = 0; i <= n; i++) {
+    const u = i / n, v = 1 - u;
+    pts.push([v * v * a[0] + 2 * v * u * c[0] + u * u * b[0], v * v * a[1] + 2 * v * u * c[1] + u * u * b[1]]);
+  }
+  return pts;
+}
+
+/* ================================================================
+   Shapes
+   ================================================================ */
+const Y0 = 600;           // horizon / ECG baseline
+const PEAK = [960, 268];  // R-peak == roof peak (the line "holds the roof up")
+const SEGN = [34, 46, 46, 46, 46, 34];
+
+// ECG trace — one heartbeat, centred
+const ECG = chain([
+  [[-60, Y0], [690, Y0]],
+  [[690, Y0], [722, Y0], ...bumpSeg(722, 800, Y0, 26, 20), [862, Y0]],
+  [[862, Y0], [886, Y0 + 24], PEAK],
+  [PEAK, [1024, Y0 + 74], [1052, Y0]],
+  [[1052, Y0], [1084, Y0], ...bumpSeg(1084, 1188, Y0, 42, 24, .35), [1232, Y0]],
+  [[1232, Y0], [1980, Y0]],
+], SEGN);
+
+// Home on the horizon — same point count, segment-for-segment
+const HOUSE_V = { bl: [770, Y0], el: [770, 432], er: [1150, 432], br: [1150, Y0] };
+const HOUSE = chain([
+  [[-60, Y0], HOUSE_V.bl],
+  [HOUSE_V.bl, HOUSE_V.el],
+  [HOUSE_V.el, PEAK],
+  [PEAK, HOUSE_V.er],
+  [HOUSE_V.er, HOUSE_V.br],
+  [HOUSE_V.br, [1980, Y0]],
+], SEGN);
+const IDX_A_END = SEGN[0];                                   // ground-left indices [0, IDX_A_END)
+const IDX_F_START = SEGN.slice(0, 5).reduce((a, b) => a + b);  // ground-right indices (IDX_F_START, end]
+
+const N = 340;
+const IC = [460, 540]; // icon centre for the three pillars
+
+function centred(pts, cx, cy, targetW) {
+  let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+  pts.forEach(p => { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]); });
+  const s = targetW / (x1 - x0), mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
+  return pts.map(p => [cx + (p[0] - mx) * s, cy + (p[1] - my) * s]);
+}
+
+// Heart: starts at the bottom tip, climbs the left lobe first
+const HEART = (() => {
+  const pts = [];
+  for (let i = 0; i <= 400; i++) {
+    const s = Math.PI + (i / 400) * 2 * Math.PI;
+    const x = 16 * Math.pow(Math.sin(s), 3);
+    const y = -(13 * Math.cos(s) - 5 * Math.cos(2 * s) - 2 * Math.cos(3 * s) - Math.cos(4 * s));
+    pts.push([x, y]);
+  }
+  return resample(centred(pts, IC[0], IC[1] + 6, 300), N);
+})();
+
+// Check that sweeps into a ring — "reliable / done"
+const RING = (() => {
+  const R = 140, cx = IC[0], cy = IC[1];
+  const a0 = Math.atan2(-104, 92);
+  const end = [cx + R * Math.cos(a0), cy + R * Math.sin(a0)];
+  const pts = [[cx - 66, cy + 4], [cx - 20, cy + 48], end];
+  const sweep = 2 * Math.PI * .955;
+  for (let i = 1; i <= 220; i++) {
+    const a = a0 - sweep * i / 220;
+    pts.push([cx + R * Math.cos(a), cy + R * Math.sin(a)]);
+  }
+  // re-route the check so it is drawn inside, then exits to the ring
+  return resample(pts, N);
+})();
+
+// Shield — "professional / safe"
+const SHIELD = (() => {
+  const cx = IC[0], cy = IC[1] + 4;
+  const tip = [cx, cy + 168], lc = [cx - 130, cy - 108], rc = [cx + 130, cy - 108], top = [cx, cy - 150];
+  const pts = [
+    ...quad(tip, [cx - 118, cy + 110], [cx - 130, cy + 8]),
+    ...quad([cx - 130, cy + 8], [cx - 130, cy - 50], lc).slice(1),
+    ...quad(lc, [cx - 58, cy - 108], top).slice(1),
+    ...quad(top, [cx + 58, cy - 108], rc).slice(1),
+    ...quad(rc, [cx + 130, cy - 50], [cx + 130, cy + 8]).slice(1),
+    ...quad([cx + 130, cy + 8], [cx + 118, cy + 110], tip).slice(1),
+  ];
+  return resample(pts, N);
+})();
+
+// Small closed home at the centre of the care network
+const NET_C = [960, 404];
+const SMALLHOUSE = resample([
+  [960, 462], [900, 462], [900, 402], [960, 342], [1020, 402], [1020, 462], [960, 462]
+], N);
+
+// Emblem — home on a short horizon (open base), the plus sits inside
+const EMBLEM = resample([
+  [812, 424], [880, 424], [880, 334], [960, 254], [1040, 334], [1040, 424], [1108, 424]
+], N);
+
+/* ================================================================
+   Time-dependent shape of the one line
+   ================================================================ */
+const T = {
+  drawS: .35, drawD: 2.45,
+  morphHouse: 3.0, morphHouseD: 1.45,
+  camS: 4.3, camE: 11.4,
+  retract: 11.45, retractD: .75,
+};
+function cam(t) { return 1 + .07 * P(t, T.camS, T.camE - T.camS, E.soft); }
+const CAM_C = [960, 520];
+
+function houseStage(t) {
+  let pts = mix(ECG, HOUSE, P(t, T.morphHouse, T.morphHouseD, E.io));
+  const r = P(t, T.retract, T.retractD, E.io);
+  if (r > 0) {
+    pts = pts.map((p, i) => {
+      if (i < IDX_A_END) return [lerp(p[0], HOUSE_V.bl[0], r), lerp(p[1], HOUSE_V.bl[1], r)];
+      if (i > IDX_F_START) return [lerp(p[0], HOUSE_V.br[0], r), lerp(p[1], HOUSE_V.br[1], r)];
+      return p;
+    });
+  }
+  return scaleAround(pts, CAM_C[0], CAM_C[1], cam(t));
+}
+
+function heartAt(t) {               // the heart beats once when it lands
+  const s = 1 + .075 * beat(t - 13.05);
+  return scaleAround(HEART, IC[0], IC[1], s);
+}
+function smallHouseAt(t) {          // contracts as the network converges
+  const s = 1 - .14 * P(t, 23.5, .55, E.in);
+  return scaleAround(SMALLHOUSE, NET_C[0], NET_C[1], s);
+}
+
+const STAGES = [
+  { t: 11.70, d: 1.05, to: heartAt },
+  { t: 14.70, d: 0.95, to: () => RING },
+  { t: 17.70, d: 0.95, to: () => SHIELD },
+  { t: 20.50, d: 1.00, to: smallHouseAt },
+  { t: 24.02, d: 0.95, to: () => EMBLEM, ease: E.out },
+];
+
+function lineShape(t) {
+  if (t < STAGES[0].t) return houseStage(t);
+  let i = STAGES.length - 1;
+  while (i > 0 && t < STAGES[i].t) i--;
+  const st = STAGES[i];
+  const from = i === 0 ? resample(houseStage(t), N) : STAGES[i - 1].to(t);
+  const k = P(t, st.t, st.d, st.ease || E.io);
+  return mix(from, st.to(t), k);
+}
+
+/* ================================================================
+   DOM refs + build
+   ================================================================ */
+const $ = id => document.getElementById(id);
+const ctx = $('bg').getContext('2d');
+const lnBig = $('lnBig'), lnGlow = $('lnGlow'), lnCore = $('lnCore'), head = $('head'), headGlow = $('headGlow');
+const SVGNS = 'http://www.w3.org/2000/svg';
+const svgEl = (tag, attrs, parent) => {
+  const e = document.createElementNS(SVGNS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+};
+
+function wrapWord(node) {
+  const m = document.createElement('span'); m.className = 'm';
+  const w = document.createElement('span'); w.className = 'w';
+  w.appendChild(node); m.appendChild(w);
+  return m;
+}
+function splitWords(el) {
+  const nodes = [...el.childNodes];
+  el.innerHTML = '';
+  nodes.forEach(n => {
+    const text = n.textContent;
+    const parts = text.split(/(\s+)/);
+    parts.forEach(part => {
+      if (!part) return;
+      if (/^\s+$/.test(part)) { el.appendChild(document.createTextNode(' ')); return; }
+      if (n.nodeType === 3) el.appendChild(wrapWord(document.createTextNode(part)));
+      else { const c = n.cloneNode(false); c.textContent = part; el.appendChild(wrapWord(c)); }
+    });
+  });
+  return [...el.querySelectorAll('.w')];
+}
+
+const S1 = splitWords($('s1')), S2 = splitWords($('s2')), S3 = splitWords($('s3'));
+const NHEAD = splitWords($('nhead')), NSUP = splitWords($('nsup'));
+const PIL = [0, 1, 2].map(i => {
+  const root = $('p' + i);
+  return {
+    idx: splitWords(root.querySelector('.idx')),
+    word: splitWords(root.querySelector('.word')),
+    rule: root.querySelector('.rule'),
+    ruleEl: root.querySelector('.word'),
+    sup: splitWords(root.querySelector('.sup')),
+  };
+});
+
+// wordmark letters
+const WM = (() => {
+  const el = $('wm');
+  const letters = 'Careva+'.split('');
+  return letters.map(ch => {
+    const m = document.createElement('span'); m.className = 'm';
+    const w = document.createElement('span'); w.className = 'w' + (ch === '+' ? ' plus' : '');
+    w.textContent = ch; m.appendChild(w); el.appendChild(m);
+    return w;
+  });
+})();
+const CTA = [...$('cta').querySelectorAll('.w')];
+
+// neighbourhood
+const HOODS = (() => {
+  const g = $('hood');
+  const rnd = mulberry32(7);
+  const xs = [110, 222, 330, 440, 548, 652, 1268, 1372, 1480, 1590, 1698, 1810];
+  return xs.map((x, i) => {
+    const w = 50 + rnd() * 38, wall = 34 + rnd() * 46, roof = rnd() < .22 ? 0 : 20 + rnd() * 26;
+    const x0 = x - w / 2, x1 = x + w / 2, ye = Y0 - wall;
+    const d = roof
+      ? `M${x0} ${Y0} L${x0} ${ye} L${x} ${ye - roof} L${x1} ${ye} L${x1} ${Y0}`
+      : `M${x0} ${Y0} L${x0} ${ye} L${x1} ${ye} L${x1} ${Y0}`;
+    const grp = svgEl('g', {}, g);
+    svgEl('path', { d, fill: 'none', stroke: '#CFEFE4', 'stroke-width': 1.6, 'stroke-linejoin': 'round' }, grp);
+    const wins = [];
+    const nW = w > 80 ? 2 : 1;
+    for (let k = 0; k < nW; k++) {
+      const wx = nW === 1 ? x - 4.5 : x0 + w * (k === 0 ? .3 : .7) - 4.5;
+      const wy = ye + wall * .32;
+      const glow = svgEl('rect', { x: wx - 3, y: wy - 3, width: 15, height: 18, rx: 2, fill: '#E9C27E', filter: 'url(#fSoft)' }, grp);
+      const r = svgEl('rect', { x: wx, y: wy, width: 9, height: 12, rx: 1.2, fill: '#F6D9A2' }, grp);
+      wins.push({ r, glow, t: 6.9 + rnd() * 3.4 });
+    }
+    return { grp, x, dist: Math.abs(x - 960), wins };
+  });
+})();
+
+// network
+const NET = (() => {
+  const g = $('net');
+  const orbit = svgEl('circle', { cx: NET_C[0], cy: NET_C[1], r: 108, fill: 'none', stroke: '#9AF3D6', 'stroke-width': 1.4, 'stroke-dasharray': '2 9', 'stroke-linecap': 'round' }, g);
+  const nodes = [
+    { name: 'NURSE', p: [560, 300], side: 'l' },
+    { name: 'CARETAKER', p: [620, 548], side: 'l' },
+    { name: 'DOCTOR', p: [1360, 300], side: 'r' },
+    { name: 'FAMILY', p: [1300, 548], side: 'r' },
+  ];
+  const labels = $('labels');
+  nodes.forEach((n, i) => {
+    const a = NET_C, b = n.p;
+    const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
+    const dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy);
+    const bend = (i % 2 ? -1 : 1) * 46;
+    const c = [mx - dy / len * bend, my + dx / len * bend];
+    // start the curve on the orbit edge, not the house centre
+    const full = quad(a, c, b, 80);
+    const L = lengths(full);
+    let s0 = 0; while (s0 < full.length - 1 && Math.hypot(full[s0][0] - a[0], full[s0][1] - a[1]) < 112) s0++;
+    n.pts = full.slice(s0);
+    n.len = lengths(n.pts).slice(-1)[0];
+    n.path = svgEl('path', { d: toD(n.pts), fill: 'none', stroke: '#CFEFE4', 'stroke-width': 1.5, 'stroke-linecap': 'round', 'stroke-dasharray': n.len + ' ' + n.len }, g);
+    n.halo = svgEl('circle', { cx: b[0], cy: b[1], r: 26, fill: '#E9C27E', filter: 'url(#fGlowSm)' }, g);
+    n.ring = svgEl('circle', { cx: b[0], cy: b[1], r: 16, fill: 'none', stroke: '#F4EFE6', 'stroke-width': 1.3 }, g);
+    n.dot = svgEl('circle', { cx: b[0], cy: b[1], r: 6.5, fill: '#F3D59C' }, g);
+    n.pulses = [0, 1].map(() => ({
+      glow: svgEl('circle', { r: 9, fill: '#5EEAD4', filter: 'url(#fGlowSm)' }, g),
+      dot: svgEl('circle', { r: 3, fill: '#ECFFF8' }, g),
+    }));
+    const lab = document.createElement('div');
+    lab.className = 'nlabel sans';
+    lab.innerHTML = '<span class="m"><span class="w">' + n.name + '</span></span>';
+    labels.appendChild(lab);
+    n.lab = lab; n.labW = lab.querySelector('.w');
+  });
+  return { orbit, nodes };
+})();
+
+/* ================================================================
+   Cue points (exported for the soundtrack)
+   ================================================================ */
+const ECG_L = lengths(ECG);
+const ECG_TOTAL = ECG_L[ECG_L.length - 1];
+const R_INDEX = SEGN[0] + SEGN[1] + SEGN[2];
+const R_LEN = ECG_L[R_INDEX];
+const drawProg = t => P(t, T.drawS, T.drawD, E.io);
+const HB1 = (() => { let lo = T.drawS, hi = T.drawS + T.drawD; for (let i = 0; i < 50; i++) { const m = (lo + hi) / 2; if (drawProg(m) * ECG_TOTAL < R_LEN) lo = m; else hi = m; } return lo; })();
+window.CUES = {
+  heartbeat1: +HB1.toFixed(3), heartbeat2: 3.0, heartbeatHeart: 13.05,
+  housePlus: 6.25, windows: HOODS.flatMap(h => h.wins.map(w => +w.t.toFixed(3))).sort((a, b) => a - b),
+  pillars: [12.42, 15.15, 18.15], shieldPlus: 18.65,
+  network: 21.05, nodes: [21.35, 21.44, 21.53, 21.62], converge: 24.02,
+  emblemPlus: 24.55, wordmark: 24.85, sweep: 26.25, cta: 25.9, duration: DURATION,
+};
+
+/* ================================================================
+   Animators
+   ================================================================ */
+function words(ws, t, tin, tout, o = {}) {
+  const st = o.stagger ?? .065, dur = o.dur ?? 1.0, od = o.outDur ?? .5, ost = o.outStagger ?? .03, blur = o.blur ?? 6;
+  ws.forEach((w, i) => {
+    const a = P(t, tin + i * st, dur, E.out);
+    const b = P(t, tout + i * ost, od, E.in);
+    if (a <= 0 || b >= 1) { w.style.opacity = 0; w.style.transform = 'translate3d(0,110%,0)'; w.style.filter = 'none'; return; }
+    const y = (1 - a) * 108 - b * 108;
+    w.style.transform = `translate3d(0,${y.toFixed(3)}%,0)`;
+    w.style.opacity = (Math.min(1, a * 1.5) * (1 - b * .5)).toFixed(3);
+    const bl = blur * Math.max(1 - a, b);
+    w.style.filter = bl > .05 ? `blur(${bl.toFixed(2)}px)` : 'none';
+  });
+}
+function drawLine(el, t0, d, t, len) { // dash-reveal a straight path
+  const k = P(t, t0, d, E.out);
+  el.setAttribute('stroke-dasharray', len + ' ' + len);
+  el.setAttribute('stroke-dashoffset', (len * (1 - k)).toFixed(2));
+  return k;
+}
+
+/* ---------- background ---------- */
+const DUST = (() => {
+  const r = mulberry32(42), arr = [];
+  for (let i = 0; i < 110; i++) arr.push({ x: r() * W, y: r() * (H + 100), s: .6 + r() * 1.8, v: 5 + r() * 14, ph: r() * 6.28, f: .4 + r() * 1.2, a: .18 + r() * .4, sway: 6 + r() * 18 });
+  const bok = [];
+  for (let i = 0; i < 12; i++) bok.push({ x: r() * W, y: r() * H, s: 18 + r() * 46, v: 3 + r() * 6, ph: r() * 6.28, a: .025 + r() * .04, warm: r() < .5 });
+  return { arr, bok };
+})();
+
+function blob(x, y, r, rgb, a) {
+  if (a <= .002) return;
+  const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, `rgba(${rgb},${a})`);
+  g.addColorStop(.25, `rgba(${rgb},${a * .72})`);
+  g.addColorStop(.5, `rgba(${rgb},${a * .36})`);
+  g.addColorStop(.75, `rgba(${rgb},${a * .1})`);
+  g.addColorStop(1, `rgba(${rgb},0)`);
+  ctx.fillStyle = g;
+  ctx.fillRect(x - r, y - r, 2 * r, 2 * r);
+}
+
+function drawBG(t, housePts) {
+  ctx.globalCompositeOperation = 'source-over';
+  const base = ctx.createRadialGradient(960, 560, 0, 960, 560, 1250);
+  base.addColorStop(0, '#0C3B32'); base.addColorStop(.45, '#072A23'); base.addColorStop(1, '#020F0B');
+  ctx.fillStyle = base; ctx.fillRect(0, 0, W, H);
+
+  // clinical monitor grid — dissolves as the heartbeat becomes a home
+  const grid = kf(t, [[0, .0], [.6, .055], [3.0, .055], [4.4, 0]]);
+  if (grid > .001) {
+    ctx.lineWidth = 1;
+    for (let x = 0; x <= W; x += 48) {
+      ctx.strokeStyle = `rgba(154,243,214,${(x % 240 === 0 ? 1.7 : 1) * grid})`;
+      ctx.beginPath(); ctx.moveTo(x + .5, 0); ctx.lineTo(x + .5, H); ctx.stroke();
+    }
+    for (let y = 0; y <= H; y += 48) {
+      ctx.strokeStyle = `rgba(154,243,214,${(y % 240 === 0 ? 1.7 : 1) * grid})`;
+      ctx.beginPath(); ctx.moveTo(0, y + .5); ctx.lineTo(W, y + .5); ctx.stroke();
+    }
+  }
+
+  // drifting light
+  const teal = kf(t, [[0, .05], [3, .09], [7, .12], [12, .1], [21, .11], [24, .14], [30, .12]]);
+  const gold = kf(t, [[0, .0], [4, .03], [7, .1], [11.5, .11], [13, .06], [21, .06], [24.2, .11], [30, .13]]);
+  blob(420 + 70 * Math.sin(t * .17), 250 + 50 * Math.cos(t * .13), 820, '45,212,191', teal);
+  blob(1560 + 60 * Math.sin(t * .11 + 1), 880 + 40 * Math.cos(t * .15), 900, '233,194,126', gold);
+
+  // centre halo following the action
+  const hx = kf(t, [[0, 960], [11.9, 960], [12.9, IC[0]], [20.5, IC[0]], [21.5, NET_C[0]]]);
+  const hy = kf(t, [[0, 520], [11.9, 500], [12.9, IC[1]], [20.5, IC[1]], [21.5, NET_C[1]], [24, NET_C[1]], [25, 345]]);
+  const halo = kf(t, [[0, .03], [2.5, .06], [6, .07], [21, .07], [24, .08], [26, .1]]) + .12 * bump(t - 24.02, .05, 3.2);
+  blob(hx, hy, 520, '94,234,212', halo);
+
+  // warm light inside the hero home
+  const warm = kf(t, [[6.0, 0], [7.5, 1], [11.3, 1], [12.0, 0]]);
+  if (warm > .001 && housePts) {
+    const s = cam(t), c = [CAM_C[0] + (960 - CAM_C[0]) * s, CAM_C[1] + (500 - CAM_C[1]) * s];
+    blob(c[0], c[1], 520 * s, '233,194,126', .06 * warm);   // spill
+    ctx.save();
+    ctx.beginPath();
+    const v = [HOUSE_V.bl, HOUSE_V.el, PEAK, HOUSE_V.er, HOUSE_V.br].map(p => [CAM_C[0] + (p[0] - CAM_C[0]) * s, CAM_C[1] + (p[1] - CAM_C[1]) * s]);
+    ctx.moveTo(v[0][0], v[0][1]); v.slice(1).forEach(p => ctx.lineTo(p[0], p[1])); ctx.closePath();
+    ctx.clip();
+    blob(c[0], c[1] + 20 * s, 300 * s, '240,200,130', .34 * warm);
+    ctx.restore();
+  }
+
+  // emblem warmth on the end card
+  const em = P(t, 24.5, 1.4, E.out);
+  if (em > 0) blob(960, 372, 300, '233,194,126', .12 * em * (1 + .15 * Math.sin(t * 1.6)));
+
+  // dust + bokeh
+  const dustA = kf(t, [[0, .35], [4, .6], [7, 1], [11.5, 1], [13, .7], [24, .7], [25.5, 1]]);
+  DUST.bok.forEach(b => {
+    const y = ((b.y - b.v * t) % (H + 200) + H + 200) % (H + 200) - 100;
+    const x = b.x + 20 * Math.sin(t * .2 + b.ph);
+    blob(x, y, b.s, b.warm ? '233,194,126' : '154,243,214', b.a * dustA);
+  });
+  ctx.fillStyle = '#F4EFE6';
+  DUST.arr.forEach(p => {
+    const y = ((p.y - p.v * t) % (H + 100) + H + 100) % (H + 100) - 50;
+    const x = p.x + p.sway * Math.sin(t * .3 + p.ph);
+    const a = p.a * (.55 + .45 * Math.sin(p.ph + t * p.f)) * dustA;
+    if (a < .01) return;
+    ctx.globalAlpha = a;
+    ctx.beginPath(); ctx.arc(x, y, p.s, 0, 6.2832); ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+
+  // shock-wave flash when the care network converges
+  const fl = bump(t - 24.02, .04, 5);
+  if (fl > .002) blob(NET_C[0], NET_C[1], 700, '154,243,214', .1 * fl);
+}
+
+/* ================================================================
+   seek(t) — sets the exact state of the whole film at time t
+   ================================================================ */
+function seek(t) {
+  t = clamp(t, 0, DURATION);
+
+  /* ----- the line ----- */
+  const pts = lineShape(t);
+  drawBG(t, t < 12.1 ? pts : null);
+  const d = toD(pts);
+  lnBig.setAttribute('d', d); lnGlow.setAttribute('d', d); lnCore.setAttribute('d', d);
+  {
+    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+    for (const p of pts) { if (p[0] < x0) x0 = p[0]; if (p[0] > x1) x1 = p[0]; if (p[1] < y0) y0 = p[1]; if (p[1] > y1) y1 = p[1]; }
+    const m = 90;
+    x0 = Math.max(0, x0 - m); y0 = Math.max(0, y0 - m); x1 = Math.min(W, x1 + m); y1 = Math.min(H, y1 + m);
+    ['fGlow', 'fGlowBig'].forEach(id => {
+      const f = $(id);
+      f.setAttribute('x', x0.toFixed(0)); f.setAttribute('y', y0.toFixed(0));
+      f.setAttribute('width', (x1 - x0).toFixed(0)); f.setAttribute('height', (y1 - y0).toFixed(0));
+    });
+  }
+
+  const prog = drawProg(t);
+  if (prog < 1) {
+    const L = lengths(pts), tot = L[L.length - 1];
+    const dash = `${tot} ${tot}`, off = (tot * (1 - prog)).toFixed(2);
+    [lnBig, lnGlow, lnCore].forEach(e => { e.setAttribute('stroke-dasharray', dash); e.setAttribute('stroke-dashoffset', off); });
+    const hp = pointAt(pts, tot * prog);
+    const ha = prog > 0 ? Math.min(1, prog * 8) * (1 - P(t, T.drawS + T.drawD - .25, .25, E.in)) : 0;
+    head.setAttribute('cx', hp[0]); head.setAttribute('cy', hp[1]); head.setAttribute('opacity', ha);
+    headGlow.setAttribute('cx', hp[0]); headGlow.setAttribute('cy', hp[1]); headGlow.setAttribute('opacity', ha * .9);
+  } else {
+    [lnBig, lnGlow, lnCore].forEach(e => { e.removeAttribute('stroke-dasharray'); e.removeAttribute('stroke-dashoffset'); });
+    head.setAttribute('opacity', 0); headGlow.setAttribute('opacity', 0);
+  }
+
+  // line weight + glow, with heartbeats
+  const hb = beat(t - HB1) + .8 * beat(t - 3.0) + .6 * beat(t - 13.05) + 1.2 * bump(t - 24.02, .05, 3);
+  const coreW = kf(t, [[0, 2.6], [3, 2.8], [12, 3.0], [13, 3.4], [21, 3.2], [24.5, 4.0]]);
+  lnCore.setAttribute('stroke-width', (coreW + .8 * hb).toFixed(2));
+  lnGlow.setAttribute('stroke-width', (coreW * 2.1 + 2 * hb).toFixed(2));
+  lnGlow.setAttribute('opacity', (.75 + .25 * Math.min(1, hb)).toFixed(3));
+  lnBig.setAttribute('opacity', (.42 + .45 * Math.min(1, hb) + .12 * P(t, 24.5, 1.5)).toFixed(3));
+
+  /* ----- scene 1–3 copy ----- */
+  words(S1, t, .95, 2.72, { stagger: .08 });
+  words(S2, t, 3.45, 5.72, { stagger: .08 });
+  words(S3, t, 6.35, 11.25, { stagger: .07 });
+
+  /* ----- hero-house plus + neighbourhood ----- */
+  const s = cam(t);
+  const camM = `matrix(${s},0,0,${s},${CAM_C[0] * (1 - s)},${CAM_C[1] * (1 - s)})`;
+  $('heroCam').setAttribute('transform', camM);
+  const plusOut = 1 - P(t, 11.3, .55, E.in);
+  const kv = drawLine($('hpV'), 6.25, .75, t, 86); drawLine($('hpVg'), 6.25, .75, t, 86);
+  const kh = drawLine($('hpH'), 6.55, .75, t, 86); drawLine($('hpHg'), 6.55, .75, t, 86);
+  $('heroPlus').setAttribute('opacity', (kv > 0 ? plusOut : 0).toFixed(3));
+
+  const hs = 1 + .035 * P(t, T.camS, T.camE - T.camS, E.soft);
+  $('hoodCam').setAttribute('transform', `matrix(${hs},0,0,${hs},${960 * (1 - hs)},${560 * (1 - hs)})`);
+  const hoodOut = P(t, 11.25, .6, E.in);
+  HOODS.forEach(h => {
+    const st = 4.9 + h.dist / 900 * 1.1;
+    const g = P(t, st, 1.1, E.out) * (1 - hoodOut);
+    h.grp.setAttribute('transform', `translate(0,${Y0}) scale(1,${Math.max(.0001, g).toFixed(4)}) translate(0,${-Y0})`);
+    h.grp.setAttribute('opacity', (g > 0 ? .5 * Math.min(1, g * 1.5) : 0).toFixed(3));
+    h.wins.forEach(w => {
+      const on = P(t, w.t, .5, E.out) * (1 - hoodOut);
+      const flick = 1 + .06 * Math.sin(t * 7 + w.t * 13);
+      w.r.setAttribute('opacity', (on * 1.6 * flick).toFixed(3));
+      w.glow.setAttribute('opacity', (on * 1.4).toFixed(3));
+    });
+  });
+
+  /* ----- pillars ----- */
+  const PT = [[12.42, 14.55], [15.15, 17.55], [18.15, 20.45]];
+  PIL.forEach((p, i) => {
+    const [a, b] = PT[i];
+    words(p.idx, t, a, b, { blur: 3 });
+    words(p.word, t, a + .07, b + .03);
+    words(p.sup, t, a + .2, b + .06, { stagger: .05 });
+    const rIn = P(t, a + .3, .9, E.out), rOut = P(t, b - .1, .45, E.in);
+    p.rule.style.width = p.wordW + 'px';
+    p.rule.style.transformOrigin = rOut > 0 ? '100% 50%' : '0 50%';
+    p.rule.style.transform = `scaleX(${(rOut > 0 ? 1 - rOut : rIn).toFixed(4)})`;
+  });
+  // gold plus inside the shield
+  {
+    const cx = IC[0], cy = IC[1] - 2, a = 40;
+    ['spV', 'spVg'].forEach(id => $(id).setAttribute('d', `M${cx} ${cy - a} L${cx} ${cy + a}`));
+    ['spH', 'spHg'].forEach(id => $(id).setAttribute('d', `M${cx - a} ${cy} L${cx + a} ${cy}`));
+    const v = drawLine($('spV'), 18.6, .6, t, 80); drawLine($('spVg'), 18.6, .6, t, 80);
+    drawLine($('spH'), 18.82, .6, t, 80); drawLine($('spHg'), 18.82, .6, t, 80);
+    $('shieldPlus').setAttribute('opacity', (v > 0 ? 1 - P(t, 20.35, .4, E.in) : 0).toFixed(3));
+  }
+
+  /* ----- care network ----- */
+  const conv = P(t, 23.5, .55, E.in);
+  {
+    const o = P(t, 21.05, .8, E.out) * (1 - conv);
+    NET.orbit.setAttribute('opacity', (.45 * o).toFixed(3));
+    NET.orbit.setAttribute('r', (108 * (.85 + .15 * o)).toFixed(2));
+    NET.orbit.setAttribute('transform', `rotate(${(t * 14).toFixed(2)} ${NET_C[0]} ${NET_C[1]})`);
+  }
+  NET.nodes.forEach((n, i) => {
+    const t0 = 21.15 + i * .09;
+    const lk = P(t, t0, .8, E.out);
+    // lines retract into the home on converge
+    const visible = lk * (1 - conv);
+    n.path.setAttribute('stroke-dashoffset', (n.len * (1 - visible)).toFixed(2));
+    n.path.setAttribute('opacity', (visible > 0 ? .42 : 0));
+    const pop = P(t, t0 + .2, .7, E.out);
+    const pos = [lerp(n.p[0], NET_C[0], conv), lerp(n.p[1], NET_C[1], conv)];
+    const sc = pop * (1 - .7 * conv);
+    [n.dot, n.ring, n.halo].forEach(e => { e.setAttribute('cx', pos[0]); e.setAttribute('cy', pos[1]); });
+    n.dot.setAttribute('r', (6.5 * sc).toFixed(2));
+    n.ring.setAttribute('r', (16 * sc + 6 * (1 - pop)).toFixed(2));
+    n.ring.setAttribute('opacity', (.5 * pop * (1 - conv)).toFixed(3));
+    n.halo.setAttribute('opacity', (.35 * pop * (1 - conv) * (1 + .3 * Math.sin(t * 2.4 + i))).toFixed(3));
+    n.dot.setAttribute('opacity', (pop * (1 - conv)).toFixed(3));
+    // pulses travel home -> people
+    n.pulses.forEach((pp, j) => {
+      const u = ((t - 21.9 - i * .17 - j * .62) * .62) % 1;
+      const on = t > 21.9 + i * .17 + j * .62 && t < 23.55 ? 1 : 0;
+      const uu = u < 0 ? 0 : u;
+      const pt = pointAt(n.pts, n.len * uu);
+      const fade = Math.sin(Math.PI * uu) * on * (1 - conv);
+      [pp.dot, pp.glow].forEach(e => { e.setAttribute('cx', pt[0]); e.setAttribute('cy', pt[1]); });
+      pp.dot.setAttribute('opacity', fade.toFixed(3));
+      pp.glow.setAttribute('opacity', (.8 * fade).toFixed(3));
+    });
+    // label
+    const lx = n.side === 'l' ? n.p[0] - 34 : n.p[0] + 34;
+    n.lab.style.top = (n.p[1] - 13) + 'px';
+    if (n.side === 'l') { n.lab.style.right = (W - lx) + 'px'; n.lab.style.left = 'auto'; }
+    else { n.lab.style.left = lx + 'px'; }
+    words([n.labW], t, t0 + .3, 23.42 + i * .02, { blur: 2, dur: .8, outDur: .4 });
+  });
+  words(NHEAD, t, 21.45, 23.48, { stagger: .07 });
+  words(NSUP, t, 21.7, 23.52, { stagger: .05, blur: 3 });
+
+  // shock ring
+  {
+    const k = P(t, 24.02, 1.5, E.out);
+    const on = t >= 24.02 ? 1 : 0;
+    const sh = $('shock');
+    sh.setAttribute('cy', NET_C[1]);
+    sh.setAttribute('r', (40 + 1050 * k).toFixed(1));
+    sh.setAttribute('opacity', (on * .55 * (1 - k)).toFixed(3));
+    sh.setAttribute('stroke-width', (2.5 * (1 - k) + .5).toFixed(2));
+  }
+
+  /* ----- end card ----- */
+  const ev = drawLine($('epV'), 24.55, .7, t, 52); drawLine($('epVg'), 24.55, .7, t, 52);
+  drawLine($('epH'), 24.78, .7, t, 52); drawLine($('epHg'), 24.78, .7, t, 52);
+  $('emPlus').setAttribute('opacity', ev > 0 ? 1 : 0);
+  $('epGlow').setAttribute('opacity', (.5 + .12 * Math.sin(t * 1.6)).toFixed(3));
+
+  words(WM, t, 24.85, 99, { stagger: .055, dur: 1.15, blur: 8 });
+  // light sweep across the wordmark
+  const wmW = window.__wmW || 1, sweepX = lerp(-.25, 1.25, P(t, 26.25, 1.35, E.io)) * wmW;
+  WM.forEach((w, i) => {
+    w.style.backgroundSize = (wmW * 3) + 'px 100%';
+    w.style.backgroundPosition = (sweepX - 1.5 * wmW - (window.__wmL[i] || 0)) + 'px 0';
+  });
+
+  const dk = P(t, 25.45, 1.4, E.out);
+  const desc = $('desc');
+  desc.style.opacity = dk.toFixed(3);
+  desc.style.letterSpacing = lerp(.7, .42, dk).toFixed(4) + 'em';
+  desc.style.paddingLeft = lerp(.7, .42, dk).toFixed(4) + 'em';
+  words(CTA, t, 25.9, 99, { dur: 1.0, blur: 4 });
+
+  /* ----- don't paint what can't be seen ----- */
+  const vis = (id, on) => { $(id).style.display = on ? '' : 'none'; };
+  vis('hoodCam', t > 4.8 && t < 12.0);
+  vis('heroCam', t > 6.2 && t < 12.0);
+  vis('shieldPlus', t > 18.55 && t < 20.8);
+  vis('net', t > 21.0 && t < 24.2);
+  vis('emPlus', t > 24.5);
+  vis('shock', t > 24.0 && t < 25.6);
+  vis('head', t < T.drawS + T.drawD); vis('headGlow', t < T.drawS + T.drawD);
+
+  /* ----- open from black ----- */
+  $('fade').style.opacity = (1 - P(t, 0, .9, E.soft)).toFixed(3);
+}
+
+/* ================================================================
+   Boot
+   ================================================================ */
+window.ready = (async () => {
+  await Promise.all([
+    document.fonts.load('330 86px Fraunces'), document.fonts.load('italic 300 86px Fraunces'),
+    document.fonts.load('500 21px InterV'), document.fonts.load('300 34px InterV'),
+  ]);
+  await document.fonts.ready;
+  // measurements that depend on fonts
+  PIL.forEach(p => { p.wordW = p.ruleEl.querySelector('.w').getBoundingClientRect().width; });
+  const wmBox = $('wm').getBoundingClientRect();
+  const first = WM[0].getBoundingClientRect(), last = WM[WM.length - 1].getBoundingClientRect();
+  window.__wmW = last.right - first.left;
+  window.__wmL = WM.map(w => w.getBoundingClientRect().left - first.left);
+  seek(0);
+  return true;
+})();
+window.seek = seek;
+
+// preview mode (not used by the renderer)
+const q = new URLSearchParams(location.search);
+window.ready.then(() => {
+  if (q.has('render')) return;
+  if (q.has('t')) { seek(parseFloat(q.get('t'))); return; }
+  const start = performance.now();
+  const loop = () => { seek(((performance.now() - start) / 1000) % (DURATION + 1)); requestAnimationFrame(loop); };
+  requestAnimationFrame(loop);
+});
+</script>
+</body>
+</html>
