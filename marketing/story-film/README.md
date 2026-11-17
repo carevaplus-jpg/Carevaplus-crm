@@ -43,7 +43,7 @@ Review of `../explainer-video/` (the first version):
 - The family's messages are example content.
 - Service names and the four audiences are drawn from the repository README; confirm they match what Careva+ offers.
 - "Care that comes home." is a suggested tagline.
-- No phone number or website is shown because none was supplied.
+- The end card shows the phone number +91 96555 08881. No website is shown because none was supplied.
 
 ## Re-render
 

@@ -1,11 +1,11 @@
 # Careva+ — Brand Film (high-energy promo)
 
-A 20-second, beat-locked brand promo. It is the punchy counterpart to the calm explainer (`../explainer-video/`) and the one-take story (`../story-film/`).
+A 21-second, beat-locked brand promo. It is the punchy counterpart to the calm explainer (`../explainer-video/`) and the one-take story (`../story-film/`).
 
 | Spec | Value |
 |---|---|
 | Output | `careva-promo.mp4` — 1920×1080, 60 fps, real motion blur, H.264 + AAC |
-| Length | 20.16 s (43 beats at 128 BPM) |
+| Length | 21.09 s (45 beats at 128 BPM) |
 | Source | `promo.src.html` → `python3 build.py` → `careva-promo.html` (self-contained, scrub it live in a browser) |
 | Sound | Synthesised in the page (`buildAudio`): kick, clap, sub bass, risers, impacts on every flood |
 
@@ -31,13 +31,13 @@ The red **+** from the logo carries the eye through every transition. Nothing si
 | 24 | 11.3 s | **Product**: booking card in 3D; the toggle flicks on, the bar fills, "Booked ✓", toast "Your nurse is on the way" |
 | 30 | 14.1 s | **Services**: Home nursing · Elder care · Post-surgery care · Caretakers · Care plans |
 | 33 | 15.5 s | **Bridge**: the frame collapses to a dot, ring pulses, the dot becomes the + |
-| 35 | 16.4 s | **End card**: logo assembles, the + docks, "Care that comes home.", BOOK A HOME VISIT |
+| 35 | 16.4 s | **End card**: logo assembles, the + docks, "Care that comes home.", BOOK A HOME VISIT, +91 96555 08881 |
 
 ## Placeholders
 
 - The booking card and toast are example interface content.
 - The services list, "Care that comes home." and "Book a home visit" are suggestions; confirm the services match what Careva+ offers.
-- No phone number or website is shown because none was supplied.
+- The end card shows the phone number +91 96555 08881. No website is shown because none was supplied.
 - No statistics are shown because none were supplied.
 
 ## Re-render

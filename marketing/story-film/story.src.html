@@ -203,8 +203,9 @@ const logo = add(`<div style="left:${LOGO[0]}px;top:${LOGO[1]}px;width:893px;hei
   <img src="assets/logo-word.png" style="left:430px;top:106.5px;width:374.5px;height:71.5px">
   <img id="slot" src="assets/logo-cross.png" style="left:803px;top:104.5px;width:90px;height:75px;filter:grayscale(1) brightness(1.5);opacity:.22">
   <div id="tag" style="left:431px;top:201px;font:600 35.5px 'Montserrat';letter-spacing:-.005em;color:#35507A">Care that comes home.</div>
+  <div id="tel" style="left:431px;top:256px;display:flex;align-items:center;gap:10px;font:700 31px 'Montserrat';letter-spacing:.01em;color:#3E8A16"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#3E8A16" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="position:static;flex:none"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg><span style="position:static">+91 96555 08881</span></div>
 </div>`);
-const slot = logo.querySelector('#slot'), tag = logo.querySelector('#tag');
+const slot = logo.querySelector('#slot'), tag = logo.querySelector('#tag'), tel = logo.querySelector('#tel');
 
 // S1 the family's moment
 const CARDS = [['bed', '#1E74CF', 'Hospital', 'Dad can come home today'], ['clock', '#0E2D5C', 'Reminders', 'Medicines & dressing, daily'], ['chat', '#4E9A1B', 'Family', 'Who will care for him?']];
@@ -351,6 +352,8 @@ function seek(t) {
   const home = t < bt(20) ? 1 - ease(seg(t, T_OFF, T_OFF + .25)) : spring(t - T_LAND, 12, .8);
   slot.style.opacity = .22 * (1 - docked);
   tag.style.opacity = clamp(home); setT(tag, `translateY(${lerp(14, 0, home)}px)`);
+  const home2 = t < bt(20) ? 1 - ease(seg(t, T_OFF - .1, T_OFF + .15)) : spring(t - T_LAND - .25, 12, .8);
+  tel.style.opacity = clamp(home2); setT(tel, `translateY(${lerp(14, 0, home2)}px)`);
   setT(logo, `scale(${1 + .028 * kick(t - T_LAND, 18, .35) - .012 * crouch})`);
 
   /* S1 cards */

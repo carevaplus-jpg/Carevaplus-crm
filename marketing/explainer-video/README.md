@@ -38,7 +38,7 @@ Fonts: **Montserrat** 700/800 for headlines (it matches the wordmark) and **Inte
 | 6 | 30–39.75s | 6 service cards | Staggered rise; icons draw on | Home Nursing · Elder Care · Post-Surgery Recovery · Patient Caretakers · Vitals & Medication · Personalised Care Plans |
 | 7 | 39.75–48.75s | 4 audience badges on the thread | Badges pop along the drawn thread | Seniors · Recovering patients · Long-term conditions · Busy families |
 | 8 | 48.75–57s | Checklist and a "care journey" card | Checks draw; a progress rail fills through the steps | Why families choose Careva+ · Enquiry received → Caregiver matched → Follow-ups scheduled |
-| 9 | 57–63s | End card | Header logo returns to centre; tagline, CTA, values | *Care that comes home.* · **Book a home visit today** |
+| 9 | 57–63s | End card | Header logo returns to centre; tagline, CTA, phone, values | *Care that comes home.* · **Book a home visit today** · +91 96555 08881 |
 
 ## Editing the film
 

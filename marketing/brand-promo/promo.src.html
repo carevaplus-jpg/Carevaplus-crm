@@ -140,6 +140,7 @@ html,body{margin:0;height:100%;background:#111;overflow:hidden}
     <div id="rule" style="left:700px;top:732px;width:520px;height:2px;background:rgba(14,45,92,.22)"></div>
     <div id="cta" class="mono" style="left:0;top:764px;font-size:26px;letter-spacing:.34em;color:var(--green)"></div>
     <div id="caret" style="top:762px;width:3px;height:32px;background:var(--green)"></div>
+    <div id="tel" style="left:0;right:0;top:826px;display:flex;justify-content:center;align-items:center;gap:16px;font:800 50px 'Mont';letter-spacing:.005em;color:var(--navy)"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#3E8A16" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="position:static;flex:none"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg><span style="position:static">+91 96555 08881</span></div>
   </div>
 
   <!-- the hero +, on top of every layer during the bridge -->
@@ -163,7 +164,7 @@ html,body{margin:0;height:100%;background:#111;overflow:hidden}
 
 <script>
 /* =====================================================================================
-   CAREVA+ — BRAND FILM   ·   128 BPM   ·   beat = 0.46875 s   ·   43 beats = 20.16 s
+   CAREVA+ — BRAND FILM   ·   128 BPM   ·   beat = 0.46875 s   ·   45 beats = 21.09 s
    The red + from the logo carries the eye through every transition.
 
    beat   time    scene / moment                                              sound
@@ -193,7 +194,8 @@ html,body{margin:0;height:100%;background:#111;overflow:hidden}
    34     15.94   ring pulses; dot becomes the red +                           pings, riser
    34.75  16.29   cream floods from the +; the + flies to the logo             whoosh
    36.5   17.11   S8 the + docks in CAREVA+; tagline, rule, CTA types          impact chord, ring-out
-   43     20.16   end
+   39.25  18.4    phone number +91 96555 08881 lands
+   45     21.09   end
    ===================================================================================== */
 function spring(t, w = 14, z = 0.82) { if (t <= 0) return 0; if (z >= 1) return 1 - Math.exp(-w * t) * (1 + w * t); const wd = w * Math.sqrt(1 - z * z); return 1 - Math.exp(-z * w * t) * (Math.cos(wd * t) + (z * w / wd) * Math.sin(wd * t)); }
 const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
@@ -204,7 +206,7 @@ const kf = keys => t => { if (t <= keys[0][0]) return keys[0][1]; for (let i = 1
 const rng = s => () => (s = (s + 0x6D2B79F5) | 0, s = Math.imul(s ^ (s >>> 15), 1 | s), s ^= s + Math.imul(s ^ (s >>> 7), 61 | s), ((s ^ (s >>> 14)) >>> 0) / 4294967296);
 const eOut = x => 1 - Math.pow(1 - clamp(x), 4), eIn = x => Math.pow(clamp(x), 3), eInX = x => (x = clamp(x), x === 0 ? 0 : Math.pow(2, 10 * x - 10));
 
-const BPM = 128, B = 60 / BPM, bt = b => b * B, BEATS = 43, D = BEATS * B;
+const BPM = 128, B = 60 / BPM, bt = b => b * B, BEATS = 45, D = BEATS * B;
 window.VIDEO = { w: 1920, h: 1080, duration: D };
 const $ = id => document.getElementById(id);
 const tf = (el, s) => { el.style.transform = s; };
@@ -386,6 +388,7 @@ function seek(t) {
     tf($('rule'), `scaleX(${eOut(seg(t, bt(37.25), bt(38.25)))})`);
     const cta = 'book a home visit', n = Math.floor((cta.length + .999) * seg(t, bt(37.5), bt(39))), el = $('cta');
     el.textContent = cta.slice(0, n); const w = el.offsetWidth; const full = (() => { const s = el.textContent; el.textContent = cta; const fw = el.offsetWidth; el.textContent = s; return fw; })();
+    const kp = spring(t - bt(39.25), 15, .7); $('tel').style.opacity = clamp(kp * 1.5); tf($('tel'), `translateY(${(1 - kp) * 26}px) scale(${lerp(.92, 1, clamp(kp))})`);
     el.style.left = (960 - full / 2) + 'px'; $('caret').style.left = (960 - full / 2 + w + 2) + 'px'; $('caret').style.opacity = t > bt(37.4) && (Math.floor(t / .35) % 2 === 0 || t < bt(39.2)) ? 1 : 0;
   }
 
