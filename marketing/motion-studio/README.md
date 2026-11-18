@@ -13,6 +13,7 @@ This folder holds the motion-graphics toolchain for Careva+ films.
 |---|---|
 | **Spotless edition**, 16:9, 1920×1080, 30 fps (`UvcWideFast`) | `../uvc-disinfection/careva-uvc-spotless.mp4` |
 | **Spotless edition**, 9:16 Reel, 1080×1920, 30 fps (`UvcReelFast`) | `../uvc-disinfection/careva-uvc-spotless-reel.mp4` |
+| **Spotless edition, 60 fps + motion blur**, 16:9 and 9:16 | `../uvc-disinfection/careva-uvc-spotless-60fps.mp4`, `careva-uvc-spotless-reel-60fps.mp4` (rendered in 600-frame parts with `--frames`, joined with ffmpeg concat and muxed with `public/score.wav`) |
 | Earlier Pro version (illustrated robot), 16:9 | `../uvc-disinfection/careva-uvc-pro.mp4` |
 
 **Spotless edition changes:**
