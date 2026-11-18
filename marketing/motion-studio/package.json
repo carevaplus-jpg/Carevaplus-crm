@@ -1,0 +1,29 @@
+{
+  "name": "careva-motion-studio",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Careva+ motion graphics built with Remotion (React) and HyperFrames (HTML).",
+  "scripts": {
+    "studio": "remotion studio",
+    "render:wide": "remotion render UvcWide out/careva-uvc-spotless.mp4 --codec=h264 --crf=17 --concurrency=4 --browser-executable=/opt/pw-browsers/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell",
+    "render:reel": "remotion render UvcReel out/careva-uvc-spotless-reel.mp4 --codec=h264 --crf=17 --concurrency=4 --browser-executable=/opt/pw-browsers/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell",
+    "score": "node score/render-score.mjs public/score.wav 47.4",
+    "sting": "cd spotless-sting && npm run render"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.545",
+    "@remotion/transitions": "4.0.545",
+    "@remotion/shapes": "4.0.545",
+    "@remotion/paths": "4.0.545",
+    "@remotion/noise": "4.0.545",
+    "@remotion/motion-blur": "4.0.545",
+    "hyperframes": "0.9.66",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "remotion": "4.0.545"
+  },
+  "devDependencies": {
+    "typescript": "5.6.3",
+    "@types/react": "18.3.12"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "spotless-sting",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "check": "node build.mjs && npx --yes hyperframes@0.9.66 check wide && npx --yes hyperframes@0.9.66 check reel",
+    "snapshot": "npx --yes hyperframes@0.9.66 snapshot wide --at 0.3,0.9,1.5,2.4,3.4 && npx --yes hyperframes@0.9.66 snapshot reel --at 0.3,0.9,1.5,2.4,3.4",
+    "render": "node build.mjs && npx --yes hyperframes@0.9.66 render wide -o ../public/sting-wide.mp4 --fps 60 --quality delivery && npx --yes hyperframes@0.9.66 render reel -o ../public/sting-reel.mp4 --fps 60 --quality delivery"
+  }
+}

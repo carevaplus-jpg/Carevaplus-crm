@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Careva+ — Brand Promo</title>
+<style>
+@font-face{font-family:'Mont';font-weight:100 900;src:url(assets/montserrat-latin-wght-normal.woff2) format('woff2')}
+@font-face{font-family:'Serif';font-style:italic;font-weight:400;src:url(assets/instrument-serif-latin-400-italic.woff2) format('woff2')}
+@font-face{font-family:'Mono';font-weight:500;src:url(assets/jetbrains-mono-latin-500-normal.woff2) format('woff2')}
+@font-face{font-family:'Script';font-weight:700;src:url(assets/caveat-latin-700-normal.woff2) format('woff2')}
+:root{--ink:#06101F;--navy:#0E2D5C;--deep:#0A1E3A;--green:#3E8A16;--lime:#A3CF2A;--blue:#1E74CF;--cream:#F2F5EF;--red:#E5332A}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#111;overflow:hidden}
+#stage{position:absolute;left:0;top:0;width:1920px;height:1080px;overflow:hidden;background:var(--ink);transform-origin:0 0;font-family:'Mont',sans-serif}
+.L{position:absolute;inset:0;display:none;overflow:hidden}
+.L *{position:absolute;white-space:nowrap}
+.mono{font-family:'Mono',monospace;font-weight:500;letter-spacing:.18em;text-transform:uppercase}
+.slam{font-family:'Mont';font-weight:900;text-transform:uppercase;letter-spacing:-.035em;line-height:1}
+.serif{font-family:'Serif';font-style:italic;font-weight:400}
+.plus{width:0;height:0}
+.plus i{display:block;position:absolute;border-radius:6%}
+#hud{position:absolute;inset:0;pointer-events:none;z-index:40;font-family:'Mono';font-weight:500;font-size:14px;letter-spacing:.2em;text-transform:uppercase}
+#hud *{position:absolute;white-space:nowrap}
+.br{width:34px;height:34px;border-color:currentColor;border-style:solid;border-width:0}
+#grain{position:absolute;inset:-20px;z-index:45;pointer-events:none;opacity:.09;mix-blend-mode:overlay}
+#vig{position:absolute;inset:0;z-index:44;pointer-events:none}
+#ui{position:fixed;left:0;right:0;bottom:0;display:flex;gap:12px;align-items:center;padding:10px 16px;background:rgba(0,0,0,.6);color:#fff;font:14px sans-serif;z-index:99}
+#ui input{flex:1}
+#ui button{font:inherit;padding:6px 14px;border-radius:8px;border:0;cursor:pointer}
+</style>
+</head>
+<body>
+<div id="stage">
+
+  <!-- S1 · spark open -->
+  <div class="L" id="s1" style="background:var(--ink)">
+    <div id="grid" style="inset:0;background-image:linear-gradient(rgba(255,255,255,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px);background-size:96px 96px;background-position:-48px -12px"></div>
+    <svg id="line" width="1920" height="1080" style="left:0;top:0"><path id="lpath" fill="none" stroke="#A3CF2A" stroke-width="4" stroke-linecap="round"/></svg>
+    <div id="spark" class="plus" style="left:960px;top:540px"><i></i><i></i></div>
+    <div id="s1lab" class="mono" style="left:160px;top:494px;font-size:17px;color:rgba(255,255,255,.75)"></div>
+    <div id="s1lab2" class="mono" style="right:160px;top:566px;font-size:15px;color:rgba(255,255,255,.4)">01 / 08</div>
+    <div id="flood1" style="left:0;top:540px;width:1920px;height:2px;background:var(--green)"></div>
+  </div>
+
+  <!-- S2 · brand slam -->
+  <div class="L" id="s2" style="background:var(--green)">
+    <div id="s2kick" class="mono" style="left:0;right:0;top:318px;text-align:center;font-size:20px;color:rgba(255,255,255,.7)">Introducing &mdash; 2026</div>
+    <div id="s2name" class="slam" style="left:0;top:370px;font-size:270px;color:#fff"></div>
+    <div id="s2plus" class="plus"><i></i><i></i></div>
+    <div id="s2serif" class="serif" style="left:0;right:0;top:690px;text-align:center;font-size:76px;color:#fff">health care, right at home.</div>
+  </div>
+
+  <!-- S3 · kinetic triplet -->
+  <div class="L" id="s3a" style="background:var(--cream)">
+    <div class="mono k" style="left:0;right:0;top:372px;text-align:center;font-size:22px;color:var(--green)">01 &mdash; trained</div>
+    <div class="slam w" style="left:0;right:0;top:420px;text-align:center;font-size:250px;color:var(--navy)">NURSES</div>
+  </div>
+  <div class="L" id="s3b" style="background:var(--ink)">
+    <div id="pat" style="left:0;top:0;width:1920px;height:1080px"></div>
+    <div class="mono k" style="left:0;right:0;top:382px;text-align:center;font-size:22px;color:rgba(255,255,255,.6)">02 &mdash; caring</div>
+    <div class="slam w" style="left:0;right:0;top:430px;text-align:center;font-size:206px;color:var(--lime)">CARETAKERS</div>
+  </div>
+  <div class="L" id="s3c" style="background:var(--blue)">
+    <div id="vf" style="left:430px;top:300px;width:1060px;height:480px">
+      <div class="br" style="left:0;top:0;border-left-width:4px;border-top-width:4px;color:#fff"></div>
+      <div class="br" style="right:0;top:0;border-right-width:4px;border-top-width:4px;color:#fff"></div>
+      <div class="br" style="left:0;bottom:0;border-left-width:4px;border-bottom-width:4px;color:#fff"></div>
+      <div class="br" style="right:0;bottom:0;border-right-width:4px;border-bottom-width:4px;color:#fff"></div>
+      <div class="mono" style="left:22px;top:-40px;font-size:15px;color:rgba(255,255,255,.75)"><span style="position:static;color:#FF6B5E">&#9679;</span>&nbsp; rec &nbsp;&nbsp; 1920 &times; 1080</div>
+      <div class="mono" style="right:22px;bottom:-40px;font-size:15px;color:rgba(255,255,255,.75)">03 &mdash; where</div>
+    </div>
+    <div class="slam w" style="left:0;right:0;top:428px;text-align:center;font-size:230px;color:#fff">AT HOME</div>
+  </div>
+  <div class="L" id="s3d" style="background:var(--cream)">
+    <div id="script" style="left:0;top:330px;font-family:'Script';font-weight:700;font-size:300px;line-height:1.2;color:var(--navy);padding:0 30px">with care</div>
+    <div id="dotplus" class="plus"><i></i><i></i></div>
+  </div>
+
+  <!-- S4 · signature: particles assemble the plus -->
+  <div class="L" id="s4" style="background:var(--ink)">
+    <canvas id="pc" width="1920" height="1080" style="left:0;top:0"></canvas>
+    <div id="s4cap" class="serif" style="left:0;right:0;top:850px;text-align:center;font-size:62px;color:#fff">built around one patient.</div>
+  </div>
+
+  <!-- S5 · product micro-moment -->
+  <div class="L" id="s5" style="background:radial-gradient(1200px 800px at 50% 45%,#16386A 0%,#0A1E3A 70%)">
+    <div id="persp" style="left:0;top:0;width:1920px;height:1080px;perspective:1700px">
+      <div id="cards" style="left:550px;top:280px;width:820px;height:500px;transform-style:preserve-3d">
+        <div class="ghost" style="left:0;top:0;width:820px;height:500px;border-radius:34px;background:#fff;opacity:.10"></div>
+        <div class="ghost" style="left:0;top:0;width:820px;height:500px;border-radius:34px;background:#fff;opacity:.22"></div>
+        <div id="card" style="left:0;top:0;width:820px;height:500px;border-radius:34px;background:#fff;box-shadow:0 60px 120px -40px rgba(0,0,0,.6)">
+          <div style="left:52px;top:44px;width:12px;height:12px;border-radius:50%;background:var(--lime)"></div>
+          <div class="mono" style="left:76px;top:38px;font-size:17px;color:#6A7B8E">care request</div>
+          <div style="left:50px;top:74px;font-weight:750;font-size:46px;letter-spacing:-.02em;color:var(--navy)">Book a home visit</div>
+          <div style="left:50px;top:168px;width:720px;height:1px;background:#E3E8E0"></div>
+          <div style="left:50px;top:200px;font-weight:650;font-size:32px;color:var(--navy)">Nurse visit</div>
+          <div style="left:50px;top:244px;font-weight:500;font-size:23px;color:#6A7B8E">Every day &middot; 10:00</div>
+          <div id="tgl" style="left:666px;top:204px;width:104px;height:58px;border-radius:29px;background:#D9DFD5"><div id="knob" style="left:5px;top:5px;width:48px;height:48px;border-radius:50%;background:#fff;box-shadow:0 3px 8px rgba(0,0,0,.25)"></div></div>
+          <div style="left:50px;top:300px;font-weight:600;font-size:23px;color:#6A7B8E">Matching your nurse</div>
+          <div id="pct" style="right:50px;top:300px;font-family:'Mono';font-size:22px;color:var(--navy)">0%</div>
+          <div style="left:50px;top:340px;width:720px;height:14px;border-radius:7px;background:#E6EBE3"></div>
+          <div id="bar" style="left:50px;top:340px;width:0;height:14px;border-radius:7px;background:linear-gradient(90deg,#A3CF2A,#3E8A16)"></div>
+          <div id="btn" style="left:50px;top:384px;width:720px;height:86px;border-radius:43px;background:var(--navy)">
+            <div id="btnA" style="left:0;top:0;width:720px;height:86px;line-height:86px;text-align:center;font-weight:750;font-size:32px;color:#fff">Book visit</div>
+            <div id="btnB" style="left:0;top:0;width:720px;height:86px;line-height:86px;text-align:center;font-weight:750;font-size:32px;color:#fff;opacity:0">Booked &#10003;</div>
+          </div>
+          <svg id="cur" width="44" height="56" viewBox="0 0 22 28" style="left:0;top:0;overflow:visible"><path d="M2 2v20l5.5-5 3.6 8.2 3.4-1.5-3.6-8H18z" fill="#fff" stroke="#0E2D5C" stroke-width="1.6" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+    </div>
+    <div id="toast" style="right:110px;top:100px;width:560px;height:118px;border-radius:26px;background:#fff;box-shadow:0 30px 60px -20px rgba(0,0,0,.55)">
+      <div style="left:20px;top:19px;width:80px;height:80px;border-radius:20px;background:#EEF4E8"></div>
+      <img src="assets/logo-icon.png" style="left:26px;top:37px;width:68px;height:46px">
+      <div class="mono" style="left:122px;top:26px;font-size:15px;color:#6A7B8E">careva+ &middot; now</div>
+      <div style="left:122px;top:54px;font-weight:700;font-size:29px;letter-spacing:-.01em;color:var(--navy)">Your nurse is on the way</div>
+    </div>
+  </div>
+
+  <!-- S6 · services slam -->
+  <div class="L" id="s6" style="background:var(--green);z-index:3">
+    <div id="bigplus" class="plus" style="left:1500px;top:540px"><i></i><i></i></div>
+    <div id="s6list" style="left:0;top:0;width:1920px;height:1080px"></div>
+  </div>
+
+  <!-- S7 · bridge -->
+  <div class="L" id="s7" style="background:var(--ink)">
+    <div class="ring" style="left:960px;top:540px;width:0;height:0"><div style="left:-50px;top:-50px;width:100px;height:100px;border-radius:50%;border:3px solid var(--lime)"></div></div>
+    <div class="ring" style="left:960px;top:540px;width:0;height:0"><div style="left:-50px;top:-50px;width:100px;height:100px;border-radius:50%;border:3px solid var(--lime)"></div></div>
+    <div id="dot" style="left:950px;top:530px;width:20px;height:20px;border-radius:50%;background:var(--lime)"></div>
+  </div>
+
+  <!-- S8 · end card -->
+  <div class="L" id="s8" style="background:var(--cream)">
+    <div id="logo" style="left:67px;top:163.5px;width:1786px;height:553px;transform-origin:50% 50%">
+      <img id="lgI" src="assets/logo-icon.png" style="left:0;top:0;width:815px;height:553px;transform-origin:50% 100%">
+      <img id="lgW" src="assets/logo-word.png" style="left:860px;top:213px;width:749px;height:143px">
+      <img id="lgC" src="assets/logo-cross.png" style="left:1606px;top:209px;width:180px;height:150px;opacity:0">
+    </div>
+    <div id="s8tag" class="serif" style="left:0;right:0;top:616px;text-align:center;font-size:72px;color:var(--navy)">Care that comes home.</div>
+    <div id="rule" style="left:700px;top:732px;width:520px;height:2px;background:rgba(14,45,92,.22)"></div>
+    <div id="cta" class="mono" style="left:0;top:764px;font-size:26px;letter-spacing:.34em;color:var(--green)"></div>
+    <div id="caret" style="top:762px;width:3px;height:32px;background:var(--green)"></div>
+    <div id="tel" style="left:0;right:0;top:826px;display:flex;justify-content:center;align-items:center;gap:16px;font:800 50px 'Mont';letter-spacing:.005em;color:var(--navy)"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#3E8A16" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="position:static;flex:none"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg><span style="position:static">+91 96555 08881</span></div>
+  </div>
+
+  <!-- the hero +, on top of every layer during the bridge -->
+  <div class="L" id="top" style="display:block;z-index:30;pointer-events:none"><div id="hero" class="plus"><i></i><i></i></div></div>
+
+  <div id="vig"></div>
+  <div id="grain"></div>
+  <div id="hud">
+    <div class="br" style="left:44px;top:44px;border-left-width:2px;border-top-width:2px"></div>
+    <div class="br" style="right:44px;top:44px;border-right-width:2px;border-top-width:2px"></div>
+    <div class="br" style="left:44px;bottom:44px;border-left-width:2px;border-bottom-width:2px"></div>
+    <div class="br" style="right:44px;bottom:44px;border-right-width:2px;border-bottom-width:2px"></div>
+    <div style="left:96px;top:60px">careva+ / brand film</div>
+    <div id="hScene" style="right:96px;top:60px"></div>
+    <div id="hCat" style="left:96px;bottom:60px"></div>
+    <div id="hTc" style="right:96px;bottom:60px"></div>
+    <div id="hDot" style="right:268px;bottom:63px;width:9px;height:9px;border-radius:50%;background:#FF4A3D"></div>
+  </div>
+</div>
+<div id="ui"><button id="pp">Play</button><input id="scrub" type="range" min="0" max="1" step="0.0005" value="0"><span id="tc">0.00</span></div>
+
+<script>
+/* =====================================================================================
+   CAREVA+ — BRAND FILM   ·   128 BPM   ·   beat = 0.46875 s   ·   45 beats = 21.09 s
+   The red + from the logo carries the eye through every transition.
+
+   beat   time    scene / moment                                              sound
+   0      0.00    S1 dark grid, a green + spark appears (b0.5), pulses (b1)    blip, sub swell
+   1.5    0.70    its arm stretches into a line; label types                  tick run
+   2.5    1.17    line wobbles                                                riser starts (b2)
+   3      1.41    line floods the frame vertically -> green                   whoosh up
+   4      1.88    S2 flood lands; CAREVA letters on 1/16 notes (b4.5)          IMPACT, drums in, 6 blips
+   6      2.81    the red + slams onto the name                               hit + bell
+   6.5    3.05    serif line: "health care, right at home."
+   8.75   4.10    the + detaches, spins, grows to fill the frame              whoosh
+   10     4.69    S3 "NURSES" on cream                                         impact + blip
+   12     5.63    "CARETAKERS" on ink, outline pattern                         blip
+   14     6.56    "AT HOME" white on blue in a viewfinder                      blip
+   16     7.50    "with care" writes itself on (3 beats); a red + dots it      pen scratch, bell
+   18.6   8.72    ink floods out from the + dot                                whoosh
+   19     8.91    S4 particles burst from the dot, swirl, assemble a plus      IMPACT, shimmer
+   22.5   10.55   plus holds; "built around one patient."
+   23.4   10.97   plus bursts outward                                          whoosh
+   24     11.25   S5 booking card flies in (3D, ghost cards)
+   25.5   11.95   cursor flicks "Nurse visit" on                               click
+   26.5   12.42   presses "Book visit"; progress 0 -> 100 %                    click, ticks
+   28.5   13.36   "Booked ✓"; toast "Your nurse is on the way" (b28.75)        ding, pop
+   30     14.06   green floods out of the button -> S6 services slam           IMPACT
+   30.5   14.30   5 services slam on half-beats                                5 hits
+   33     15.47   S7 green collapses to a dot on ink                           whoosh down, drums out
+   34     15.94   ring pulses; dot becomes the red +                           pings, riser
+   34.75  16.29   cream floods from the +; the + flies to the logo             whoosh
+   36.5   17.11   S8 the + docks in CAREVA+; tagline, rule, CTA types          impact chord, ring-out
+   39.25  18.4    phone number +91 96555 08881 lands
+   45     21.09   end
+   ===================================================================================== */
+function spring(t, w = 14, z = 0.82) { if (t <= 0) return 0; if (z >= 1) return 1 - Math.exp(-w * t) * (1 + w * t); const wd = w * Math.sqrt(1 - z * z); return 1 - Math.exp(-z * w * t) * (Math.cos(wd * t) + (z * w / wd) * Math.sin(wd * t)); }
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const ease = x => (x = clamp(x), x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+const lerp = (a, b, k) => a + (b - a) * k;
+const seg = (t, a, b) => clamp((t - a) / (b - a));
+const kf = keys => t => { if (t <= keys[0][0]) return keys[0][1]; for (let i = 1; i < keys.length; i++) { const [a, va] = keys[i - 1], [b, vb, e = ease] = keys[i]; if (t <= b) return lerp(va, vb, e((t - a) / (b - a))); } return keys[keys.length - 1][1]; };
+const rng = s => () => (s = (s + 0x6D2B79F5) | 0, s = Math.imul(s ^ (s >>> 15), 1 | s), s ^= s + Math.imul(s ^ (s >>> 7), 61 | s), ((s ^ (s >>> 14)) >>> 0) / 4294967296);
+const eOut = x => 1 - Math.pow(1 - clamp(x), 4), eIn = x => Math.pow(clamp(x), 3), eInX = x => (x = clamp(x), x === 0 ? 0 : Math.pow(2, 10 * x - 10));
+
+const BPM = 128, B = 60 / BPM, bt = b => b * B, BEATS = 45, D = BEATS * B;
+window.VIDEO = { w: 1920, h: 1080, duration: D };
+const $ = id => document.getElementById(id);
+const tf = (el, s) => { el.style.transform = s; };
+const show = (id, a, b, t) => { const e = $(id); const on = t >= bt(a) && t < bt(b); e.style.display = on ? 'block' : 'none'; return on; };
+
+/* ---------- a + made of two bars, any size and colour ---------- */
+function setPlus(el, x, y, size, color, rot = 0, sx = 1, sy = 1, op = 1) {
+  const th = size * .34, [h, v] = el.children;
+  for (const b of [h, v]) b.style.background = color;
+  h.style.cssText += `;left:${-size / 2}px;top:${-th / 2}px;width:${size}px;height:${th}px`;
+  v.style.cssText += `;left:${-th / 2}px;top:${-size / 2}px;width:${th}px;height:${size}px`;
+  el.style.left = x + 'px'; el.style.top = y + 'px'; el.style.opacity = op;
+  tf(el, `rotate(${rot}deg) scale(${sx},${sy})`);
+}
+
+/* ---------- build ---------- */
+// S2 letters in masks
+$('s2name').innerHTML = 'CAREVA'.split('').map(c => `<span style="position:relative;display:inline-block;overflow:hidden;vertical-align:top;padding:0 .01em"><span style="position:relative;display:inline-block">${c}</span></span>`).join('');
+// S3b outline pattern
+$('pat').innerHTML = Array.from({ length: 7 }, (_, r) => `<div class="slam" style="left:0;top:${-40 + r * 170}px;font-size:150px;color:transparent;-webkit-text-stroke:2px rgba(163,207,42,.2)">${'CARETAKERS · '.repeat(6)}</div>`).join('');
+// S6 list
+const SERV = ['Home nursing', 'Elder care', 'Post-surgery care', 'Caretakers', 'Care plans'];
+$('s6list').innerHTML = SERV.map((s, i) => `<div class="sv" style="left:200px;top:${208 + i * 136}px;height:120px">
+  <div class="mono" style="left:0;top:44px;font-size:20px;color:rgba(255,255,255,.6)">0${i + 1}</div>
+  <div class="slam" style="left:74px;top:0;font-size:112px;color:#fff;transform-origin:0 60%">${s}</div></div>`).join('');
+// grain tiles
+const grains = (() => { const r = rng(7), out = []; for (let k = 0; k < 4; k++) { const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d'), im = g.createImageData(256, 256); for (let i = 0; i < im.data.length; i += 4) { const v = 128 + (r() - .5) * 220; im.data[i] = im.data[i + 1] = im.data[i + 2] = v; im.data[i + 3] = 255; } g.putImageData(im, 0, 0); out.push(`url(${c.toDataURL()})`); } return out; })();
+
+/* ---------- particles (pure functions of time) ---------- */
+const NP = 1700, P = [], PL = 600, PTH = PL * .34, PC = [960, 470];
+{ const r = rng(2026); while (P.length < NP) { const x = (r() - .5) * PL, y = (r() - .5) * PL; if (Math.abs(x) > PTH / 2 && Math.abs(y) > PTH / 2) continue;
+  const horiz = Math.abs(y) <= PTH / 2 && Math.abs(x) > PTH / 2; const c = r() < .12 ? '#FFFFFF' : horiz ? (r() < .5 ? '#47B6F0' : '#1E74CF') : (r() < .5 ? '#A3CF2A' : '#5DAA1F');
+  P.push({ tx: PC[0] + x, ty: PC[1] + y, a: r() * Math.PI * 2, R: 260 + r() * 820, sw: 1.2 + r() * 2.2, d: r() * .45, ph: r() * 6.28, s: 1.6 + r() * 2.6, c, ex: 900 + r() * 1400 }); } }
+let ORIGIN = [1500, 640];
+const pc = $('pc'), g2 = pc.getContext('2d');
+function drawParticles(t) {
+  g2.setTransform(1, 0, 0, 1, 0, 0); g2.clearRect(0, 0, 1920, 1080);
+  const rot = lerp(-5, 4, seg(t, bt(19), bt(24))) * Math.PI / 180, sc = lerp(.94, 1.06, seg(t, bt(19), bt(24)));
+  g2.translate(960, 540); g2.rotate(rot); g2.scale(sc, sc); g2.translate(-960, -540);
+  g2.globalCompositeOperation = 'lighter';
+  const tA = bt(19), tB = bt(20.4), tC = bt(22.5), tD = bt(23.4);
+  for (const p of P) {
+    const u1 = eOut(seg(t, tA, tA + bt(1.8))), ang = p.a + p.sw * seg(t, tA, tC) * 2.2;
+    const fx = lerp(ORIGIN[0], PC[0], u1 * .8) + Math.cos(ang) * p.R * u1, fy = lerp(ORIGIN[1], PC[1], u1 * .8) + Math.sin(ang) * p.R * u1 * .62;
+    const u2 = ease(seg(t, tB + bt(p.d), tC + bt(p.d * .4)));
+    let x = lerp(fx, p.tx, u2), y = lerp(fy, p.ty, u2);
+    const sh = u2 * (1 - seg(t, tD, tD + .05)) * 2.2; x += Math.sin(t * 9 + p.ph) * sh; y += Math.cos(t * 7 + p.ph) * sh;
+    const u3 = eIn(seg(t, tD, bt(24.3))); let al = clamp(seg(t, tA, tA + .08) * 1.0) * (1 - u3);
+    if (u3 > 0) { const dx = p.tx - PC[0], dy = p.ty - PC[1], dl = Math.hypot(dx, dy) || 1; x += dx / dl * p.ex * u3; y += dy / dl * p.ex * u3; }
+    g2.globalAlpha = al * .9; g2.fillStyle = p.c; g2.beginPath(); g2.arc(x, y, p.s * (1 + .6 * (1 - u2) * (1 - u2)), 0, 6.283); g2.fill();
+  }
+  g2.globalCompositeOperation = 'source-over'; g2.globalAlpha = 1;
+}
+
+/* ---------- scene list for HUD ---------- */
+const SC = [[0, 4, 'Open', 0], [4, 10, 'Brand', 0], [10, 19, 'Kinetic type', 0], [19, 24, 'Signature', 0], [24, 30, 'Product', 0], [30, 33, 'Services', 0], [33, 35, 'Bridge', 0], [35, 99, 'End card', 1]];
+const lightAt = t => (t >= bt(10) && t < bt(12)) || (t >= bt(16) && t < bt(18.75)) || t >= bt(35.2);
+
+/* ---------- seek ---------- */
+function seek(t) {
+  t = clamp(t, 0, D - 1e-4);
+  const stage = $('stage');
+
+  /* S1 */
+  if (show('s1', 0, 4.02, t)) {
+    const a = spring(t - bt(.5), 22, .55) * (1 + .35 * Math.exp(-(t - bt(1)) * 9) * (t > bt(1) ? 1 : 0));
+    const stretch = eOut(seg(t, bt(1.5), bt(2.4)));
+    const sp = $('spark'); setPlus(sp, 960, 540, 26, '#A3CF2A', 0, a, a, t < bt(1.5) ? 1 : 1 - seg(t, bt(1.5), bt(1.7)));
+    // the line: grows out of the + arm, wobbles once, then floods
+    const half = 800 * stretch, wob = 18 * Math.sin((t - bt(2.5)) * 30) * Math.exp(-(t - bt(2.5)) * 6) * (t > bt(2.5) ? 1 : 0);
+    let d = ''; for (let i = 0; i <= 80; i++) { const x = 960 - half + 2 * half * i / 80, w = Math.sin(Math.PI * i / 80); d += (i ? 'L' : 'M') + x.toFixed(1) + ' ' + (540 + wob * w * Math.sin(i / 80 * Math.PI * 3)).toFixed(1); }
+    $('lpath').setAttribute('d', half > 1 ? d : ''); $('line').style.opacity = t < bt(3) ? 1 : 0;
+    const lab = 'careva+ / home health care — 2026', n = Math.floor(lab.length * seg(t, bt(1.75), bt(2.75)));
+    $('s1lab').textContent = lab.slice(0, n); $('s1lab').style.opacity = 1 - seg(t, bt(3), bt(3.3)); $('s1lab2').style.opacity = seg(t, bt(2.2), bt(2.6)) * (1 - seg(t, bt(3), bt(3.3)));
+    const fl = eInX(seg(t, bt(3), bt(4))); const f = $('flood1'); f.style.top = (540 - 540 * fl - 2) + 'px'; f.style.height = (4 + 1076 * fl) + 'px'; f.style.opacity = t >= bt(3) ? 1 : 0;
+    $('grid').style.opacity = 1 - seg(t, bt(3), bt(3.6));
+  }
+
+  /* S2 */
+  if (show('s2', 4, 10.02, t)) {
+    const nm = $('s2name'), w = lerp(250, 900, ease(seg(t, bt(4.4), bt(6.2))));
+    nm.style.fontVariationSettings = `"wght" ${w}`;
+    const width = nm.offsetWidth, PLS = 190, gap = 26, x0 = (1920 - (width + gap + PLS)) / 2;
+    const out = eIn(seg(t, bt(8.5), bt(9.1)));
+    nm.style.left = x0 + 'px'; nm.style.opacity = 1 - out; tf(nm, `translateY(${-40 * out}px)`);
+    [...nm.children].forEach((m, i) => { const k = spring(t - bt(4.5 + i * .25), 24, .7); tf(m.firstChild, `translateY(${(1 - k) * 105}%)`); });
+    const kk = spring(t - bt(4.25), 16, .9); $('s2kick').style.opacity = kk * (1 - out); tf($('s2kick'), `translateY(${(1 - kk) * 16 - 30 * out}px)`);
+    const ks = spring(t - bt(6.5), 14, .85); $('s2serif').style.opacity = clamp(ks) * (1 - out); tf($('s2serif'), `translateY(${(1 - ks) * 30 + 30 * out}px)`);
+    // the + : slams on b6, detaches b8.75 and grows to fill the frame with cream
+    const land = spring(t - bt(6), 20, .55), px0 = x0 + width + gap + PLS / 2, py0 = 370 + 135;
+    const grow = seg(t, bt(8.75), bt(10)), gx = lerp(px0, 960, ease(seg(t, bt(8.6), bt(9.4)))), gy = lerp(py0, 540, ease(seg(t, bt(8.6), bt(9.4))));
+    const s = Math.exp(Math.log(40) * eIn(grow)) * land, rot = lerp(-90, 0, clamp(land)) + 90 * ease(seg(t, bt(8.6), bt(9.6)));
+    const col = grow > .12 ? '#F2F5EF' : '#E5332A';
+    setPlus($('s2plus'), gx, gy, PLS, col, rot, s, s);
+  }
+
+  /* S3 */
+  const word = (id, a, b, from) => { if (!show(id, a, b, t)) return; const L = $(id), w = L.querySelector('.w'), k = L.querySelector('.k');
+    const e = spring(t - bt(a), 20, .62); tf(w, `translateX(${(1 - e) * from}px) scale(${lerp(1.18, 1, clamp(e))})`); w.style.filter = `blur(${Math.max(0, (1 - e) * 26).toFixed(1)}px)`; w.style.opacity = clamp(e * 2);
+    if (k) { const e2 = spring(t - bt(a + .25), 18, .8); k.style.opacity = clamp(e2); tf(k, `translateY(${(1 - e2) * 14}px)`); } };
+  word('s3a', 10, 12, 260); word('s3b', 12, 14, -260); word('s3c', 14, 16, 260);
+  if ($('s3b').style.display === 'block') [...$('pat').children].forEach((r, i) => tf(r, `translateX(${(i % 2 ? -1 : 1) * (t - bt(12)) * 180 - 400}px)`));
+  if ($('s3c').style.display === 'block') { const v = spring(t - bt(14), 16, .7); tf($('vf'), `scale(${lerp(1.25, 1, clamp(v))})`); $('vf').style.opacity = clamp(v * 1.5); }
+  if (show('s3d', 16, 19.1, t)) {
+    const sc = $('script'), w = sc.offsetWidth, x0 = (1920 - w - 70) / 2; sc.style.left = x0 + 'px';
+    const r = seg(t, bt(16.1), bt(18.1)); sc.style.clipPath = `inset(0 ${(1 - r) * 100}% 0 0)`;
+    const dp = spring(t - bt(18.25), 22, .5), dx = x0 + w + 20, dy = 330 + 300 * .86;
+    ORIGIN = [dx, dy];
+    setPlus($('dotplus'), dx, dy, 84, '#E5332A', lerp(-120, 0, clamp(dp)), dp, dp);
+    $('s3d').style.clipPath = 'none';
+  }
+
+  /* S4 — ink floods out of the + dot, particles assemble a plus */
+  if (show('s4', 18.6, 24.6, t)) {
+    { const sc = $('script'); const w = sc.offsetWidth || 900; ORIGIN = [(1920 - w - 70) / 2 + w + 20, 330 + 300 * .86]; }
+    const r = 2300 * eIn(seg(t, bt(18.6), bt(19.1)));
+    $('s4').style.clipPath = t < bt(19.1) ? `circle(${r}px at ${ORIGIN[0]}px ${ORIGIN[1]}px)` : 'none';
+    drawParticles(t);
+    const c = spring(t - bt(21.8), 14, .9); $('s4cap').style.opacity = clamp(c) * (1 - seg(t, bt(23.3), bt(23.7))); tf($('s4cap'), `translateY(${(1 - c) * 24}px)`);
+  }
+
+  /* S5 */
+  if (show('s5', 23.6, 30.4, t)) {
+    $('s5').style.opacity = seg(t, bt(23.6), bt(24.1));
+    const fly = spring(t - bt(23.8), 9, .85);
+    const flt = Math.sin(t * 1.4) * 1.2;
+    tf($('cards'), `translateZ(${lerp(-900, 0, fly)}px) rotateX(${10 + flt}deg) rotateY(${-16 + flt}deg) rotateZ(2deg)`);
+    const gh = document.querySelectorAll('.ghost'); tf(gh[0], `translate3d(${70 * fly}px,${-60 * fly}px,-220px)`); tf(gh[1], `translate3d(${36 * fly}px,${-30 * fly}px,-110px)`);
+    // cursor path (card coordinates)
+    const cx = kf([[bt(24.2), 900], [bt(25.3), 726], [bt(25.9), 726], [bt(26.3), 420], [bt(27.5), 420], [bt(28.4), 860]])(t), cy = kf([[bt(24.2), 560], [bt(25.3), 238], [bt(25.9), 238], [bt(26.3), 430], [bt(27.5), 430], [bt(28.4), 560]])(t);
+    const press = Math.max(Math.exp(-Math.abs(t - bt(25.5)) * 22), Math.exp(-Math.abs(t - bt(26.5)) * 22));
+    const cur = $('cur'); cur.style.left = cx + 'px'; cur.style.top = cy + 'px'; tf(cur, `scale(${1 - .18 * press})`); cur.style.opacity = seg(t, bt(24.2), bt(24.6)) * (1 - seg(t, bt(28.3), bt(28.6)));
+    const on = spring(t - bt(25.5), 22, .7); $('knob').style.left = lerp(5, 51, clamp(on)) + 'px'; $('tgl').style.background = on > .5 ? '#5DAA1F' : '#D9DFD5';
+    const pr = ease(seg(t, bt(26.6), bt(28.4))); $('bar').style.width = 720 * pr + 'px'; $('pct').textContent = Math.round(pr * 100) + '%';
+    const bk = clamp(spring(t - bt(28.5), 22, .9)); $('btn').style.background = bk > .5 ? '#3E8A16' : '#0E2D5C'; $('btnA').style.opacity = 1 - bk; $('btnB').style.opacity = bk;
+    tf($('btn'), `scale(${1 - .04 * Math.exp(-Math.abs(t - bt(26.5)) * 20) + .05 * Math.exp(-(t - bt(28.5)) * 12) * (t > bt(28.5) ? 1 : 0)})`);
+    const ts = spring(t - bt(28.75), 16, .72); tf($('toast'), `translateX(${(1 - ts) * 720}px)`); $('toast').style.opacity = t > bt(28.75) ? 1 : 0;
+  }
+
+  /* S6 — green floods out of the button */
+  if (show('s6', 30, 33.75, t)) {
+    let bx = 960, by = 700; if ($('s5').style.display === 'block' || true) { const s5 = $('s5'), prev = s5.style.display; s5.style.display = 'block'; const r = $('btn').getBoundingClientRect(), sr = stage.getBoundingClientRect(), k = sr.width / 1920; bx = (r.left + r.width / 2 - sr.left) / k; by = (r.top + r.height / 2 - sr.top) / k; s5.style.display = prev; }
+    const fr = 2400 * eIn(seg(t, bt(30), bt(30.5)));
+    const col = bt(33) <= t ? 2400 * (1 - eIn(seg(t, bt(33), bt(33.75)))) + 10 : 0;
+    $('s6').style.clipPath = t < bt(30.5) ? `circle(${fr}px at ${bx}px ${by}px)` : t >= bt(33) ? `circle(${Math.max(10, col)}px at 960px 540px)` : 'none';
+    document.querySelectorAll('.sv').forEach((el, i) => { const a = bt(30.5 + i * .5), k = spring(t - a, 24, .6), w = el.lastElementChild;
+      el.style.opacity = t >= a ? 1 : 0; tf(w, `scale(${lerp(1.35, 1, clamp(k))})`); w.style.filter = `blur(${Math.max(0, (1 - k) * 14).toFixed(1)}px)`;
+      const dim = t < bt(32.6) && t > a + bt(.5) ? .38 : 1; w.style.opacity = dim; });
+    setPlus($('bigplus'), 1500, 540, 520, 'rgba(255,255,255,.12)', (t - bt(30)) * 40, 1, 1);
+  }
+
+  /* S7 + hero + */
+  const s7 = show('s7', 33, 35.6, t);
+  if (s7) {
+    const dot = $('dot'); const ds = t < bt(34.5) ? 1 + .25 * Math.exp(-((t - bt(34)) % bt(.5)) * 10) : 1 - eIn(seg(t, bt(34.5), bt(34.75)));
+    tf(dot, `scale(${ds})`); dot.style.opacity = t >= bt(33.7) ? 1 : 0;
+    document.querySelectorAll('.ring').forEach((r, i) => { const a = bt(34 + i * .5), u = seg(t, a, a + bt(1.4)); tf(r, `scale(${lerp(.2, 5, eOut(u))})`); r.style.opacity = (t > a ? 1 : 0) * (1 - u); });
+  }
+  // the hero + : appears from the dot, then flies to the logo slot while cream floods
+  const hero = $('hero');
+  if (t >= bt(34.5) && t < bt(36.62)) {
+    const a = spring(t - bt(34.55), 22, .55), fly = ease(seg(t, bt(35.1), bt(36.5)));
+    const x = lerp(960, 1441.8, fly), y = lerp(540, 424.5, fly) - 120 * Math.sin(Math.PI * fly), size = lerp(120, 92, fly);
+    setPlus(hero, x, y, size, '#E5332A', lerp(-180, 0, clamp(a)) - 360 * fly, a, a);
+  } else hero.style.opacity = 0;
+
+  /* S8 */
+  if (show('s8', 34.75, 99, t)) {
+    const r = 2300 * eIn(seg(t, bt(34.75), bt(35.3)));
+    $('s8').style.clipPath = t < bt(35.3) ? `circle(${r}px at 960px 540px)` : 'none';
+    const lg = $('logo'), breathe = 1 + .012 * seg(t, bt(37), D);
+    tf(lg, `scale(${.6 * breathe})`);
+    const ki = spring(t - bt(35.3), 14, .62); tf($('lgI'), `scale(${clamp(ki * 1.05, 0, 1.2)})`); $('lgI').style.opacity = clamp(ki * 2);
+    const kw = eOut(seg(t, bt(35.7), bt(36.5))); $('lgW').style.clipPath = `inset(0 ${(1 - kw) * 100}% 0 0)`; tf($('lgW'), `translateX(${(1 - kw) * -24}px)`);
+    const dock = t >= bt(36.5); const kc = spring(t - bt(36.5), 22, .45);
+    $('lgC').style.opacity = dock ? 1 : 0; tf($('lgC'), `scale(${dock ? lerp(1.25, 1, clamp(kc)) : 1})`);
+    tf(lg, `scale(${.6 * breathe * (1 + .02 * Math.exp(-(t - bt(36.5)) * 10) * (dock ? 1 : 0))})`);
+    const kt = spring(t - bt(37), 14, .9); $('s8tag').style.opacity = clamp(kt); tf($('s8tag'), `translateY(${(1 - kt) * 26}px)`);
+    tf($('rule'), `scaleX(${eOut(seg(t, bt(37.25), bt(38.25)))})`);
+    const cta = 'book a home visit', n = Math.floor((cta.length + .999) * seg(t, bt(37.5), bt(39))), el = $('cta');
+    el.textContent = cta.slice(0, n); const w = el.offsetWidth; const full = (() => { const s = el.textContent; el.textContent = cta; const fw = el.offsetWidth; el.textContent = s; return fw; })();
+    const kp = spring(t - bt(39.25), 15, .7); $('tel').style.opacity = clamp(kp * 1.5); tf($('tel'), `translateY(${(1 - kp) * 26}px) scale(${lerp(.92, 1, clamp(kp))})`);
+    el.style.left = (960 - full / 2) + 'px'; $('caret').style.left = (960 - full / 2 + w + 2) + 'px'; $('caret').style.opacity = t > bt(37.4) && (Math.floor(t / .35) % 2 === 0 || t < bt(39.2)) ? 1 : 0;
+  }
+
+  /* HUD, vignette, grain */
+  const si = SC.findIndex(s => t < bt(s[1])), cur = SC[si];
+  const light = lightAt(t), hud = $('hud');
+  hud.style.color = light ? 'rgba(14,45,92,.55)' : 'rgba(255,255,255,.55)';
+  $('hScene').textContent = `scene 0${si + 1} / 08`; $('hCat').textContent = cur[2];
+  const fr = Math.floor(t * 30), ss = Math.floor(fr / 30), ff = fr % 30; $('hTc').textContent = `00:00:${String(ss).padStart(2, '0')}:${String(ff).padStart(2, '0')}`;
+  $('hDot').style.opacity = Math.floor(t / .5) % 2 ? .35 : 1;
+  $('vig').style.background = `radial-gradient(ellipse 75% 75% at 50% 50%, transparent 55%, rgba(0,0,0,${light ? .10 : .42}) 100%)`;
+  $('grain').style.backgroundImage = grains[Math.floor(t * 24) % 4];
+}
+window.seek = seek;
+
+/* =====================================================================================
+   SOUND — synthesised on the same beat grid
+   ===================================================================================== */
+window.buildAudio = async function (ctx) {
+  const sr = ctx.sampleRate, master = ctx.createGain(); master.gain.value = .8;
+  const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 3.5; comp.attack.value = .004; comp.release.value = .15;
+  master.connect(comp); comp.connect(ctx.destination);
+  const wet = ctx.createGain(); wet.gain.value = .18; const dl = ctx.createDelay(1), dr = ctx.createDelay(1), fb = ctx.createGain(), lp = ctx.createBiquadFilter(), mg = ctx.createChannelMerger(2);
+  dl.delayTime.value = B * .75; dr.delayTime.value = B * .5; fb.gain.value = .3; lp.type = 'lowpass'; lp.frequency.value = 3000;
+  wet.connect(dl); wet.connect(dr); dl.connect(lp); dr.connect(lp); lp.connect(fb); fb.connect(dl); fb.connect(dr); dl.connect(mg, 0, 0); dr.connect(mg, 0, 1); mg.connect(master);
+  const bus = (g, pan = 0, send = 0) => { const n = ctx.createGain(); n.gain.value = g; const p = ctx.createStereoPanner(); p.pan.value = pan; n.connect(p); p.connect(master); if (send) { const s = ctx.createGain(); s.gain.value = send; p.connect(s); s.connect(wet); } return n; };
+  const r = rng(128), nb = ctx.createBuffer(1, sr * 2, sr), nd = nb.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = r() * 2 - 1;
+  const env = (g, t, a, d, pk) => { g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(pk, t + a); g.gain.exponentialRampToValueAtTime(.0001, t + a + d); };
+  const osc = (type, f, t, a, d, pk, dest, f1) => { if (t < 0) return; const o = ctx.createOscillator(), g = ctx.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + a + d); env(g, t, a, d, pk); o.connect(g); g.connect(dest); o.start(t); o.stop(t + a + d + .05); };
+  const noise = (t, a, d, pk, type, f0, f1, q, dest) => { if (t < 0) return; const s = ctx.createBufferSource(); s.buffer = nb; s.loop = true; const f = ctx.createBiquadFilter(); f.type = type; f.Q.value = q; f.frequency.setValueAtTime(f0, t); if (f1) f.frequency.exponentialRampToValueAtTime(f1, t + a + d); const g = ctx.createGain(); env(g, t, a, d, pk); s.connect(f); f.connect(g); g.connect(dest); s.start(t, r()); s.stop(t + a + d + .05); };
+  const kick = (t, v = 1) => { const b = bus(.85 * v); osc('sine', 150, t, .002, .28, 1, b, 42); noise(t, .001, .012, .35, 'highpass', 3000, 0, .7, b); };
+  const clap = (t, v = 1) => { const b = bus(.28 * v, 0, .5); for (const o of [0, .011, .022]) noise(t + o, .001, .09, 1, 'bandpass', 1500, 0, 1.1, b); };
+  const hat = (t, v = 1) => noise(t, .001, .03, 1, 'highpass', 8500, 0, .7, bus(.07 * v, .2));
+  const sub = (f, t, d, v = 1) => { const b = bus(.42 * v), l = ctx.createBiquadFilter(); l.type = 'lowpass'; l.frequency.value = 260; l.connect(b); osc('sawtooth', f, t, .005, d, 1, l); osc('sine', f, t, .005, d, .9, b); };
+  const blip = (f, t, v = 1, pan = 0) => { const b = bus(.2 * v, pan, .6); osc('square', f, t, .002, .07, .5, b); osc('sine', f * 2, t, .002, .1, .6, b); };
+  const bell = (f, t, v = 1) => { const b = bus(.22 * v, 0, .9); osc('sine', f, t, .003, 1.4, 1, b); osc('sine', f * 2.76, t, .002, .5, .3, b); osc('sine', f * 5.4, t, .001, .2, .12, b); };
+  const impact = (t, v = 1) => { const b = bus(.9 * v, 0, .35); osc('sine', 90, t, .003, .9, 1, b, 30); noise(t, .002, .45, .7, 'lowpass', 5000, 300, .7, b); };
+  const whoosh = (t, d, up = true, v = 1) => noise(t, d * (up ? .75 : .25), d * (up ? .25 : .75), 1, 'bandpass', up ? 300 : 3600, up ? 4200 : 260, 1.6, bus(.3 * v, 0, .4));
+  const riser = (t0, t1, v = 1) => { const b = bus(.22 * v, 0, .3), f = ctx.createBiquadFilter(), g = ctx.createGain(), s = ctx.createBufferSource(); s.buffer = nb; s.loop = true; f.type = 'bandpass'; f.Q.value = 2; f.frequency.setValueAtTime(400, t0); f.frequency.exponentialRampToValueAtTime(6000, t1); g.gain.setValueAtTime(.0001, t0); g.gain.exponentialRampToValueAtTime(1, t1 - .02); g.gain.linearRampToValueAtTime(0, t1); s.connect(f); f.connect(g); g.connect(b); s.start(t0); s.stop(t1 + .05);
+    osc('sawtooth', 220, t0, (t1 - t0) * .9, (t1 - t0) * .1, .25, b, 880); };
+  const pad = (fs, t, d, v = 1) => { const b = bus(.07 * v, 0, .5), l = ctx.createBiquadFilter(); l.type = 'lowpass'; l.frequency.value = 2200; l.connect(b); for (const f of fs) for (const dt of [-7, 7]) { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sawtooth'; o.frequency.value = f; o.detune.value = dt; g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(1 / fs.length, t + .08); g.gain.setValueAtTime(1 / fs.length, t + d - .05); g.gain.linearRampToValueAtTime(.0001, t + d + .3); o.connect(g); g.connect(l); o.start(t); o.stop(t + d + .35); } };
+
+  // harmony: Bm  G  D  A  (one chord per bar from beat 4)
+  const CH = [[246.94, 293.66, 369.99], [196, 246.94, 293.66], [293.66, 369.99, 440], [220, 277.18, 329.63]], ROOT = [61.74, 49, 73.42, 55];
+  for (let bar = 1; bar < 9; bar++) { const t0 = bt(bar * 4), c = bar % 4; pad(CH[c], t0, 4 * B, bar >= 6 ? 1.1 : .9);
+    for (let k = 0; k < 8; k++) { const tb = t0 + k * B / 2; if (bar * 4 + k / 2 < 33) sub(ROOT[c] * (k % 4 === 3 ? 2 : 1), tb, B * .42, k % 2 ? .6 : 1); } }
+  for (let b = 4; b < 33; b++) { kick(bt(b), b % 4 === 0 ? 1.1 : .9); if (b % 2 === 1) clap(bt(b)); }
+  for (let b = 10; b < 33; b += .5) hat(bt(b) + (b % 1 ? 0 : 0), b % 1 ? 1 : .5);
+  // S1
+  blip(1174.7, bt(.5), .8); blip(1174.7, bt(1), .5); osc('sine', 55, 0, 1.2, .8, .3, bus(.6));
+  for (let i = 0; i < 12; i++) blip(2400, bt(1.75) + i * bt(1) / 12, .25, .3);
+  riser(bt(2), bt(4)); whoosh(bt(3), bt(1), true, .8);
+  // S2
+  impact(bt(4)); ['C', 'A', 'R', 'E', 'V', 'A'].forEach((_, i) => blip([587, 659, 740, 880, 988, 1175][i], bt(4.5 + i * .25), .7, -.3 + i * .12));
+  impact(bt(6), .55); bell(587.33, bt(6), .8); whoosh(bt(8.6), bt(1.4), true, 1);
+  // S3
+  impact(bt(10), .8); blip(880, bt(10), 1); blip(988, bt(12), 1); blip(1175, bt(14), 1); impact(bt(12), .35); impact(bt(14), .35);
+  noise(bt(16.1), .05, bt(2) - .05, .25, 'bandpass', 3500, 5200, 3, bus(.25, .2)); bell(1174.7, bt(18.25), .7); whoosh(bt(18.4), bt(.7), true, .9);
+  // S4
+  impact(bt(19), 1); for (let i = 0; i < 16; i++) blip(1400 + (i % 5) * 220, bt(20.5) + i * bt(2) / 16, .18, (i % 2 ? .5 : -.5)); bell(880, bt(22.5), .5); whoosh(bt(23.3), bt(.8), true, 1);
+  // S5
+  noise(bt(25.5), .001, .02, 1, 'highpass', 2600, 0, .7, bus(.35, .2)); noise(bt(26.5), .001, .02, 1, 'highpass', 2600, 0, .7, bus(.35, 0));
+  for (let i = 0; i < 18; i++) blip(900 + i * 60, bt(26.6) + (i / 18) * bt(1.8), .15, 0);
+  bell(1174.7, bt(28.5), .9); bell(1479.98, bt(28.55), .6); blip(1760, bt(28.75), .6, .5);
+  // S6
+  impact(bt(30), 1); [0, 1, 2, 3, 4].forEach(i => { impact(bt(30.5 + i * .5), .35); blip([740, 880, 988, 1109, 1319][i], bt(30.5 + i * .5), .5); });
+  // S7 + end
+  whoosh(bt(33), bt(.75), false, 1); bell(880, bt(34), .5); bell(880, bt(34.5), .4); riser(bt(33.5), bt(35.25), .8); whoosh(bt(34.75), bt(.6), true, .8);
+  impact(bt(36.5), 1); pad([146.83, 293.66, 369.99, 440, 587.33], bt(36.5), D - bt(36.5) - .2, 1.6);
+  [587.33, 739.99, 880, 1174.66].forEach((f, i) => bell(f, bt(36.5) + i * .03, .7));
+  for (let i = 0; i < 17; i++) noise(bt(37.5) + i * bt(1.5) / 17, .001, .012, 1, 'highpass', 3200, 0, .7, bus(.12, .1));
+};
+
+/* ---------- preview ---------- */
+if (location.search.includes('render')) { $('ui').remove(); seek(0); }
+else {
+  const st = $('stage'), fit = () => { const k = Math.min(innerWidth / 1920, (innerHeight - 50) / 1080); st.style.transform = `scale(${k})`; }; addEventListener('resize', fit); fit();
+  let buf, ac, src, startAt = 0, offset = 0, playing = false; const pp = $('pp'), scrub = $('scrub'), tcEl = $('tc');
+  async function play() { ac ??= new AudioContext(); if (!buf) { const off = new OfflineAudioContext(2, Math.ceil(48000 * D), 48000); await buildAudio(off); buf = await off.startRendering(); } src = ac.createBufferSource(); src.buffer = buf; src.connect(ac.destination); src.start(0, offset % D); startAt = ac.currentTime; playing = true; pp.textContent = 'Pause'; }
+  function pause() { if (!playing) return; offset += ac.currentTime - startAt; src.stop(); playing = false; pp.textContent = 'Play'; }
+  const now = () => playing ? (offset + ac.currentTime - startAt) % D : offset;
+  pp.onclick = () => playing ? pause() : play();
+  scrub.oninput = () => { const was = playing; pause(); offset = scrub.value * D; if (was) play(); };
+  (function loop() { const t = now(); seek(t); if (playing) scrub.value = t / D; tcEl.textContent = t.toFixed(2) + ' s'; requestAnimationFrame(loop); })();
+}
+</script>
+</body>
+</html>

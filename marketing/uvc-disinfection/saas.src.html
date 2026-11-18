@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Careva+ — Robotic UV-C Disinfection</title>
+<style>
+@font-face{font-family:'Mont';font-weight:100 900;src:url(assets/montserrat-latin-wght-normal.woff2) format('woff2')}
+@font-face{font-family:'Serif';font-style:italic;font-weight:400;src:url(assets/instrument-serif-latin-400-italic.woff2) format('woff2')}
+@font-face{font-family:'Mono';font-weight:500;src:url(assets/jetbrains-mono-latin-500-normal.woff2) format('woff2')}
+:root{--canvas:#F5F6F9;--ink:#0E2D5C;--sec:#6A7B8E;--line:#E4E8EF;--uv:#7C5CFF;--uvs:rgba(124,92,255,.16);--green:#3E8A16;--lime:#A3CF2A;--red:#E5332A;--night:#0B1530}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#111;overflow:hidden}
+#stage{position:absolute;left:0;top:0;overflow:hidden;background:var(--canvas);transform-origin:0 0;font-family:'Mont',sans-serif;color:var(--ink)}
+.layer{position:absolute;inset:0;display:none}
+.cam{position:absolute;left:0;top:0;width:0;height:0;transform-origin:0 0}
+.cam *{position:absolute;white-space:nowrap}
+.mono{font-family:'Mono',monospace;font-weight:500;letter-spacing:.16em;text-transform:uppercase}
+.serif{font-family:'Serif';font-style:italic;font-weight:400}
+.card{background:#fff;border:1px solid var(--line);border-radius:28px;box-shadow:0 1px 0 rgba(14,45,92,.03),0 30px 70px -36px rgba(14,45,92,.28)}
+.chrome{left:0;top:0;right:0;height:64px;border-bottom:1px solid var(--line)}
+.dots i{position:absolute;top:24px;width:14px;height:14px;border-radius:50%;background:#E4E8EF}
+.lbl{font-weight:550;color:var(--sec)}
+.val{font-weight:700;color:var(--ink)}
+.badge{display:flex;align-items:center;gap:10px;padding:10px 18px;border-radius:999px;font-weight:700}
+.tl{font-weight:500;letter-spacing:-.01em;color:var(--ink);display:flex;gap:.28em}
+.tl .w{position:relative;display:inline-block}
+.tl .box{position:absolute;left:-.12em;right:-.12em;top:.02em;bottom:-.02em;border-radius:.18em;background:var(--uvs);transform-origin:0 50%}
+#ui{position:fixed;left:0;right:0;bottom:0;display:flex;gap:12px;align-items:center;padding:10px 16px;background:rgba(0,0,0,.6);color:#fff;font:14px sans-serif;z-index:99}
+#ui input{flex:1}#ui button{font:inherit;padding:6px 14px;border-radius:8px;border:0}
+</style>
+</head>
+<body>
+<div id="stage"><canvas id="silk" style="position:absolute;left:0;top:0;opacity:0"></canvas></div>
+<div id="ui"><button id="pp">Play</button><input id="scrub" type="range" min="0" max="1" step="0.0005" value="0"><span id="tc">0.00</span></div>
+<script>
+/* =====================================================================================
+   CAREVA+ — ROBOTIC UV-C DISINFECTION · SaaS-style product film · 100 BPM (beat 0.6 s)
+   beat   time    scene                                                    sound
+   0      0.0     light canvas, "Introducing", the red + appears            soft pluck
+   4      2.4     + opens into a UV-C ring; title on violet silk             swell
+   8      4.8     "Clean is a feeling. Disinfected is a fact."  push-in     word ticks
+   14     8.4     "First, it maps every room."                               ticks
+   19     11.4    UI · Map the room: robot drives, walls draw, objects found sonar pings
+   27     16.2    "Then it checks the room is empty."
+   32     19.2    UI · Cycle setup: occupancy check, dose slider to Log 4, click Start
+   39     23.4    "UV-C does the rest. No chemicals."
+   44     26.4    UI · Autonomous cycle: violet glow, ring 0→100 %, safety chips UV hum, ticks
+   54     32.4    "And it proves it. Every cycle."
+   59     35.4    UI · Cycle report ticks row by row, dose bars, download    chimes
+   67     40.2    closer: "Safer rooms for [seniors / new mothers / …]"      lift
+   74     44.4    end card: Careva+ logo, Spotless AI, phone                 chime
+   82     49.2    end
+   Facts from spotless.ai and carevaplus.com; robot and console are illustrations.
+   ===================================================================================== */
+const FMT = 'wide';
+const REEL = FMT === 'reel', W = REEL ? 1080 : 1920, H = REEL ? 1920 : 1080;
+function spring(t, w = 14, z = .82) { if (t <= 0) return 0; if (z >= 1) return 1 - Math.exp(-w * t) * (1 + w * t); const wd = w * Math.sqrt(1 - z * z); return 1 - Math.exp(-z * w * t) * (Math.cos(wd * t) + (z * w / wd) * Math.sin(wd * t)); }
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const ease = x => (x = clamp(x), x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+const eOut = x => 1 - Math.pow(1 - clamp(x), 3);
+const lerp = (a, b, k) => a + (b - a) * k;
+const seg = (t, a, b) => clamp((t - a) / (b - a));
+const rng = s => () => (s = (s + 0x6D2B79F5) | 0, s = Math.imul(s ^ (s >>> 15), 1 | s), s ^= s + Math.imul(s ^ (s >>> 7), 61 | s), ((s ^ (s >>> 14)) >>> 0) / 4294967296);
+const B = .6, bt = b => b * B, D = bt(82);
+window.VIDEO = { w: W, h: H, duration: D };
+const $ = id => document.getElementById(id), stage = $('stage');
+stage.style.width = W + 'px'; stage.style.height = H + 'px';
+const mk = (p, css, html = '') => { const d = document.createElement('div'); d.style.cssText = css; d.innerHTML = html; p.appendChild(d); return d; };
+const tf = (el, s) => { el.style.transform = s; };
+const TICK = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" style="position:static"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>`;
+
+/* ---------- violet silk (painted once, drifts) ---------- */
+{ const c = $('silk'), w = W * 1.5, h = H * 1.5; c.width = w; c.height = h; c.style.width = w + 'px'; c.style.height = h + 'px'; const g = c.getContext('2d'), r = rng(5);
+  const bg = g.createLinearGradient(0, 0, w, h); bg.addColorStop(0, '#FFFFFF'); bg.addColorStop(.45, '#F1EDFF'); bg.addColorStop(1, '#D9CFFF'); g.fillStyle = bg; g.fillRect(0, 0, w, h);
+  g.filter = 'blur(40px)';
+  for (let i = 0; i < 9; i++) { const y0 = r() * h, a = .12 + r() * .2; g.strokeStyle = i % 3 === 0 ? `rgba(124,92,255,${a})` : i % 3 === 1 ? `rgba(196,181,255,${a + .1})` : `rgba(255,255,255,${a + .3})`; g.lineWidth = 80 + r() * 160; g.beginPath(); g.moveTo(-200, y0 + 400); g.bezierCurveTo(w * .3, y0 - 300 * r(), w * .6, y0 + 300 * r(), w + 200, y0 - 500); g.stroke(); } }
+
+/* ---------- scene layers, each with its own camera ---------- */
+const scenes = [];
+function scene(a, b) { const L = mk(stage, ''); L.className = 'layer'; const cam = mk(L, ''); cam.className = 'cam'; const s = { L, cam, a: bt(a), b: bt(b) }; scenes.push(s); return s; }
+const setCam = (s, x, y, k) => tf(s.cam, `translate(${W / 2}px,${H / 2}px) scale(${k}) translate(${-x}px,${-y}px)`);
+
+/* ---------- title lines: small, typed word by word, the camera pushes in ---------- */
+const titles = [];
+function title(a, b, text, hl, size = 30) {
+  const s = scene(a, b), line = mk(s.cam, `left:0;top:0;font-size:${size}px`); line.className = 'tl';
+  const words = text.split(' '), hw = hl.split(' '), hs = words.findIndex((w, i) => hw.every((h, j) => words[i + j] === h));
+  line.innerHTML = words.map((w, i) => `<span class="w" style="position:relative">${i === hs ? `<span class="box" style="position:absolute"></span>` : ''}<span style="position:relative">${w}</span></span>`).join(' ');
+  if (hs >= 0 && hw.length > 1) { // one box across the whole phrase
+    const first = line.children[hs]; first.querySelector('.box').dataset.span = hw.length; }
+  s.line = line; s.words = [...line.children]; s.hs = hs; s.hn = hw.length; titles.push(s); return s;
+}
+title(8, 14, 'Clean is a feeling. Disinfected is a fact.', 'a fact.');
+title(14, 19, 'First, it maps every room.', 'every room.');
+title(27, 32, 'Then it checks the room is empty.', 'empty.');
+title(39, 44, 'UV-C does the rest. No chemicals.', 'UV-C');
+title(54, 59, 'And it proves it. Every cycle.', 'proves it.');
+
+/* ---------- open ---------- */
+const open = scene(0, 8.2);
+const oIntro = mk(open.cam, 'left:0;top:0;font-weight:500;font-size:30px;color:#6A7B8E;transform:translate(-50%,-50%)', 'Introducing');
+const oPlus = mk(open.cam, 'left:0;top:0;width:0;height:0', '<div style="left:-33px;top:-11px;width:66px;height:22px;border-radius:3px;background:#E5332A"></div><div style="left:-11px;top:-33px;width:22px;height:66px;border-radius:3px;background:#E5332A"></div>');
+const oRing = mk(open.cam, 'left:-140px;top:-140px;width:280px;height:280px;border-radius:50%;border:3px solid #7C5CFF;box-shadow:0 0 60px rgba(124,92,255,.45),inset 0 0 40px rgba(124,92,255,.25)');
+const oT = mk(open.cam, `left:0;top:0;text-align:center;transform:translate(-50%,-50%)`, `<div class="mono" style="position:static;font-size:${REEL ? 20 : 17}px;color:#7C5CFF">Introducing</div>
+  <div style="position:static;font-weight:800;font-size:${REEL ? 74 : 72}px;letter-spacing:-.03em;line-height:1.02;margin-top:14px;white-space:pre">${REEL ? 'Robotic UV-C\ndisinfection' : 'Robotic UV-C disinfection'}</div>
+  <div style="position:static;font-weight:550;font-size:${REEL ? 32 : 28}px;color:#4B5D74;margin-top:18px">by Spotless AI &nbsp;·&nbsp; now with Careva+</div>`);
+
+/* ---------- UI 1 · map the room ---------- */
+const map = scene(19, 27.2);
+const MW = REEL ? 940 : 1180, MH = REEL ? 1240 : 680;
+const mCard = mk(map.cam, `left:${-MW / 2}px;top:${-MH / 2}px;width:${MW}px;height:${MH}px`); mCard.className = 'card';
+const chrome = (card, label) => { mk(card, '', ''); const c = mk(card, ''); c.className = 'chrome'; c.innerHTML = `<div class="dots"><i style="left:26px"></i><i style="left:48px"></i><i style="left:70px"></i></div><div class="mono" style="left:108px;top:22px;font-size:16px;color:#6A7B8E">${label}</div>`; };
+chrome(mCard, 'UV-C robot console · Map');
+const PS = REEL ? 880 / 720 : 1, PX = REEL ? 30 : 40, PY = REEL ? 96 : 100;
+const plan = mk(mCard, `left:${PX}px;top:${PY}px;width:720px;height:540px;transform:scale(${PS});transform-origin:0 0;border-radius:18px;background:#F4F7FB;overflow:hidden`,
+  `<div style="inset:0;background-image:linear-gradient(rgba(14,45,92,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(14,45,92,.06) 1px,transparent 1px);background-size:36px 36px"></div>`);
+const ROOMP = 'M40 40 H680 V500 H560 M480 500 H40 Z';
+plan.insertAdjacentHTML('beforeend', `<svg width="720" height="540" style="left:0;top:0;overflow:visible">
+  <path id="walls" d="${ROOMP}" fill="none" stroke="#0E2D5C" stroke-width="8" stroke-linejoin="round" pathLength="1" stroke-dasharray="1 1" stroke-dashoffset="1"/>
+  <path id="trail" fill="none" stroke="#47B6F0" stroke-width="4" stroke-linecap="round" stroke-dasharray="2 10" opacity=".8"/></svg>`);
+const FURN = [['Bed', 70, 70, 170, 260, .32], ['Cabinet', 260, 60, 70, 70, .5], ['Chair', 560, 80, 90, 90, .68]];
+const furn = FURN.map(([n, x, y, w, h, at]) => { const d = mk(plan, `left:${x}px;top:${y}px;width:${w}px;height:${h}px;border-radius:12px;background:rgba(124,92,255,.12);border:2px solid rgba(124,92,255,.55)`, `<div class="mono" style="left:10px;top:8px;font-size:13px;color:#7C5CFF">${n}</div>`); d.at = at; return d; });
+const pings = [0, 1].map(() => mk(plan, 'left:0;top:0;width:0;height:0;border-radius:50%;border:2px solid #47B6F0'));
+const rDot = mk(plan, 'left:0;top:0;width:0;height:0', '<div style="left:-22px;top:-22px;width:44px;height:44px;border-radius:50%;background:#0E2D5C;box-shadow:0 6px 16px rgba(14,45,92,.4)"></div><div style="left:-9px;top:-9px;width:18px;height:18px;border-radius:50%;background:#47B6F0"></div>');
+const PATH = [[620, 470], [620, 300], [420, 300], [420, 440], [280, 440], [120, 440], [120, 380], [300, 380]];
+const plen = PATH.slice(1).reduce((s, p, i) => s + Math.hypot(p[0] - PATH[i][0], p[1] - PATH[i][1]), 0);
+function along(u) { let d = u * plen; for (let i = 1; i < PATH.length; i++) { const [x0, y0] = PATH[i - 1], [x1, y1] = PATH[i], l = Math.hypot(x1 - x0, y1 - y0); if (d <= l) return [x0 + (x1 - x0) * d / l, y0 + (y1 - y0) * d / l]; d -= l; } return PATH[PATH.length - 1]; }
+const infoX = REEL ? 40 : 800, infoY = REEL ? 790 : 110, infoW = REEL ? MW - 80 : 340;
+const mInfo = mk(mCard, `left:${infoX}px;top:${infoY}px;width:${infoW}px`);
+const irow = (k, v, y) => mk(mInfo, `left:0;top:${y}px;width:${infoW}px;height:58px;border-bottom:1px solid #E4E8EF`, `<div class="lbl" style="left:0;top:16px;font-size:${REEL ? 26 : 21}px">${k}</div><div class="val" style="right:0;top:14px;font-size:${REEL ? 28 : 23}px">${v}</div>`);
+const mStatus = mk(mInfo, `left:0;top:0;font-size:${REEL ? 30 : 26}px;font-weight:750`, '');
+const mRows = [irow('Room', 'Patient room', 70), irow('Size', '20 × 15 ft', 128), irow('Objects found', '<span id="objn" style="position:static">0</span>', 186)];
+const mBar = mk(mInfo, `left:0;top:${REEL ? 290 : 280}px;width:${infoW}px;height:10px;border-radius:5px;background:#EEF1F6`, '<div id="mfill" style="left:0;top:0;height:10px;border-radius:5px;background:linear-gradient(90deg,#47B6F0,#7C5CFF);width:0"></div>');
+
+/* ---------- UI 2 · cycle setup ---------- */
+const par = scene(32, 39.2);
+const QW = REEL ? 940 : 1000, QH = REEL ? 1060 : 660;
+const qCard = mk(par.cam, `left:${-QW / 2}px;top:${-QH / 2}px;width:${QW}px;height:${QH}px`); qCard.className = 'card'; chrome(qCard, 'UV-C robot console · Cycle setup');
+const qp = REEL ? 54 : 56, qs = REEL ? 1.14 : 1, row = (y, h = 104) => mk(qCard, `left:${qp}px;top:${y}px;width:${QW - 2 * qp}px;height:${h}px;border-bottom:1px solid #E4E8EF`);
+const qr1 = row(110 * qs); qr1.innerHTML = `<div class="lbl" style="left:0;top:22px;font-size:${22 * qs}px">Room</div><div class="val" style="left:0;top:52px;font-size:${28 * qs}px">Patient room · 20 × 15 ft</div>`;
+const qr2 = row(230 * qs); qr2.innerHTML = `<div class="lbl" style="left:0;top:22px;font-size:${22 * qs}px">Occupancy check</div><div class="val" style="left:0;top:52px;font-size:${28 * qs}px">Cameras + sensors</div>
+  <div id="spin" style="right:0;top:28px;width:44px;height:44px;border-radius:50%;border:5px solid #E4E8EF;border-top-color:#7C5CFF"></div>
+  <div id="empty" class="badge" style="right:0;top:24px;background:#E9F5D9;color:#3E8A16;font-size:${24 * qs}px">${TICK}<span style="position:static">Room empty</span></div>`;
+const qr3 = row(350 * qs, 170 * qs); const SLW = QW - 2 * qp;
+qr3.innerHTML = `<div class="lbl" style="left:0;top:22px;font-size:${22 * qs}px">Dose target</div><div id="dose" class="val" style="right:0;top:18px;font-size:${30 * qs}px;color:#7C5CFF">Log 1</div>
+  <div style="left:0;top:${88 * qs}px;width:${SLW}px;height:10px;border-radius:5px;background:#EEF1F6"></div><div id="sfill" style="left:0;top:${88 * qs}px;height:10px;border-radius:5px;background:linear-gradient(90deg,#C4B5FF,#7C5CFF);width:0"></div>
+  <div id="sthumb" style="left:0;top:${88 * qs - 13}px;width:36px;height:36px;border-radius:50%;background:#fff;border:3px solid #7C5CFF;box-shadow:0 4px 12px rgba(124,92,255,.35)"></div>
+  ${['Log 1 · 90%', 'Log 2 · 99%', 'Log 3 · 99.9%', 'Log 4 · 99.99%'].map((l, i) => `<div class="mono" style="left:${i * (SLW / 3)}px;top:${118 * qs}px;font-size:${(REEL ? 15 : 14)}px;color:#8A97A8;transform:translateX(${i === 0 ? 0 : i === 3 ? -100 : -50}%);letter-spacing:.06em">${l}</div>`).join('')}`;
+const qBtn = mk(qCard, `left:${qp}px;top:${560 * qs}px;width:${QW - 2 * qp}px;height:${86 * qs}px;border-radius:${43 * qs}px;background:#0E2D5C;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:750;font-size:${30 * qs}px`, '<span id="btxt" style="position:static">Start cycle</span>');
+const qCur = mk(qCard, 'left:0;top:0', `<svg width="40" height="52" viewBox="0 0 22 28" style="position:static;overflow:visible"><path d="M2 2v20l5.5-5 3.6 8.2 3.4-1.5-3.6-8H18z" fill="#0E2D5C" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>`);
+const qRip = mk(qCard, 'left:0;top:0;width:0;height:0;border-radius:50%;border:3px solid rgba(124,92,255,.6)');
+
+/* ---------- UI 3 · autonomous cycle ---------- */
+const cyc = scene(44, 54.2);
+const CW = REEL ? 940 : 1180, CH = REEL ? 1300 : 680;
+const cCard = mk(cyc.cam, `left:${-CW / 2}px;top:${-CH / 2}px;width:${CW}px;height:${CH}px;background:#0B1530;border-radius:28px;box-shadow:0 40px 90px -40px rgba(11,21,48,.7);overflow:hidden`);
+mk(cCard, 'left:0;top:0;right:0;height:64px;border-bottom:1px solid rgba(196,181,255,.18)', `<div class="dots"><i style="left:26px;background:#25325A"></i><i style="left:48px;background:#25325A"></i><i style="left:70px;background:#25325A"></i></div><div class="mono" style="left:108px;top:22px;font-size:16px;color:#B7A5FF">UV-C robot console · Live cycle</div>`);
+const RCX = REEL ? CW / 2 : 300, RCY = REEL ? 420 : 380;
+const cGlow = mk(cCard, `left:${RCX - 330}px;top:${RCY - 330}px;width:660px;height:660px;border-radius:50%;background:radial-gradient(closest-side,rgba(150,120,255,.75),rgba(124,92,255,.25) 50%,rgba(124,92,255,0));opacity:0`);
+const ROBOT = `<svg viewBox="0 0 120 260" width="168" height="364" style="position:static;overflow:visible">
+ <defs><linearGradient id="gb" x1="0" x2="1"><stop offset="0" stop-color="#C9D3E2"/><stop offset=".45" stop-color="#FFFFFF"/><stop offset="1" stop-color="#B5C1D3"/></linearGradient>
+ <linearGradient id="gk" x1="0" x2="1"><stop offset="0" stop-color="#0A1A33"/><stop offset=".5" stop-color="#1D3A66"/><stop offset="1" stop-color="#0A1A33"/></linearGradient></defs>
+ <ellipse cx="60" cy="250" rx="54" ry="10" fill="rgba(0,0,0,.35)"/><rect x="12" y="214" width="96" height="34" rx="15" fill="url(#gk)"/><rect x="20" y="222" width="80" height="4" rx="2" fill="#47B6F0"/>
+ <rect x="32" y="44" width="56" height="176" rx="26" fill="url(#gb)"/>
+ <g id="lamps"><rect x="41" y="62" width="8" height="140" rx="4" fill="#C9D3E6"/><rect x="56" y="58" width="8" height="148" rx="4" fill="#C9D3E6"/><rect x="71" y="62" width="8" height="140" rx="4" fill="#C9D3E6"/></g>
+ <g id="lglow" opacity="0"><rect x="35" y="56" width="20" height="152" rx="10" fill="#C4B5FF" opacity=".6"/><rect x="50" y="52" width="20" height="160" rx="10" fill="#C4B5FF" opacity=".6"/><rect x="65" y="56" width="20" height="152" rx="10" fill="#C4B5FF" opacity=".6"/></g>
+ <rect x="28" y="196" width="64" height="12" rx="6" fill="#0E2D5C"/><circle cx="82" cy="202" r="3" fill="#B7A5FF"/>
+ <rect x="38" y="12" width="44" height="36" rx="15" fill="url(#gk)"/><circle cx="51" cy="29" r="5" fill="#47B6F0"/><circle cx="69" cy="29" r="5" fill="#47B6F0"/></svg>`;
+const cRobot = mk(cCard, `left:${RCX - 84}px;top:${RCY - 200}px`, ROBOT);
+const RGX = REEL ? CW / 2 : 690, RGY = REEL ? 830 : 250, RGS = REEL ? 230 : 210;
+const cRing = mk(cCard, `left:${RGX - RGS / 2}px;top:${RGY - RGS / 2}px;width:${RGS}px;height:${RGS}px`, `<svg viewBox="0 0 100 100" width="${RGS}" height="${RGS}" style="position:static"><circle cx="50" cy="50" r="44" fill="none" stroke="rgba(196,181,255,.18)" stroke-width="6"/><circle id="carc" cx="50" cy="50" r="44" fill="none" stroke="#B7A5FF" stroke-width="6" stroke-linecap="round" pathLength="1" stroke-dasharray="1 1" stroke-dashoffset="1" transform="rotate(-90 50 50)"/></svg>
+  <div id="cpct" style="left:0;right:0;top:${RGS / 2 - 36}px;text-align:center;font-weight:800;font-size:${RGS * .2}px;color:#fff">0%</div><div class="mono" style="left:0;right:0;top:${RGS / 2 + 14}px;text-align:center;font-size:14px;color:#B7A5FF">UV-C on</div>`);
+const cTxt = mk(cCard, REEL ? `left:0;right:0;top:${RGY + RGS / 2 + 30}px;text-align:center` : `left:${RGX + RGS / 2 + 40}px;top:${RGY - 52}px`, `<div style="position:static;font-weight:800;font-size:${REEL ? 46 : 40}px;color:#fff">Under 30 min</div><div style="position:static;font-size:${REEL ? 26 : 22}px;color:rgba(255,255,255,.65);margin-top:6px">for a typical patient room</div>`);
+const CHIPS = ['Chemical-free · no residue', 'Dose adjusted to each surface', 'Shuts off if anyone enters'];
+const cChips = CHIPS.map((c, i) => mk(cCard, REEL ? `left:0;right:0;top:${1110 + i * 64}px;display:flex;justify-content:center` : `left:${560}px;top:${430 + i * 74}px`,
+  `<div class="badge" style="position:static;background:rgba(196,181,255,.12);border:1px solid rgba(196,181,255,.35);color:#fff;font-size:${REEL ? 26 : 23}px"><span style="position:static;color:#A3CF2A;display:flex">${TICK}</span><span style="position:static">${c}</span></div>`));
+
+/* ---------- UI 4 · cycle report ---------- */
+const rep = scene(59, 67.2);
+const RW = REEL ? 940 : 980, RH = REEL ? 1180 : 760, rp = 56, rs = REEL ? 1.14 : 1;
+const rCard = mk(rep.cam, `left:${-RW / 2}px;top:${-RH / 2}px;width:${RW}px;height:${RH}px`); rCard.className = 'card'; chrome(rCard, 'UV-C robot console · Report');
+mk(rCard, `left:${rp}px;top:${96 * rs}px`, `<div style="position:static;font-weight:800;font-size:${40 * rs}px;letter-spacing:-.02em">Cycle report</div><div class="lbl" style="position:static;font-size:${22 * rs}px;margin-top:6px">Patient room · today, 10:42</div>`);
+const RROWS = [['Surfaces treated', 'All mapped surfaces'], ['UV-C dose logged', 'Per surface'], ['Duration', 'Under 30 min'], ['Lab-validated', 'Log 4 · 99.99%*']];
+const rRows = RROWS.map(([k, v], i) => mk(rCard, `left:${rp}px;top:${(210 + i * 78) * rs}px;width:${RW - 2 * rp}px;height:${78 * rs}px;border-top:1px solid #E4E8EF`,
+  `<div style="left:0;top:${22 * rs}px;width:${34 * rs}px;height:${34 * rs}px;border-radius:50%;background:#E9F5D9;color:#3E8A16;display:flex;align-items:center;justify-content:center" class="ck">${TICK}</div>
+   <div class="lbl" style="left:${54 * rs}px;top:${26 * rs}px;font-size:${23 * rs}px">${k}</div><div class="val" style="right:0;top:${24 * rs}px;font-size:${25 * rs}px">${v}</div>`));
+const bars = mk(rCard, `left:${rp}px;top:${540 * rs}px;width:${RW - 2 * rp}px;height:${90 * rs}px`, `<div class="mono" style="left:0;top:-34px;font-size:14px;color:#8A97A8">UV-C dose by surface</div>` +
+  Array.from({ length: 14 }, (_, i) => `<div class="bar" style="left:${i * ((RW - 2 * rp) / 14)}px;bottom:0;width:${(RW - 2 * rp) / 14 - 10}px;height:0;border-radius:6px 6px 2px 2px;background:linear-gradient(#B7A5FF,#7C5CFF)"></div>`).join(''));
+const rBtn = mk(rCard, `left:${rp}px;top:${(RH / rs - 120) * rs}px;width:${(RW - 2 * rp) / 2 - 10}px;height:${74 * rs}px;border-radius:${37 * rs}px;background:#0E2D5C;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:750;font-size:${24 * rs}px`, '<span id="rbt" style="position:static">Download report</span>');
+mk(rCard, `left:${RW / 2 + 10}px;top:${(RH / rs - 120) * rs}px;width:${(RW - 2 * rp) / 2 - 10}px;height:${74 * rs}px;border-radius:${37 * rs}px;border:2px solid #E4E8EF;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:${24 * rs}px;color:#0E2D5C`, '<span style="position:static">Share with family</span>');
+const rCur = mk(rCard, 'left:0;top:0', `<svg width="40" height="52" viewBox="0 0 22 28" style="position:static;overflow:visible"><path d="M2 2v20l5.5-5 3.6 8.2 3.4-1.5-3.6-8H18z" fill="#0E2D5C" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>`);
+
+/* ---------- closer + end card (on the silk) ---------- */
+const clo = scene(67, 74.2);
+const ROT = ['seniors', 'new mothers', 'post-surgery care', 'ICU at home'];
+const cLine = mk(clo.cam, `left:0;top:0;transform:translate(-50%,-50%);text-align:center;font-weight:700;font-size:${REEL ? 64 : 64}px;letter-spacing:-.025em`, `<div style="position:static">Safer rooms for</div><div id="rot" style="position:relative;display:inline-block;margin-top:12px;padding:4px 22px;border-radius:16px;background:rgba(124,92,255,.16);color:#5A3EE0"></div>`);
+const endS = scene(74, 82.2);
+const EL = REEL ? { k: -560, lc: -330, ls: .52, t1: -110, t2: -40, ph: 90, loc: 190, fn: 520 } : { k: -390, lc: -210, ls: .44, t1: 0, t2: 64, ph: 160, loc: 246, fn: 400 };
+const eK = mk(endS.cam, `left:0;top:${EL.k}px;transform:translateX(-50%)`, `<span class="mono" style="position:static;font-size:${REEL ? 22 : 18}px;color:#7C5CFF">Autonomous UV-C disinfection</span>`);
+const eLogo = mk(endS.cam, `left:-893px;top:${EL.lc - 276.5}px;width:1786px;height:553px;transform-origin:50% 50%`, `<img src="assets/logo-icon.png" style="left:0;top:0;width:815px;height:553px"><img src="assets/logo-word.png" style="left:860px;top:213px;width:749px;height:143px"><img src="assets/logo-cross.png" style="left:1606px;top:209px;width:180px;height:150px">`);
+const eT1 = mk(endS.cam, `left:0;top:${EL.t1}px;transform:translateX(-50%);font-weight:800;font-size:${REEL ? 54 : 48}px;letter-spacing:-.02em`, 'Robotic disinfection by Spotless AI');
+const eT2 = mk(endS.cam, `left:0;top:${EL.t2}px;transform:translateX(-50%)`, `<span class="serif" style="position:static;font-size:${REEL ? 50 : 44}px;color:#4B5D74">booked through Careva+</span>`);
+const ePh = mk(endS.cam, `left:0;top:${EL.ph}px;transform:translateX(-50%);display:flex;align-items:center;gap:16px;font-weight:850;font-size:${REEL ? 64 : 56}px`, `<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#3E8A16" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="position:static"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg><span style="position:static">+91 96555 08881</span>`);
+const eLoc = mk(endS.cam, `left:0;top:${EL.loc}px;transform:translateX(-50%)`, `<span class="mono" style="position:static;font-size:${REEL ? 22 : 19}px;color:#4B5D74">Salem &amp; nearby areas · carevaplus.com</span>`);
+const eFn = mk(endS.cam, `left:${REEL ? -450 : -620}px;top:${EL.fn}px;width:${REEL ? 900 : 1240}px;white-space:normal;text-align:center;font-size:${REEL ? 19 : 16}px;line-height:1.45;color:#6A7B8E`, '*Log 4 (99.99%) reduction validated by Spotless AI in NABL-accredited lab tests under controlled conditions; on-site validation recommended. UV-C cycles run in unoccupied rooms only. Robot and console shown are illustrations.');
+
+/* ---------- seek ---------- */
+function seek(t) {
+  t = clamp(t, 0, D - 1e-4);
+  // layer visibility + soft blur dissolve
+  for (const s of scenes) {
+    const on = t >= s.a && t < s.b; s.L.style.display = on ? 'block' : 'none'; if (!on) continue;
+    const i = seg(t, s.a, s.a + .35), o = seg(t, s.b - .35, s.b), k = Math.min(i, 1 - o);
+    s.L.style.opacity = k; s.L.style.filter = k < .98 ? `blur(${((1 - k) * 10).toFixed(1)}px)` : 'none';
+  }
+  // silk behind open / closer / end
+  const silk = $('silk'), sk = Math.max(seg(t, bt(3.6), bt(4.6)) * (1 - seg(t, bt(7.6), bt(8.4))), seg(t, bt(66.6), bt(67.6)));
+  silk.style.opacity = sk; tf(silk, `translate(${-W * .25 + Math.sin(t * .3) * 60}px,${-H * .25 + Math.cos(t * .25) * 40}px)`);
+
+  /* open */
+  if (open.L.style.display === 'block') {
+    setCam(open, 0, 0, lerp(1, 1.06, seg(t, 0, bt(8))));
+    const i1 = eOut(seg(t, bt(.4), bt(1.4))), o1 = seg(t, bt(2.6), bt(3.2)); oIntro.style.opacity = i1 * (1 - o1); oIntro.style.filter = `blur(${(1 - i1) * 6 + o1 * 6}px)`;
+    const p = spring(t - bt(2.6), 16, .6), pr = ease(seg(t, bt(3.6), bt(4.4)));
+    oPlus.style.opacity = clamp(p * 2) * (1 - pr); tf(oPlus, `rotate(${lerp(-90, 0, clamp(p))}deg) scale(${p * (1 + 2 * pr)})`);
+    oRing.style.opacity = pr * (1 - seg(t, bt(4.6), bt(5.4))); tf(oRing, `scale(${lerp(.2, 3.2, eOut(seg(t, bt(3.8), bt(5.4))))})`);
+    const k = spring(t - bt(4.4), 10, .95); oT.style.opacity = clamp(k); tf(oT, `translate(-50%,-50%) translateY(${(1 - k) * 30}px)`);
+  }
+  /* titles: words fade up, the camera pushes in until the line spans ~75% of the frame */
+  for (const s of titles) { if (s.L.style.display !== 'block') continue;
+    const w = s.line.offsetWidth, h = s.line.offsetHeight, target = (W * (REEL ? .86 : .74)) / w;
+    const push = lerp(1.6, target, ease(seg(t, s.a, s.a + 1.6))) * (1 + .04 * seg(t, s.a + 1.6, s.b));
+    setCam(s, w / 2, h / 2, push);
+    s.words.forEach((el, i) => { const k = eOut(seg(t, s.a + .15 + i * .12, s.a + .55 + i * .12)); el.style.opacity = k; el.style.filter = `blur(${(1 - k) * 6}px)`; tf(el, `translateY(${(1 - k) * 10}px)`); });
+    if (s.hs >= 0) { const first = s.words[s.hs], last = s.words[s.hs + s.hn - 1], bx = first.querySelector('.box');
+      const span = last.offsetLeft + last.offsetWidth - first.offsetLeft; bx.style.right = 'auto'; bx.style.width = (span + .24 * 30) + 'px';
+      tf(bx, `scaleX(${ease(seg(t, s.a + 1.3, s.a + 1.9))})`); }
+  }
+  /* map */
+  if (map.L.style.display === 'block') {
+    const u = ease(seg(t, bt(19.6), bt(25))), [dx, dy] = along(u);
+    rDot.style.left = dx + 'px'; rDot.style.top = dy + 'px';
+    $('walls').style.strokeDashoffset = 1 - eOut(seg(t, bt(19.8), bt(25.2)));
+    const pts = []; for (let k = 0; k <= 60; k++) { const [x, y] = along(u * k / 60); pts.push(x.toFixed(1) + ' ' + y.toFixed(1)); } $('trail').setAttribute('d', 'M' + pts.join(' L'));
+    pings.forEach((p, i) => { const ph = ((t - bt(19.6)) / .9 + i * .5) % 1, r = 20 + ph * 170; p.style.left = dx - r + 'px'; p.style.top = dy - r + 'px'; p.style.width = p.style.height = 2 * r + 'px'; p.style.opacity = (1 - ph) * (t > bt(19.6) && t < bt(25.2) ? 1 : 0); });
+    let found = 0; furn.forEach(f => { const k = spring(t - (bt(19.6) + f.at * (bt(25) - bt(19.6))), 18, .8); f.style.opacity = clamp(k); tf(f, `scale(${lerp(.85, 1, clamp(k))})`); if (k > .5) found++; });
+    $('objn').textContent = found;
+    const done = t > bt(25.2); mStatus.innerHTML = done ? `<span style="color:#3E8A16">Map ready ✓</span>` : `<span style="color:#47B6F0">Mapping…</span>`;
+    $('mfill').style.width = infoW * seg(t, bt(19.6), bt(25.2)) + 'px';
+    const pull = ease(seg(t, bt(24.6), bt(26.2))), fit = Math.min(W * .9 / MW, H * .86 / MH);
+    const wx = -MW / 2 + PX + dx * PS, wy = -MH / 2 + PY + dy * PS;
+    setCam(map, lerp(wx, 0, pull), lerp(wy, 0, pull), lerp(REEL ? 1.5 : 1.7, fit, pull));
+  }
+  /* setup */
+  if (par.L.style.display === 'block') {
+    const chk = t > bt(33.6); $('spin').style.display = chk ? 'none' : 'block'; tf($('spin'), `rotate(${t * 400}deg)`);
+    const ke = spring(t - bt(33.6), 18, .7); $('empty').style.opacity = chk ? clamp(ke * 2) : 0; tf($('empty'), `scale(${lerp(.6, 1, clamp(ke))})`);
+    const sv = ease(seg(t, bt(34.4), bt(36))), lvl = Math.min(3, Math.round(sv * 3));
+    $('sfill').style.width = sv * SLW + 'px'; $('sthumb').style.left = sv * SLW - 18 + 'px'; $('dose').textContent = 'Log ' + (lvl + 1);
+    const bx = qp + (QW - 2 * qp) / 2, by = 560 * qs + 43 * qs;
+    const cx = lerp(QW - 120, bx + 40, ease(seg(t, bt(36), bt(37)))), cy = lerp(QH + 40, by + 10, ease(seg(t, bt(36), bt(37))));
+    qCur.style.left = cx + 'px'; qCur.style.top = cy + 'px'; qCur.style.opacity = seg(t, bt(35.8), bt(36.2));
+    const press = Math.exp(-Math.abs(t - bt(37.3)) * 18); tf(qBtn, `scale(${1 - .04 * press})`); tf(qCur, `scale(${1 - .15 * press})`);
+    const clicked = t > bt(37.3); qBtn.style.background = clicked ? '#7C5CFF' : '#0E2D5C'; $('btxt').textContent = clicked ? 'Cycle starting…' : 'Start cycle';
+    const rr = (t - bt(37.3)) * 400; qRip.style.display = clicked && rr < 220 ? 'block' : 'none'; qRip.style.left = bx + 40 - rr + 'px'; qRip.style.top = by + 10 - rr + 'px'; qRip.style.width = qRip.style.height = 2 * rr + 'px'; qRip.style.opacity = 1 - rr / 220;
+    // camera: occupancy row -> slider (rides the thumb) -> button -> whole card
+    const fit = Math.min(W * .9 / QW, H * .86 / QH), z = REEL ? 1.06 : 1.5;
+    const y2 = -QH / 2 + 230 * qs + 52, y3 = -QH / 2 + 350 * qs + 88 * qs, y4 = -QH / 2 + 560 * qs + 43 * qs, thumbX = -QW / 2 + qp + sv * SLW;
+    const k1 = ease(seg(t, bt(34), bt(34.6))), k2 = ease(seg(t, bt(35.8), bt(36.6))), k3 = ease(seg(t, bt(37.6), bt(38.6)));
+    let x = lerp(0, REEL ? 0 : thumbX * .35, k1), y = lerp(y2, y3, k1); x = lerp(x, 0, k2); y = lerp(y, y4, k2);
+    setCam(par, lerp(x, 0, k3), lerp(y, 0, k3), lerp(z, fit, k3));
+  }
+  /* cycle */
+  if (cyc.L.style.display === 'block') {
+    const on = eOut(seg(t, bt(44.4), bt(45.4))), off = seg(t, bt(53), bt(53.8)), uv = on * (1 - off);
+    cGlow.style.opacity = uv * (.85 + .15 * Math.sin(t * 9)); $('lglow').setAttribute('opacity', uv);
+    document.querySelectorAll('#lamps rect').forEach(r => r.setAttribute('fill', uv > .1 ? '#D9CEFF' : '#C9D3E6'));
+    const cp = seg(t, bt(45), bt(52.6)); $('carc').style.strokeDashoffset = 1 - cp; $('cpct').textContent = Math.round(cp * 100) + '%';
+    cChips.forEach((c, i) => { const k = spring(t - bt(47.4 + i * 1.6), 16, .8); c.style.opacity = clamp(k); tf(c, `translateY(${(1 - k) * 18}px)`); });
+    const fit = Math.min(W * .9 / CW, H * .86 / CH), z = REEL ? 1.35 : 1.55;
+    const rob = [-CW / 2 + RCX, -CH / 2 + RCY], rng2 = [-CW / 2 + RGX, -CH / 2 + RGY];
+    const k1 = ease(seg(t, bt(46.2), bt(47.2))), k2 = ease(seg(t, bt(51.4), bt(52.6)));
+    const x = lerp(lerp(rob[0], REEL ? 0 : 60, k1), 0, k2), y = lerp(lerp(rob[1], REEL ? 120 : 20, k1), 0, k2);
+    setCam(cyc, x, y, lerp(lerp(z, REEL ? 1.05 : 1.2, k1), fit, k2));
+  }
+  /* report */
+  if (rep.L.style.display === 'block') {
+    rRows.forEach((r, i) => { const k = spring(t - bt(60 + i * .9), 16, .85); r.style.opacity = clamp(k); tf(r, `translateY(${(1 - k) * 14}px)`); const c = r.querySelector('.ck'); tf(c, `scale(${clamp(spring(t - bt(60.3 + i * .9), 20, .6), 0, 1.3)})`); });
+    document.querySelectorAll('.bar').forEach((b, i) => { const hh = (40 + 50 * Math.abs(Math.sin(i * 1.7 + 1))) * rs; b.style.height = hh * eOut(seg(t, bt(63.4 + i * .06), bt(64.4 + i * .06))) + 'px'; });
+    const bx = rp + (RW - 2 * rp) / 4, by = (RH / rs - 120) * rs + 37 * rs;
+    rCur.style.left = lerp(RW - 80, bx + 30, ease(seg(t, bt(64.6), bt(65.6)))) + 'px'; rCur.style.top = lerp(RH + 30, by + 8, ease(seg(t, bt(64.6), bt(65.6)))) + 'px'; rCur.style.opacity = seg(t, bt(64.4), bt(64.8));
+    const press = Math.exp(-Math.abs(t - bt(65.9)) * 18); tf(rBtn, `scale(${1 - .04 * press})`); $('rbt').textContent = t > bt(65.9) ? 'Saved ✓' : 'Download report'; rBtn.style.background = t > bt(65.9) ? '#3E8A16' : '#0E2D5C';
+    const fit = Math.min(W * .9 / RW, H * .86 / RH), z = REEL ? 1.3 : 1.45;
+    const ry = -RH / 2 + (210 + Math.min(3, Math.max(0, (t - bt(60)) / bt(.9))) * 78) * rs;
+    const k1 = ease(seg(t, bt(63.2), bt(64.2)));
+    setCam(rep, REEL ? 0 : lerp(-60, 0, k1), lerp(ry, 0, k1), lerp(z, fit * 1.02, k1));
+  }
+  /* closer */
+  if (clo.L.style.display === 'block') {
+    setCam(clo, 0, 0, lerp(1.0, 1.08, seg(t, bt(67), bt(74))));
+    const idx = Math.min(3, Math.floor(seg(t, bt(67.8), bt(73.4)) * 4)), wk = (t - bt(67.8)) - idx * (bt(73.4) - bt(67.8)) / 4;
+    const r = $('rot'); r.textContent = ROT[idx]; const k = eOut(seg(wk, 0, .35)); r.style.opacity = t > bt(67.8) ? k : 0; tf(r, `translateY(${(1 - k) * 22}px)`);
+    const k0 = eOut(seg(t, bt(67.2), bt(67.9))); cLine.firstChild.style.opacity = k0;
+  }
+  /* end card */
+  if (endS.L.style.display === 'block') {
+    setCam(endS, 0, 0, lerp(.98, 1.02, seg(t, bt(74), D)));
+    const ein = (el, b, dy = 20, extra = '') => { const k = spring(t - bt(b), 12, .95); el.style.opacity = clamp(k); tf(el, `${extra} translateY(${(1 - k) * dy}px)`); };
+    ein(eK, 74.4, 16, 'translateX(-50%)'); ein(eT1, 75.4, 24, 'translateX(-50%)'); ein(eT2, 76, 20, 'translateX(-50%)'); ein(ePh, 76.8, 24, 'translateX(-50%)'); ein(eLoc, 77.4, 16, 'translateX(-50%)'); ein(eFn, 78, 10);
+    const kl = spring(t - bt(74.6), 11, .9); eLogo.style.opacity = clamp(kl); tf(eLogo, `scale(${EL.ls * lerp(.9, 1, clamp(kl))})`);
+  }
+}
+window.seek = seek;
+
+/* =====================================================================================
+   SOUND — gentle, warm bed at 100 BPM; small UI sounds
+   ===================================================================================== */
+window.buildAudio = async function (ctx) {
+  const sr = ctx.sampleRate, master = ctx.createGain(); master.gain.value = .8; master.connect(ctx.destination);
+  const wet = ctx.createGain(); wet.gain.value = .26; const dl = ctx.createDelay(1), dr = ctx.createDelay(1), fb = ctx.createGain(), lp = ctx.createBiquadFilter(), mg = ctx.createChannelMerger(2);
+  dl.delayTime.value = B * .75; dr.delayTime.value = B * .5; fb.gain.value = .35; lp.type = 'lowpass'; lp.frequency.value = 2600;
+  wet.connect(dl); wet.connect(dr); dl.connect(lp); dr.connect(lp); lp.connect(fb); fb.connect(dl); fb.connect(dr); dl.connect(mg, 0, 0); dr.connect(mg, 0, 1); mg.connect(master);
+  const bus = (g, pan = 0, send = 0) => { const n = ctx.createGain(); n.gain.value = g; const p = ctx.createStereoPanner(); p.pan.value = pan; n.connect(p); p.connect(master); if (send) { const s = ctx.createGain(); s.gain.value = send; p.connect(s); s.connect(wet); } return n; };
+  const r = rng(77), nb = ctx.createBuffer(1, sr * 2, sr), nd = nb.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = r() * 2 - 1;
+  const env = (g, t, a, d, pk) => { g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(pk, t + a); g.gain.exponentialRampToValueAtTime(.0001, t + a + d); };
+  const osc = (type, f, t, a, d, pk, dest, f1) => { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + a + d); env(g, t, a, d, pk); o.connect(g); g.connect(dest); o.start(t); o.stop(t + a + d + .05); };
+  const noise = (t, a, d, pk, type, f0, f1, q, dest) => { const s = ctx.createBufferSource(); s.buffer = nb; s.loop = true; const f = ctx.createBiquadFilter(); f.type = type; f.Q.value = q; f.frequency.setValueAtTime(f0, t); if (f1) f.frequency.exponentialRampToValueAtTime(f1, t + a + d); const g = ctx.createGain(); env(g, t, a, d, pk); s.connect(f); f.connect(g); g.connect(dest); s.start(t, r()); s.stop(t + a + d + .05); };
+  const pluck = (f, t, v = 1, pan = 0) => { const b = bus(.12 * v, pan, .7); osc('triangle', f, t, .004, 1.1, 1, b); osc('sine', f * 2, t, .003, .4, .35, b); };
+  const pad = (fs, t, d, v = 1) => { const b = bus(.05 * v, 0, .6), l = ctx.createBiquadFilter(); l.type = 'lowpass'; l.frequency.value = 1500; l.connect(b); for (const f of fs) for (const dt of [-6, 6]) { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sawtooth'; o.frequency.value = f; o.detune.value = dt; g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(1 / fs.length, t + .8); g.gain.setValueAtTime(1 / fs.length, t + d - .2); g.gain.linearRampToValueAtTime(.0001, t + d + .8); o.connect(g); g.connect(l); o.start(t); o.stop(t + d + .9); } };
+  const kick = (t, v = 1) => osc('sine', 110, t, .003, .22, 1, bus(.42 * v), 46);
+  const hat = (t, v = 1) => noise(t, .001, .025, 1, 'highpass', 8500, 0, .7, bus(.035 * v, .2));
+  const tick = (t, f = 2400, v = 1, pan = 0) => { const b = bus(.08 * v, pan, .3); osc('sine', f, t, .001, .04, 1, b); };
+  const click = (t, v = 1) => noise(t, .001, .02, 1, 'highpass', 2500, 0, .7, bus(.18 * v));
+  const chime = (f, t, v = 1) => { const b = bus(.16 * v, 0, .9); osc('sine', f, t, .003, 1.6, 1, b); osc('sine', f * 2.76, t, .002, .5, .25, b); };
+  const whoosh = (t, d, v = 1) => noise(t, d * .5, d * .5, 1, 'bandpass', 400, 3000, 1.3, bus(.12 * v, 0, .4));
+  // harmony: Fmaj7  Am7  Dm7  Bbmaj7 — one chord per 4 beats
+  const CH = [[174.61, 220, 261.63, 329.63], [220, 261.63, 329.63, 392], [146.83, 220, 261.63, 349.23], [116.54, 174.61, 233.08, 293.66]];
+  for (let bar = 0; bar < 21; bar++) { const t0 = bt(bar * 4), c = CH[bar % 4]; pad(c, t0, 4 * B, bar >= 16 ? 1.3 : 1);
+    if (bar >= 1) for (let k = 0; k < 4; k++) pluck(c[(k * 2 + bar) % 4] * 2, t0 + k * B, .8 - (k % 2) * .25, (k % 2 ? .3 : -.3));
+    if (bar >= 2 && bar < 19) for (let k = 0; k < 4; k++) { kick(t0 + k * B, k % 2 ? .5 : .9); hat(t0 + k * B + B / 2); } }
+  pluck(698.46, bt(.4), 1); chime(1046.5, bt(2.6), .6); whoosh(bt(3.6), 1.2, 1.2);
+  // word ticks on each title, whoosh on each push
+  for (const s of titles) { s.words.forEach((_, i) => tick(s.a + .15 + i * .12, 2200 + i * 90, .7)); whoosh(s.a, 1.4, .8); chime(880, s.a + 1.4, .35); }
+  // map pings
+  for (let k = 0; k < 6; k++) { const b = bus(.12, 0, 1); osc('sine', 1320, bt(19.6) + k * .9, .004, .7, 1, b); }
+  FURN.forEach(f => tick(bt(19.6) + f[5] * (bt(25) - bt(19.6)), 1700, 1.4)); chime(987.77, bt(25.2), .6);
+  // setup
+  chime(1174.66, bt(33.6), .5); for (let i = 0; i <= 3; i++) tick(bt(34.4) + i * (bt(36) - bt(34.4)) / 3, 1600 + i * 200, 1.2); click(bt(37.3), 1.2);
+  // cycle hum + chips
+  { const b = bus(.12, 0, .3), l = ctx.createBiquadFilter(); l.type = 'lowpass'; l.frequency.value = 700; l.connect(b); const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sawtooth'; o.frequency.setValueAtTime(60, bt(44.4)); o.frequency.exponentialRampToValueAtTime(120, bt(45.4)); g.gain.setValueAtTime(.0001, bt(44.4)); g.gain.exponentialRampToValueAtTime(.6, bt(45.4)); g.gain.setValueAtTime(.6, bt(53)); g.gain.exponentialRampToValueAtTime(.0001, bt(53.8)); o.connect(g); g.connect(l); o.start(bt(44.4)); o.stop(bt(54)); }
+  for (let i = 0; i < 3; i++) chime(783.99 + i * 98, bt(47.4 + i * 1.6), .4); chime(1318.5, bt(52.6), .5);
+  // report
+  for (let i = 0; i < 4; i++) tick(bt(60.3 + i * .9), 1900 + i * 150, 1.4); click(bt(65.9), 1.2); chime(1046.5, bt(65.9), .5);
+  // closer + end
+  whoosh(bt(66.6), 1.4, 1); for (let i = 0; i < 4; i++) pluck(523.25 + i * 65, bt(67.8) + i * (bt(73.4) - bt(67.8)) / 4, .7);
+  chime(698.46, bt(74.4), .7); chime(1046.5, bt(74.5), .5); pad([174.61, 261.63, 349.23, 440, 523.25], bt(74), D - bt(74), 1.4);
+};
+
+/* ---------- preview ---------- */
+if (location.search.includes('render')) { $('ui').remove(); seek(0); }
+else {
+  const fit = () => { const k = Math.min(innerWidth / W, (innerHeight - 50) / H); stage.style.transform = `scale(${k})`; }; addEventListener('resize', fit); fit();
+  let buf, ac, src, startAt = 0, offset = 0, playing = false; const pp = $('pp'), scrub = $('scrub'), tcEl = $('tc');
+  async function play() { ac ??= new AudioContext(); if (!buf) { const off = new OfflineAudioContext(2, Math.ceil(48000 * D), 48000); await buildAudio(off); buf = await off.startRendering(); } src = ac.createBufferSource(); src.buffer = buf; src.connect(ac.destination); src.start(0, offset % D); startAt = ac.currentTime; playing = true; pp.textContent = 'Pause'; }
+  function pause() { if (!playing) return; offset += ac.currentTime - startAt; src.stop(); playing = false; pp.textContent = 'Play'; }
+  const now = () => playing ? (offset + ac.currentTime - startAt) % D : offset;
+  pp.onclick = () => playing ? pause() : play();
+  scrub.oninput = () => { const was = playing; pause(); offset = scrub.value * D; if (was) play(); };
+  (function loop() { const t = now(); seek(t); if (playing) scrub.value = t / D; tcEl.textContent = t.toFixed(2) + ' s'; requestAnimationFrame(loop); })();
+}
+</script>
+</body>
+</html>
