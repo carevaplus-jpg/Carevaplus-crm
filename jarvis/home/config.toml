@@ -1,0 +1,44 @@
+# Jarvis for Careva+ — OpenJarvis configuration
+# install-jarvis copies this file to ~/.openjarvis/config.toml
+
+[engine]
+default = "ollama"                 # runs the AI model on your own computer
+
+[engine.ollama]
+host = "http://localhost:11434"
+
+[intelligence]
+default_model = "qwen3.5:2b"       # small and fast; works on most laptops
+# default_model = "qwen3.5:9b"     # smarter; needs about 8 GB of free RAM
+#                                  # (run: ollama pull qwen3.5:9b)
+temperature = 0.6
+max_tokens = 2048
+
+[agent]
+default_agent = "orchestrator"     # thinks in steps and picks tools by itself
+max_turns = 10
+objective = "Help run Careva+ home health care: enquiries, follow-ups, scheduling, messages and reports"
+tools = "web_search,file_read,file_write,calculator,think,code_interpreter"
+context_from_memory = true
+
+[tools.storage]
+default_backend = "sqlite"
+
+# Jarvis remembers useful facts from your conversations (stored only on your computer)
+[memory]
+enabled = true
+backend = "local"
+
+[system_prompt]
+include_current_time = true
+timezone = ""                       # empty = use your computer's time zone
+
+# Never send usage data anywhere — Careva+ handles patient information
+[analytics]
+enabled = false
+choice_recorded = true
+
+[server]
+host = "127.0.0.1"                 # only reachable from your own computer
+port = 8000
+agent = "orchestrator"
