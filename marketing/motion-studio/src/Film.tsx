@@ -288,10 +288,10 @@ const Frame: React.FC = () => {
   const f = useCurrentFrame(), { width: W, height: H, fps } = useVideoConfig(), t = f / fps, c = { t, W, H, reel: H > W };
   return <AbsoluteFill style={{ background: INK, overflow: 'hidden' }}><Scene {...c} /><Wipe {...c} /></AbsoluteFill>;
 };
-export const Film: React.FC = () => (
+export const Film: React.FC<{ fast?: boolean }> = ({ fast }) => (
   <AbsoluteFill>
     <Fonts />
-    <CameraMotionBlur shutterAngle={160} samples={4}><Frame /></CameraMotionBlur>
+    {fast ? <Frame /> : <CameraMotionBlur shutterAngle={160} samples={4}><Frame /></CameraMotionBlur>}
     <Audio src={staticFile('score.wav')} />
   </AbsoluteFill>
 );
