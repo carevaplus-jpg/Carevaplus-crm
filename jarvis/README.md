@@ -67,10 +67,56 @@ jarvis ask "Write an Instagram post about our home nursing service"
 Node 22 comes with npm 10, so run `npm install -g npm@11` once first.
 When the app first opens it asks about sharing usage data. Choose **Continue without sharing**.
 
+## Android app (APK)
+
+<img src="android/icon.png" width="72" align="right" alt="Jarvis app icon">
+
+The **Jarvis** Android app is a chat screen for the Jarvis running on your computer, with voice.
+
+- Type or tap 🎤 to speak. Jarvis can read its replies aloud (turn this off in ⚙).
+- Long-press a reply to **copy** it or **share** it straight to WhatsApp, SMS or email.
+- **New** starts a fresh conversation.
+
+The phone does not run the AI. It needs your computer switched on, with your phone **on the same Wi-Fi**.
+
+**1. On your computer** (one time), create an access key so only you can connect:
+
+```bash
+jarvis auth create-key        # prints a key starting with oj_sk_  - keep it private
+```
+
+Then start Jarvis so your phone can reach it. Run this every time you want to use the app:
+
+```bash
+jarvis serve --host 0.0.0.0
+```
+
+If Windows asks whether to let Python through the firewall, choose **Allow** for **private networks**.
+
+**2. Find your computer's address**
+
+- Windows: run `ipconfig` and use the **IPv4 Address**, for example `192.168.1.5`.
+- Mac: System Settings → Wi-Fi → Details → IP address.
+- Linux: run `hostname -I`.
+
+**3. Install the app on your Android phone**
+
+1. On the phone, open this repository on GitHub and download [`android/Jarvis-Careva.apk`](android/Jarvis-Careva.apk).
+2. Open the downloaded file. If Android asks, allow your browser to **install unknown apps**.
+3. Open **Jarvis**, tap ⚙, enter the address and the key, and tap **Save & connect**.
+   The top bar shows **● Online** when it works.
+
+Things to know:
+
+- **Use it at home or in the office only.** It works on the same Wi-Fi only. Away from home, use Telegram (below).
+- **Avoid public Wi-Fi.** Messages travel unencrypted over your Wi-Fi, so use it only on Wi-Fi you trust.
+- **The browser app needs the key too.** After you create a key, paste the same key into the browser app's Settings (`jarvis gui`).
+- **Answers can be slow.** A small model on a slow computer can take a minute or more per answer.
+- Needs Android 7.0 or newer. To rebuild the app from source, see `android/build.sh`.
+
 ## Use Jarvis on your phone (Telegram)
 
-Jarvis runs on your computer, and your phone talks to it through a private Telegram bot.
-It works on Android and iPhone, at home or outside.
+Works on Android and iPhone, at home or outside. Jarvis runs on your computer, and your phone talks to it through a private Telegram bot.
 
 1. Install the free **Telegram** app on your phone.
 2. On your computer, in this `jarvis` folder, run:
@@ -114,6 +160,7 @@ jarvis config set intelligence.default_model qwen3.5:9b
 | `home/config.toml` | Model, tools, memory and privacy settings |
 | `install-jarvis.sh` / `install-jarvis.ps1` | One-command installers |
 | `setup-phone.sh` / `setup-phone.ps1` | Connect Jarvis to Telegram for phone use |
+| `android/Jarvis-Careva.apk` | Android app (source in `android/src`, built with `android/build.sh`) |
 
 After you edit a file in `home/`, run the installer again to apply it.
 It keeps your filled-in `USER.md`.
