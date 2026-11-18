@@ -7,6 +7,7 @@ A 21-second, beat-locked brand promo. It is the punchy counterpart to the calm e
 | Output | `careva-promo.mp4` — 1920×1080, 60 fps, real motion blur, H.264 + AAC |
 | Length | 21.09 s (45 beats at 128 BPM) |
 | Source | `promo.src.html` → `python3 build.py` → `careva-promo.html` (self-contained, scrub it live in a browser) |
+| Reel (9:16) | `careva-reel.mp4` — 1080×1920 for Instagram Reels, YouTube Shorts and TikTok; same timing and sound, every scene recomposed for vertical (`reel.src.html` → `python3 build.py reel` → `careva-reel.html`) |
 | Sound | Synthesised in the page (`buildAudio`): kick, clap, sub bass, risers, impacts on every flood |
 
 ## The idea
@@ -47,6 +48,9 @@ python3 build.py
 node render.mjs careva-promo.html check.png --stills 0.9,2.0,4.3,5.9,7.6,9.4,10.4,12.8,14.0,15.1,16.3,19.5
 node render.mjs careva-promo.html draft.mp4 30 1 4          # fast draft
 node render.mjs careva-promo.html careva-promo.mp4 60 8 4   # final
+
+python3 build.py reel                                        # 9:16 Reel
+node render.mjs careva-reel.html careva-reel.mp4 60 8 4
 ```
 
 Built with the `explainer-high-energy` module of the motion-graphics skill (based on Barty-Bart/motion-graphics, MIT). Fonts: Montserrat, Instrument Serif, JetBrains Mono and Caveat (all SIL OFL).
