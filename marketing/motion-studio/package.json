@@ -5,9 +5,10 @@
   "description": "Careva+ motion graphics built with Remotion (React) and HyperFrames (HTML).",
   "scripts": {
     "studio": "remotion studio",
-    "render:wide": "remotion render UvcWide out/careva-uvc-pro.mp4 --codec=h264 --crf=17 --concurrency=4 --browser-executable=/opt/pw-browsers/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell",
-    "render:reel": "remotion render UvcReel out/careva-uvc-pro-reel.mp4 --codec=h264 --crf=17 --concurrency=4 --browser-executable=/opt/pw-browsers/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell",
-    "score": "node score/render-score.mjs public/score.wav 47.4"
+    "render:wide": "remotion render UvcWide out/careva-uvc-spotless.mp4 --codec=h264 --crf=17 --concurrency=4 --browser-executable=/opt/pw-browsers/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell",
+    "render:reel": "remotion render UvcReel out/careva-uvc-spotless-reel.mp4 --codec=h264 --crf=17 --concurrency=4 --browser-executable=/opt/pw-browsers/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell",
+    "score": "node score/render-score.mjs public/score.wav 47.4",
+    "sting": "cd spotless-sting && npm run render"
   },
   "dependencies": {
     "@remotion/cli": "4.0.545",

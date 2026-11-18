@@ -3,7 +3,7 @@
    Four colour themes, one per step; a multicolour stripe wipe joins every scene.
 
    time    scene                                                       look
-   0.0     OPEN    macro on the robot's lamps igniting, title in a rainbow gradient   violet/magenta
+   0.0     OPEN    Spotless AI sting, built and rendered in HyperFrames (spotless-sting/), played here as video   Spotless purple
    3.6     BRAND   Careva+ logo assembles; four step tiles flip in      light, multicolour
    7.2     MAP     01 title → tilted console, camera rides the robot, lidar, objects  cyan
    15.0    CHECK   02 title → macro on the robot's eyes scanning → dose slider close-up → Start   amber
@@ -12,12 +12,12 @@
    37.2    CLOSER  "Safer rooms for" four colour tiles (Careva+ services)   multicolour
    41.4    END     logo, Spotless AI, phone, location, footnote          light
    47.4    end
-   Facts: spotless.ai and carevaplus.com (see README). Robot and console are illustrations.
+   Facts: spotless.ai and carevaplus.com (see README). Robot photo and Spotless logo supplied by Careva+; console screens are illustrations.
    ===================================================================================== */
 import React from 'react';
-import { AbsoluteFill, Audio, staticFile, useCurrentFrame, useVideoConfig, random } from 'remotion';
+import { AbsoluteFill, Audio, OffthreadVideo, staticFile, useCurrentFrame, useVideoConfig, random } from 'remotion';
 import { CameraMotionBlur } from '@remotion/motion-blur';
-import { THEMES, INK, NAVY, CREAM, RAINBOW, Fonts, Abs, Mesh, Robot, Tick, Phone, Cursor, Logo, Glass, clamp, seg, lerp, io, out, spr, kf, eio } from './kit';
+import { THEMES, INK, NAVY, CREAM, RAINBOW, SPOT, Fonts, Abs, Mesh, RealRobot, SpotlessLogo, Tick, Phone, Cursor, Logo, Glass, clamp, seg, lerp, io, out, spr, kf, eio } from './kit';
 
 export const FPS = 60;
 export const DURATION_S = 47.4;
@@ -57,24 +57,13 @@ const Chapter: React.FC<Ctx & { n: string; line: string; sub: string; th: { a: s
   </Abs>;
 };
 
-/* =================================== OPEN =================================== */
-const Open: React.FC<Ctx> = ({ t, W, H, reel }) => {
-  const lamp = clamp(seg(t, 0.25, 1.1) * 1.2), z = kf(t, [[0, 5.2], [1.6, 3.0], [3.6, 1.8]]), y = kf(t, [[0, 40], [1.6, 30], [3.6, 70]]);
-  const k1 = out(t, 0.9, 1.4), k2 = out(t, 1.4, 2.1);
-  return <AbsoluteFill>
-    <Mesh t={t} colors={[THEMES.uv.a, THEMES.uv.b, '#3B82F6']} />
-    {/* rotating light rays */}
-    <Abs style={{ left: W / 2 - 1400, top: H / 2 - 1400, width: 2800, height: 2800, borderRadius: '50%', opacity: 0.55 * lamp, transform: `rotate(${t * 14}deg)`, background: 'repeating-conic-gradient(from 0deg, rgba(196,181,255,.35) 0deg 4deg, transparent 4deg 14deg)', WebkitMaskImage: 'radial-gradient(closest-side, #000, transparent)' }} />
-    <Cam W={W} H={H} y={y} z={z} rz={kf(t, [[0, -8], [3.6, 0]])}>
-      <Abs style={{ left: -340, top: -340, width: 680, height: 680, borderRadius: '50%', background: 'radial-gradient(closest-side, rgba(196,181,255,.9), rgba(167,139,250,.35) 45%, transparent)', opacity: lamp }} />
-      <Abs style={{ left: -60, top: -130 }}><Robot size={260} lamp={lamp} eye={t > 2.4 ? '#22D3EE' : '#47B6F0'} /></Abs>
-    </Cam>
-    <Abs style={{ left: 0, right: 0, top: reel ? H - 560 : H - 250, textAlign: 'center', textShadow: '0 4px 40px rgba(6,10,24,.8)' }}>
-      <div style={{ fontFamily: 'Mono', fontSize: reel ? 24 : 22, letterSpacing: '.3em', color: 'rgba(255,255,255,.8)', opacity: k1, transform: `translateY(${(1 - k1) * 20}px)` }}>INTRODUCING</div>
-      <div style={{ marginTop: 16, fontFamily: 'Mont', fontWeight: 900, fontSize: reel ? 92 : 104, letterSpacing: '-.035em', lineHeight: 1, background: RAINBOW, WebkitBackgroundClip: 'text', color: 'transparent', opacity: k2, transform: `translateY(${(1 - k2) * 50}px)`, filter: `blur(${(1 - k2) * 10}px)`, whiteSpace: 'pre-line' }}>{reel ? 'Robotic UV-C\ndisinfection' : 'Robotic UV-C disinfection'}</div>
-    </Abs>
-  </AbsoluteFill>;
-};
+/* =================================== OPEN (HyperFrames) =================================== */
+// The opening 3.6 s is the Spotless AI sting, made in HyperFrames (HTML + GSAP) and rendered to MP4.
+const Open: React.FC<Ctx> = ({ reel }) => (
+  <AbsoluteFill style={{ background: SPOT.ink }}>
+    <OffthreadVideo src={staticFile(reel ? 'sting-reel.mp4' : 'sting-wide.mp4')} muted style={{ width: '100%', height: '100%' }} />
+  </AbsoluteFill>
+);
 
 /* =================================== BRAND =================================== */
 const STEPS = [{ th: THEMES.map, n: '01', l: 'Map' }, { th: THEMES.check, n: '02', l: 'Check' }, { th: THEMES.uv, n: '03', l: 'UV-C' }, { th: THEMES.report, n: '04', l: 'Report' }];
@@ -86,7 +75,7 @@ const Brand: React.FC<Ctx> = ({ t, W, H, reel }) => {
       <Logo scale={ls} iconPop={clamp(spr(t - 0.1, 12, 0.6), 0, 1.15)} wordReveal={out(t, 0.4, 1.0)} crossSpin={clamp(spr(t - 0.9, 16, 0.5), 0, 1.2)} />
     </Abs>
     <Abs style={{ left: 0, right: 0, top: H / 2 + ly + (reel ? 140 : 120), textAlign: 'center', fontFamily: 'Mont', fontWeight: 650, fontSize: reel ? 40 : 36, color: '#4B5D74', opacity: out(t, 1.0, 1.5) }}>
-      brings you <b style={{ color: NAVY }}>robotic disinfection</b> by Spotless AI
+      <div style={{ display: 'flex', flexDirection: reel ? 'column' : 'row', justifyContent: 'center', alignItems: 'center', gap: reel ? 18 : 16 }}><span>brings you <b style={{ color: NAVY }}>robotic disinfection</b> by</span><SpotlessLogo width={reel ? 280 : 200} pill /></div>
     </Abs>
     {STEPS.map((s, i) => {
       const k = clamp(spr(t - 2.1 - i * 0.14, 13, 0.7), 0, 1.1), cw = reel ? 420 : 340, ch = reel ? 300 : 300;
@@ -150,8 +139,8 @@ const CheckScene: React.FC<Ctx> = (c) => {
   return <AbsoluteFill>
     <Mesh t={t} colors={[th.a, th.b, '#EF4444']} />
     {A && <Abs style={{ inset: 0, opacity: out(t, 1.9, 2.3) * (1 - seg(t, 3.6, 3.9)) }}>
-      <Abs style={{ left: W / 2 - 2000, top: H / 2 - 160 - 2000, width: 4000, height: 4000, borderRadius: '50%', background: `conic-gradient(from ${-30 + scan * 60}deg at 50% 50%, ${th.a}55 0deg, transparent 40deg)`, opacity: 0.8 }} />
-      <Cam W={W} H={H} z={lerp(reel ? 4.6 : 5.4, reel ? 3.6 : 4.2, a)} y={-102}><Abs style={{ left: -60, top: -130 }}><Robot size={260} eye={th.a} /></Abs></Cam>
+      <Abs style={{ left: W / 2 + 60 - 2000, top: H / 2 - 2000, width: 4000, height: 4000, borderRadius: '50%', background: `conic-gradient(from ${55 + scan * 50}deg at 50% 50%, transparent 0deg, ${th.a}66 18deg, transparent 36deg)`, WebkitMaskImage: 'radial-gradient(closest-side, #000 2%, rgba(0,0,0,.5) 25%, transparent 60%)', opacity: 0.9 }} />
+      <Cam W={W} H={H} z={lerp(reel ? 2.9 : 2.7, reel ? 2.4 : 2.2, a)} y={-262} rz={lerp(-4, 2, a)}><Abs style={{ left: -132, top: -300 }}><RealRobot height={600} lamp={0.35} /></Abs></Cam>
       <Abs style={{ left: 0, right: 0, top: reel ? H - 560 : H - 250, display: 'flex', justifyContent: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 18, padding: '22px 36px', borderRadius: 999, background: 'rgba(10,14,32,.82)', border: `2px solid ${th.a}`, fontFamily: 'Mont', fontWeight: 800, fontSize: reel ? 46 : 44, color: '#fff', boxShadow: `0 0 50px ${th.a}66`, transform: `scale(${clamp(spr(t - 2.7, 16, 0.6), 0, 1.2)})` }}>
           <span style={{ color: THEMES.report.a }}><Tick size={44} /></span> Room empty</div>
@@ -188,7 +177,7 @@ const UvScene: React.FC<Ctx> = (c) => {
   const { t, W, H, reel } = c, th = THEMES.uv, on = out(t, 2.0, 2.8), wave = (t - 2.4) * 260;
   const heroOut = io(t, 5.4, 6.0), ring = seg(t, 2.6, 9.0);
   return <AbsoluteFill>
-    <Mesh t={t} colors={[th.a, th.b, '#4F46E5']} />
+    <Mesh t={t} base={SPOT.ink} colors={[SPOT.magenta, th.b, SPOT.blue]} />
     {t > 1.85 && <Abs style={{ inset: 0, opacity: out(t, 1.85, 2.3) * (1 - heroOut) }}>
       <Abs style={{ left: W / 2 - 1500, top: H / 2 - 1500, width: 3000, height: 3000, borderRadius: '50%', transform: `rotate(${t * 18}deg)`, opacity: 0.7 * on, background: `repeating-conic-gradient(from 0deg, ${th.a}66 0deg 5deg, transparent 5deg 16deg)`, WebkitMaskImage: 'radial-gradient(closest-side, #000 20%, transparent)' }} />
       <Cam W={W} H={H} z={kf(t, [[1.9, reel ? 1.6 : 1.9], [5.6, reel ? 2.0 : 2.4]])} ry={kf(t, [[1.9, -14], [5.6, 14]])} y={-10}>
@@ -197,8 +186,8 @@ const UvScene: React.FC<Ctx> = (c) => {
             <svg viewBox="-20 -20 40 40" width={28} height={28}><polygon points="0,-14 3,-5 12,-7 6,0 12,7 3,5 0,14 -3,5 -12,7 -6,0 -12,-7 -3,-5" fill="#34D399" /><circle r="5" fill="#047857" /></svg></Abs>; })}
         {GERMS.map((g, i) => { const k = clamp((wave - g.r) / 80); if (k <= 0 || k >= 1) return null; const x = Math.cos(g.a) * g.r * 1.3, y = Math.sin(g.a) * g.r * 0.55 + 40;
           return <Abs key={'s' + i} style={{ left: x - 30 * k - 6, top: y - 30 * k - 6, width: 60 * k + 12, height: 60 * k + 12, borderRadius: '50%', border: `2px solid ${th.a}`, opacity: 1 - k }} />; })}
-        <Abs style={{ left: -520, top: -520, width: 1040, height: 1040, borderRadius: '50%', background: `radial-gradient(closest-side, rgba(220,210,255,.95), ${th.a}88 30%, ${th.b}33 60%, transparent)`, opacity: on }} />
-        <Abs style={{ left: -75, top: -165 }}><Robot size={330} lamp={on} eye="#C4B5FF" glowColor="#E4DCFF" /></Abs>
+        <Abs style={{ left: -520, top: -520, width: 1040, height: 1040, borderRadius: '50%', background: `radial-gradient(closest-side, rgba(235,215,255,.95), ${SPOT.magenta}77 28%, ${th.b}44 55%, ${SPOT.blue}22 70%, transparent)`, opacity: on }} />
+        <Abs style={{ left: -73, top: -175 }}><RealRobot height={330} lamp={on} glow={SPOT.purple} /></Abs>
       </Cam>
     </Abs>}
     {t > 5.4 && <Abs style={{ inset: 0, opacity: out(t, 5.4, 5.9) }}>
@@ -276,10 +265,10 @@ const End: React.FC<Ctx> = ({ t, W, H, reel }) => {
     <Mesh t={t} light base="#FFFFFF" colors={[THEMES.map.a, THEMES.uv.a, THEMES.check.a, THEMES.report.a]} />
     <Abs style={{ left: W / 2 - 893, top: L.lc - 276.5 }}><Logo scale={L.ls * (1 + 0.012 * seg(t, 1, 6))} iconPop={clamp(spr(t - 0.15, 12, 0.7), 0, 1.1)} wordReveal={out(t, 0.4, 1.0)} crossSpin={clamp(spr(t - 0.9, 16, 0.5), 0, 1.2)} /></Abs>
     <Abs style={{ left: 0, right: 0, top: L.t1, textAlign: 'center', fontFamily: 'Mont', fontWeight: 900, fontSize: reel ? 56 : 52, letterSpacing: '-.025em', ...e(1.1) }}><span style={{ background: RAINBOW, WebkitBackgroundClip: 'text', color: 'transparent' }}>Robotic UV-C disinfection</span></Abs>
-    <Abs style={{ left: 0, right: 0, top: L.t2, textAlign: 'center', fontFamily: 'Serif', fontStyle: 'italic', fontSize: reel ? 48 : 42, color: '#4B5D74', ...e(1.4) }}>by Spotless AI · booked through Careva+</Abs>
+    <Abs style={{ left: 0, right: 0, top: L.t2 - (reel ? 6 : 10), display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 22, fontFamily: 'Serif', fontStyle: 'italic', fontSize: reel ? 44 : 40, color: '#4B5D74', flexWrap: 'wrap', ...e(1.4) }}><span>by</span><SpotlessLogo width={reel ? 250 : 220} pill /><span>· booked through Careva+</span></Abs>
     <Abs style={{ left: 0, right: 0, top: L.ph, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 18, fontFamily: 'Mont', fontWeight: 900, fontSize: reel ? 72 : 64, color: NAVY, ...e(1.8, 30) }}><Phone size={reel ? 56 : 50} />+91 96555 08881</Abs>
     <Abs style={{ left: 0, right: 0, top: L.loc, textAlign: 'center', fontFamily: 'Mono', fontSize: reel ? 24 : 21, letterSpacing: '.22em', color: '#4B5D74', ...e(2.1) }}>SALEM & NEARBY AREAS · CAREVAPLUS.COM</Abs>
-    <Abs style={{ left: reel ? 90 : 360, right: reel ? 90 : 360, top: L.fn, textAlign: 'center', fontFamily: 'Mont', fontSize: reel ? 20 : 16, lineHeight: 1.45, color: '#6A7B8E', ...e(2.4, 10) }}>*Log 4 (99.99%) reduction validated by Spotless AI in NABL-accredited lab tests under controlled conditions; on-site validation recommended. UV-C cycles run in unoccupied rooms only. Robot and console shown are illustrations.</Abs>
+    <Abs style={{ left: reel ? 90 : 360, right: reel ? 90 : 360, top: L.fn, textAlign: 'center', fontFamily: 'Mont', fontSize: reel ? 20 : 16, lineHeight: 1.45, color: '#6A7B8E', ...e(2.4, 10) }}>*Log 4 (99.99%) reduction validated by Spotless AI in NABL-accredited lab tests under controlled conditions; on-site validation recommended. UV-C cycles run in unoccupied rooms only. Console screens shown are illustrations.</Abs>
   </AbsoluteFill>;
 };
 

@@ -1,3 +1,9 @@
 node_modules/
 out/
 .cache/
+# HyperFrames: built projects and check/snapshot artifacts (rebuild with `npm run build` in spotless-sting/)
+spotless-sting/wide/
+spotless-sting/reel/
+.hyperframes/
+public/.sting-*
+public/work-*

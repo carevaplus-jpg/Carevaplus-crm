@@ -5,10 +5,13 @@ import { continueRender, delayRender, staticFile, Easing, interpolate, random } 
 export const THEMES = {
   map: { a: '#22D3EE', b: '#0EA5E9', name: 'Map' },
   check: { a: '#FBBF24', b: '#F97316', name: 'Check' },
-  uv: { a: '#A78BFA', b: '#D946EF', name: 'UV-C' },
+  uv: { a: '#C77DFF', b: '#9013FE', name: 'UV-C' }, // Spotless AI purple
   report: { a: '#A3E635', b: '#22C55E', name: 'Report' },
 } as const;
 export const INK = '#060A18', NAVY = '#0E2D5C', RED = '#E5332A', CREAM = '#F6F7FB';
+// Spotless AI brand colours, sampled from their logo
+export const SPOT = { magenta: '#E040FB', purple: '#9013FE', blue: '#3D3BF3', ink: '#0F1013' };
+export const SPOT_GRAD = `linear-gradient(100deg, ${SPOT.magenta}, #B026FF 35%, ${SPOT.purple} 60%, ${SPOT.blue})`;
 export const RAINBOW = `linear-gradient(100deg, ${THEMES.map.a}, ${THEMES.uv.a} 35%, ${THEMES.uv.b} 55%, ${THEMES.check.a} 80%, ${THEMES.report.a})`;
 
 /* ---------- fonts ---------- */
@@ -71,6 +74,24 @@ export const Robot: React.FC<{ lamp?: number; eye?: string; size?: number; glowC
     <circle cx="51" cy="29" r="5.5" fill={eye} /><circle cx="69" cy="29" r="5.5" fill={eye} /><circle cx="51" cy="29" r="2" fill="#fff" /><circle cx="69" cy="29" r="2" fill="#fff" />
   </svg>
 );
+
+/* ---------- the real Spotless AI robot (photo supplied by Careva+, cut out to public/robot.png) ---------- */
+const RW = 472, RH = 1069;
+export const RealRobot: React.FC<{ height: number; lamp?: number; glow?: string }> = ({ height, lamp = 1, glow = '#C77DFF' }) => {
+  const s = height / RH, w = RW * s;
+  return <div style={{ position: 'relative', width: w, height }}>
+    <div style={{ position: 'absolute', left: w * 0.02, right: w * 0.02, bottom: -height * 0.02, height: height * 0.06, borderRadius: '50%', background: 'radial-gradient(closest-side, rgba(0,0,0,.6), transparent)' }} />
+    <img src={staticFile('robot.png')} style={{ position: 'absolute', left: 0, top: 0, width: w, height, filter: `brightness(${lerp(0.45, 1, lamp)}) saturate(${lerp(0.5, 1, lamp)})` }} />
+    <img src={staticFile('robot-lamps.png')} style={{ position: 'absolute', left: 0, top: 0, width: w, height, opacity: lamp, mixBlendMode: 'screen' }} />
+    <img src={staticFile('robot-lamps.png')} style={{ position: 'absolute', left: 0, top: 0, width: w, height, opacity: lamp, mixBlendMode: 'screen', filter: `blur(${Math.max(6, 22 * s * 1.6)}px) drop-shadow(0 0 ${30 * s * 1.6}px ${glow})` }} />
+  </div>;
+};
+
+/* ---------- Spotless AI logo (supplied by Careva+); white wordmark, so it sits on a dark pill on light scenes ---------- */
+export const SpotlessLogo: React.FC<{ width: number; pill?: boolean; style?: React.CSSProperties }> = ({ width, pill, style }) => {
+  const img = <img src={staticFile('spotless-logo.png')} style={{ width, height: width * 72 / 325, display: 'block' }} />;
+  return pill ? <div style={{ display: 'inline-flex', padding: `${width * 0.09}px ${width * 0.14}px`, borderRadius: 999, background: SPOT.ink, boxShadow: `0 14px 40px -14px ${SPOT.purple}`, border: `1.5px solid ${SPOT.purple}55`, ...style }}>{img}</div> : <div style={style}>{img}</div>;
+};
 
 /* ---------- icons ---------- */
 export const Tick: React.FC<{ size?: number; color?: string }> = ({ size = 22, color = 'currentColor' }) => (

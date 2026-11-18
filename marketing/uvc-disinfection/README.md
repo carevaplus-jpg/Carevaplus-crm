@@ -6,6 +6,7 @@ A 49-second product film in the same family as the other Careva+ films. It uses 
 |---|---|
 | 16:9 | `careva-uvc.mp4`: 1920×1080, 60 fps, motion blur, H.264 + AAC |
 | 9:16 Reel | `careva-uvc-reel.mp4`: 1080×1920, the same film recomposed for vertical |
+| **Spotless edition** | `careva-uvc-spotless.mp4` (16:9) and `careva-uvc-spotless-reel.mp4` (9:16): 47 s, real robot photo, Spotless logo and purple, HyperFrames opening + Remotion film (source in `../motion-studio/`) |
 | Source | `saas.src.html` → `python3 build.py` → `careva-uvc.html` and `careva-uvc-reel.html` (self-contained; scrub them live in a browser) |
 | Sound | Synthesised in the page at 100 BPM: soft plucks and pads, UI ticks, a UV-C hum during the cycle, end chime |
 
@@ -42,7 +43,10 @@ A 49-second product film in the same family as the other Careva+ films. It uses 
   - "Salem and nearby areas"
   - phone +91 96555 08881
 - **Illustrative, not real:**
-  - The robot, the console UI, the room data and the report time are original illustrations. No Spotless AI images or logos are used, because their site marks them "All Rights Reserved".
+  - In `careva-uvc.mp4`, `careva-uvc-reel.mp4` and `careva-uvc-pro.mp4`, the robot is an original illustration. No Spotless AI images or logos are used, because their site marks them "All Rights Reserved".
+  - The console UI, the room data and the report time are illustrations in every version.
+- **Supplied by Careva+ (Spotless edition: `careva-uvc-spotless.mp4` and `careva-uvc-spotless-reel.mp4`):**
+  - the photo of the Spotless AI robot and the Spotless AI logo. Careva+ should make sure it has Spotless AI's permission to use them in advertising.
   - "now with Careva+" and "booked through Careva+" assume Careva+ offers this service. Confirm this with Spotless AI before publishing.
 
 ## Re-render

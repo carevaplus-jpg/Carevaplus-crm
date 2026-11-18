@@ -1,0 +1,156 @@
+<!doctype html>
+<!-- Spotless AI opening sting (HyperFrames). build.mjs writes index.html (16:9) and reel.html (9:16) from this file.
+     0.00 purple grid draws in · 0.15 macro on the real robot's lamps, they flicker on · 1.20 camera pulls back
+     1.55 Spotless AI logo wipes in · 1.95 "Robotic UV-C disinfection" rises · 3.60 hand-off to the Remotion film -->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=__W__, height=__H__" />
+    <script src="assets/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: 'Mont'; font-weight: 100 900; src: url(assets/montserrat-latin-wght-normal.woff2) format('woff2'); }
+      @font-face { font-family: 'Mono'; font-weight: 500; src: url(assets/jetbrains-mono-latin-500-normal.woff2) format('woff2'); }
+      :root {
+        --ground: #0f1013;
+        --ink: #ffffff;
+        --sp-magenta: #e040fb;
+        --sp-purple: #9013fe;
+        --sp-blue: #3d3bf3;
+        --sp-grad: linear-gradient(100deg, var(--sp-magenta), #b026ff 35%, var(--sp-purple) 60%, var(--sp-blue));
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: __W__px; height: __H__px; overflow: hidden; background: var(--ground); }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; font-family: 'Mont', sans-serif; }
+      .clip { position: absolute; inset: 0; }
+      .abs { position: absolute; }
+      #grid {
+        inset: -10%;
+        background-image:
+          linear-gradient(rgba(144, 19, 254, .55) 2px, transparent 2px),
+          linear-gradient(90deg, rgba(144, 19, 254, .55) 2px, transparent 2px);
+        background-size: 172px 172px;
+        -webkit-mask-image: radial-gradient(ellipse 60% 70% at __GX__% 50%, #000 0%, rgba(0,0,0,.35) 55%, transparent 85%);
+      }
+      #floor {
+        left: -50%; right: -50%; height: 70%; bottom: -18%;
+        background-image:
+          linear-gradient(rgba(224, 64, 251, .5) 2px, transparent 2px),
+          linear-gradient(90deg, rgba(224, 64, 251, .5) 2px, transparent 2px);
+        background-size: 120px 120px;
+        transform-origin: 50% 0;
+        transform: perspective(900px) rotateX(72deg);
+        -webkit-mask-image: linear-gradient(to bottom, transparent, #000 30%, #000 60%, transparent);
+      }
+      #bloom { border-radius: 50%; background: radial-gradient(closest-side, rgba(214, 170, 255, .85), rgba(144, 19, 254, .45) 40%, rgba(61, 59, 243, .12) 70%, transparent); }
+      #rays { border-radius: 50%; background: repeating-conic-gradient(from 0deg, rgba(200, 150, 255, .28) 0deg 4deg, transparent 4deg 13deg); -webkit-mask-image: radial-gradient(closest-side, #000 15%, transparent); }
+      #cam { transform-origin: 0 0; }
+      #robot img { position: absolute; left: 0; top: 0; width: 472px; height: 1069px; }
+      #lampsGlow { filter: blur(22px) saturate(1.6); mix-blend-mode: screen; }
+      #lampsSharp { mix-blend-mode: screen; }
+      .spark { width: 10px; height: 10px; border-radius: 50%; background: #e7c8ff; box-shadow: 0 0 16px 4px rgba(176, 38, 255, .9); }
+      #kicker { font-family: 'Mono'; font-size: __KS__px; letter-spacing: .32em; color: rgba(255,255,255,.82); white-space: nowrap; }
+      #logo { width: __LW__px; }
+      #logo img { width: 100%; display: block; }
+      #title { font-weight: 900; font-size: __TS__px; line-height: 1; letter-spacing: -.035em; color: #fff; }
+      #title .w { display: inline-block; margin-right: .22em; }
+      #title .g { background: var(--sp-grad); -webkit-background-clip: text; background-clip: text; color: transparent; padding-bottom: .08em; }
+      #bar { height: 8px; border-radius: 4px; background: var(--sp-grad); box-shadow: 0 0 28px rgba(176, 38, 255, .9); transform-origin: 0 50%; }
+      #flash { background: radial-gradient(closest-side, rgba(240, 220, 255, .9), rgba(176, 38, 255, .35), transparent); mix-blend-mode: screen; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="3.6" data-width="__W__" data-height="__H__">
+      <div id="scene" class="clip" data-start="0" data-duration="3.6" data-track-index="0">
+        <div id="grid" class="abs" data-layout-allow-overflow></div>
+        <div id="floor" class="abs" data-layout-allow-overflow></div>
+        <div id="cam" class="abs" data-layout-allow-overflow>
+          <div id="rays" class="abs" data-layout-allow-overflow></div>
+          <div id="bloom" class="abs" data-layout-allow-overflow></div>
+          <div id="robot" class="abs">
+            <img id="robotImg" src="assets/robot.png" alt="Spotless AI UV-C disinfection robot" />
+            <img id="lampsGlow" src="assets/robot-lamps.png" alt="" />
+            <img id="lampsSharp" src="assets/robot-lamps.png" alt="" />
+          </div>
+          <div id="flash" class="abs" data-layout-allow-overflow></div>
+        </div>
+        <div id="sparks" class="abs" data-layout-allow-overflow style="inset: 0"></div>
+        <div id="copy" class="abs">
+          <div id="kicker" data-layout-allow-overflow>INTRODUCING</div>
+          <div id="title">__TITLE__</div>
+          <div id="bar"></div>
+          <div id="logoRow"><div id="logo"><img src="assets/spotless-logo.png" alt="Spotless AI" /></div></div>
+        </div>
+      </div>
+    </div>
+    <script>
+      const W = __W__, H = __H__, REEL = __REEL__;
+      // Layout (pixels). Robot art is 472 x 1069.
+      const L = REEL
+        ? { rs: 0.76, rx: 540 - 472 * 0.76 / 2, ry: 120, copyX: 0, copyY: 975, copyW: 1080, align: 'center' }
+        : { rs: 0.80, rx: 470 - 472 * 0.80 / 2, ry: 110, copyX: 900, copyY: 330, copyW: 940, align: 'left' };
+      const $ = (s) => document.querySelector(s);
+      const set = (el, o) => Object.assign(el.style, o);
+      set($('#robot'), { left: '0px', top: '0px' });
+      const rcx = L.rx + 472 * L.rs * 0.5, rcy = L.ry + 1069 * L.rs * 0.42;
+      set($('#bloom'), { left: rcx - 700 + 'px', top: rcy - 700 + 'px', width: '1400px', height: '1400px' });
+      set($('#rays'), { left: rcx - 1500 + 'px', top: rcy - 1500 + 'px', width: '3000px', height: '3000px' });
+      set($('#flash'), { left: rcx - 900 + 'px', top: rcy - 900 + 'px', width: '1800px', height: '1800px' });
+      set($('#copy'), { left: L.copyX + 'px', top: L.copyY + 'px', width: L.copyW + 'px', textAlign: L.align });
+      if (REEL) { set($('#logoRow'), { display: 'flex', justifyContent: 'center' }); set($('#bar'), { margin: '26px auto 34px', width: '560px' }); }
+      else set($('#bar'), { margin: '26px 0 34px', width: '620px' });
+      $('#kicker').style.marginBottom = '22px';
+
+      // deterministic sparks rising off the lamps
+      const N = 26, sp = $('#sparks');
+      for (let i = 0; i < N; i++) { const d = document.createElement('div'); d.className = 'spark abs'; sp.appendChild(d); }
+      const r = (i, k) => { const x = Math.sin(i * 12.9898 + k * 78.233) * 43758.5453; return x - Math.floor(x); };
+
+      const tl = gsap.timeline({ paused: true });
+      const D = REEL ? 0.35 : 0; // in 9:16 the copy sits under the robot, so it waits for the camera to settle
+      // camera: macro on the lamps (scale 3.1), then pull back to the resting frame
+      const camAt = (s, fx, fy) => ({ x: (W / 2) - (L.rx + 472 * L.rs * fx) * s, y: (H / 2) - (L.ry + 1069 * L.rs * fy) * s, scale: s });
+      gsap.set('#cam', { ...camAt(3.4, 0.48, 0.30), rotation: -6 });
+      gsap.set('#robot', { x: L.rx, y: L.ry, scale: L.rs, transformOrigin: '0 0' });
+      gsap.set('#robotImg', { filter: 'brightness(.42) saturate(.5)' });
+      gsap.set(['#lampsGlow', '#lampsSharp'], { opacity: 0 });
+      gsap.set('#grid', { opacity: 0, scale: 1.15 });
+      gsap.set('#floor', { opacity: 0, backgroundPosition: '0px 0px' });
+      gsap.set(['#bloom', '#rays', '#flash'], { opacity: 0 });
+      gsap.set('#kicker', { opacity: 0, y: 20, scaleX: 1.25, transformOrigin: REEL ? '50% 50%' : '0 50%' });
+      gsap.set('#title .w', { opacity: 0, y: 60, rotation: 4, filter: 'blur(10px)' });
+      gsap.set('#bar', { scaleX: 0 });
+      gsap.set('#logo', { clipPath: 'inset(0 100% 0 0)', filter: 'blur(8px)', x: -30 });
+
+      tl.to('#grid', { opacity: 1, scale: 1, duration: 1.2, ease: 'power3.out' }, 0)
+        .to('#floor', { opacity: 1, duration: 0.8, ease: 'power2.out' }, 0.2)
+        .to('#floor', { backgroundPosition: '0px 480px', duration: 3.4, ease: 'none' }, 0.2)
+        // lamps flicker on (a fluorescent strike), then hold
+        .to('#lampsSharp', { keyframes: [{ opacity: .9, duration: .05 }, { opacity: .1, duration: .07 }, { opacity: 1, duration: .05 }, { opacity: .35, duration: .06 }, { opacity: 1, duration: .1 }], ease: 'none' }, 0.32)
+        .to('#lampsGlow', { opacity: 1, duration: .5, ease: 'power2.out' }, 0.62)
+        .to('#robotImg', { filter: 'brightness(1) saturate(1)', duration: .6, ease: 'power2.out' }, 0.55)
+        .to('#flash', { keyframes: [{ opacity: 1, duration: .12 }, { opacity: 0, duration: .55 }], ease: 'power2.out' }, 0.62)
+        .to('#bloom', { opacity: 1, duration: .8, ease: 'power2.out' }, 0.6)
+        .to('#rays', { opacity: .75, duration: 1, ease: 'power2.out' }, 0.7)
+        .to('#rays', { rotation: 40, duration: 3, ease: 'none' }, 0.6)
+        // the macro drifts up the lamp column, then the camera pulls back
+        .to('#cam', { ...camAt(2.9, 0.5, 0.22), rotation: -3, duration: 0.85, ease: 'sine.inOut' }, 0.15)
+        .to('#cam', { ...camAt(1, 0.5, 0.5), x: 0, y: 0, rotation: 0, duration: 1.05, ease: 'expo.inOut' }, 1.0)
+        .to('#cam', { scale: 1.025, x: -(W / 2) * 0.025, y: -(H / 2) * 0.025, duration: 1.5, ease: 'sine.out' }, 2.1)
+        // copy
+        .to('#kicker', { opacity: 1, y: 0, scaleX: 1, duration: .55, ease: 'power3.out' }, 1.45 + D)
+        .to('#title .w', { opacity: 1, y: 0, rotation: 0, filter: 'blur(0px)', duration: .6, ease: 'power3.out', stagger: .08 }, 1.65 + D)
+        .to('#bar', { scaleX: 1, duration: .6, ease: 'expo.inOut' }, 2.1 + D)
+        .to('#logo', { clipPath: 'inset(0 0% 0 0)', filter: 'blur(0px)', x: 0, duration: .7, ease: 'expo.out' }, 2.25 + D);
+
+      document.querySelectorAll('.spark').forEach((el, i) => {
+        const x0 = rcx + (r(i, 1) - .5) * 300 * (REEL ? 1.4 : 1), y0 = rcy + (r(i, 2) - .2) * 500, delay = 0.7 + r(i, 3) * 1.6, rise = 300 + r(i, 4) * 500;
+        gsap.set(el, { x: x0, y: y0, opacity: 0, scale: .4 + r(i, 5) });
+        tl.to(el, { keyframes: [{ opacity: 1, duration: .15 }, { opacity: 0, duration: 1.1 }], y: y0 - rise, x: x0 + (r(i, 6) - .5) * 160, duration: 1.25, ease: 'sine.out' }, delay);
+      });
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines['main'] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>
