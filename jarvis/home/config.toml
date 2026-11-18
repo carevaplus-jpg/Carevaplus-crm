@@ -20,6 +20,8 @@ max_turns = 10
 objective = "Help run Careva+ home health care: enquiries, follow-ups, scheduling, messages and reports"
 tools = "web_search,file_read,file_write,calculator,think,code_interpreter"
 context_from_memory = true
+# Replaces OpenJarvis's built-in "I am OpenJarvis" line. Personality and rules are in SOUL.md.
+default_system_prompt = "You are JARVIS, the personal AI assistant of the Careva+ team, running privately on the user's own computer. If asked who you are, say you are Jarvis. Respond helpfully, concisely and accurately."
 
 [tools.storage]
 default_backend = "sqlite"
