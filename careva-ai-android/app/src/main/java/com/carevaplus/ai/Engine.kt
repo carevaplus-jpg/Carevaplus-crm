@@ -105,6 +105,8 @@ class AiEngine(private val ctx: Context) {
     private var engine: Engine? = null
     private var conversation: Conversation? = null
     private var conversationKey: String? = null
+    /** How long the chat history will be on the next turn if nothing else changes it (for example sync from another phone). */
+    private var nextHistorySize = -1
     var loaded: AiModel? = null; private set
     var loadedOnGpu = false; private set
 
@@ -130,7 +132,7 @@ class AiEngine(private val ctx: Context) {
 
     fun closeConversation() {
         try { conversation?.close() } catch (_: Throwable) {}
-        conversation = null; conversationKey = null
+        conversation = null; conversationKey = null; nextHistorySize = -1
     }
 
     /**
@@ -146,8 +148,9 @@ class AiEngine(private val ctx: Context) {
         val plan = effort.plan(model)
         // Thinking only takes effect when set on the conversation, so a change of effort starts a new
         // model conversation seeded with the chat so far.
+        // The chat can also change underneath (edited on another phone), so the history length is checked too.
         val key = "$chatId|${model.id}|${effort.name}"
-        if (conversationKey != key || conversation?.isAlive != true) {
+        if (conversationKey != key || conversation?.isAlive != true || history.size != nextHistorySize) {
             closeConversation()
             conversation = e.createConversation(
                 ConversationConfig(
@@ -174,6 +177,7 @@ class AiEngine(private val ctx: Context) {
                 m.channels.values.forEach { if (it.isNotEmpty()) onThought(it) }
                 m.contents.contents.forEach { c -> if (c is Content.Text && c.text.isNotEmpty()) onText(c.text) }
             }
+            nextHistorySize = history.size + 2 // this message and the reply
         } catch (t: Throwable) {
             closeConversation() // a stopped or failed conversation can't continue; rebuild from saved history next time
             throw t

@@ -25,9 +25,12 @@ sealed interface EngineState {
     data class Failed(val model: AiModel, val message: String) : EngineState
 }
 
+/** Cloud sync status, shown on the account screen. */
+data class SyncStatus(val running: Boolean = false, val lastOk: Long = 0, val error: String? = null)
+
 data class DownloadInfo(val done: Long, val total: Long, val paused: Boolean, val failed: String? = null)
 
-enum class Screen { CHAT, MODELS }
+enum class Screen { CHAT, MODELS, ACCOUNT }
 
 /** What the AI is doing right now, shown live above the reply. */
 enum class Phase(val label: String) { READING("Reading your message"), THINKING("Thinking"), WRITING("Writing") }
@@ -49,6 +52,16 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     private val engine = AiEngine(app)
     private val store = ChatStore(app)
     private val prefs = app.getSharedPreferences("settings", Context.MODE_PRIVATE)
+    private val cloud = Cloud(app)
+    private val deleted = HashMap(store.loadDeleted())
+
+    /** The signed-in email, or null when the app is used without an account. */
+    var account by mutableStateOf(cloud.session?.email); private set
+    var sync by mutableStateOf(SyncStatus()); private set
+    var authBusy by mutableStateOf(false); private set
+    var authError by mutableStateOf<String?>(null); private set
+    var authInfo by mutableStateOf<String?>(null); private set
+    private var syncJob: Job? = null
 
     var screen by mutableStateOf(Screen.CHAT)
     var engineState by mutableStateOf<EngineState>(EngineState.NoModel); private set
@@ -79,6 +92,8 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         Catalog.models.filter { downloader.downloadId(it) >= 0 && it.id !in installed }.forEach { watch(it) }
         val start = activeModel?.takeIf { it.id in installed } ?: Catalog.models.firstOrNull { it.id in installed }
         if (start != null) selectModel(start.id) else if (installed.isEmpty()) screen = Screen.MODELS
+        // keep chats up to date with the user's other phones while the app is open
+        viewModelScope.launch { while (isActive) { if (account != null) syncNow(); delay(45_000) } }
     }
 
     private fun refreshInstalled() {
@@ -173,6 +188,8 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         chats.removeAll { it.id == id }
         if (currentId == id) currentId = null
         store.save(chats)
+        deleted[id] = System.currentTimeMillis(); store.saveDeleted(deleted)
+        syncNow()
     }
 
     private fun put(chat: Chat) {
@@ -254,6 +271,86 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             updated = System.currentTimeMillis(),
         ))
         store.save(chats)
+        syncNow()
+    }
+
+    // ---- account and cloud sync ----
+
+    fun signIn(email: String, password: String) = auth(email, password) {
+        cloud.signIn(email, password); null
+    }
+
+    fun signUp(email: String, password: String) = auth(email, password) {
+        when (cloud.signUp(email, password)) {
+            is SignUpResult.SignedIn -> null
+            SignUpResult.CheckEmail -> "Account created. We sent a confirmation link to ${email.trim()}: open it, then come back and sign in."
+        }
+    }
+
+    fun resendConfirmation(email: String) = auth(email, "-") { cloud.resendConfirmation(email); "Sent again. Check your inbox and spam folder." }
+
+    private fun auth(email: String, password: String, action: () -> String?) {
+        if (authBusy) return
+        if (!email.contains('@') || password.isEmpty()) { authError = "Enter your email and password."; return }
+        authBusy = true; authError = null; authInfo = null
+        viewModelScope.launch {
+            try {
+                authInfo = withContext(Dispatchers.IO) { action() }
+                account = cloud.session?.email
+                if (account != null) { screen = Screen.CHAT; syncNow() }
+            } catch (e: Exception) {
+                authError = e.message ?: "Something went wrong. Please try again."
+            }
+            authBusy = false
+        }
+    }
+
+    /** Signs out and removes this account's chats from the phone; they stay safe in the cloud. */
+    fun signOut() {
+        if (busy) return
+        viewModelScope.launch {
+            syncJob?.join()
+            try { pushPending() } catch (e: Exception) {
+                if (cloud.session != null) { // still signed in but offline: don't lose chats that aren't uploaded yet
+                    sync = sync.copy(error = "Couldn't upload your latest chats, so you are still signed in. ${e.message ?: ""}".trim())
+                    return@launch
+                }
+            }
+            withContext(Dispatchers.IO) { cloud.signOut() }
+            account = null; sync = SyncStatus()
+            chats.clear(); currentId = null; deleted.clear(); store.clear()
+            engine.closeConversation()
+            screen = Screen.CHAT
+        }
+    }
+
+    private suspend fun pushPending() {
+        val r = Sync.merge(chats.toList(), deleted.toMap(), withContext(Dispatchers.IO) { cloud.pull() })
+        withContext(Dispatchers.IO) { cloud.push(r.upload, r.uploadDeleted) }
+    }
+
+    /** Downloads changes from the user's other phones and uploads this phone's. Does nothing while the AI is replying. */
+    fun syncNow() {
+        if (account == null || syncJob?.isActive == true) return
+        syncJob = viewModelScope.launch {
+            sync = sync.copy(running = true, error = null)
+            sync = try {
+                val remote = withContext(Dispatchers.IO) { cloud.pull() }
+                while (busy) delay(500) // don't change chats under a reply being written
+                val r = Sync.merge(chats.toList(), deleted.toMap(), remote)
+                if (r.chats != chats.toList()) {
+                    chats.clear(); chats.addAll(r.chats)
+                    if (currentId != null && chats.none { it.id == currentId }) currentId = null
+                    store.save(chats)
+                }
+                deleted.clear(); deleted.putAll(r.tombstones); store.saveDeleted(deleted)
+                withContext(Dispatchers.IO) { cloud.push(r.upload, r.uploadDeleted) }
+                SyncStatus(lastOk = System.currentTimeMillis())
+            } catch (e: Exception) {
+                if (cloud.session == null) account = null // sign-in expired
+                sync.copy(running = false, error = e.message)
+            }
+        }
     }
 
     override fun onCleared() { engine.stop(); engine.unload() }

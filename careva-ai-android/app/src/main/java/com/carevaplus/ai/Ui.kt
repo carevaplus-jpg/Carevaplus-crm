@@ -18,6 +18,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -29,6 +31,7 @@ import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -43,6 +46,10 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
@@ -79,6 +86,7 @@ fun App(vm: ChatViewModel) {
     when (vm.screen) {
         Screen.MODELS -> ModelsScreen(vm)
         Screen.CHAT -> ChatScreen(vm)
+        Screen.ACCOUNT -> AccountScreen(vm)
     }
 }
 
@@ -106,7 +114,7 @@ private fun ModelsScreen(vm: ChatViewModel) {
                 Column(Modifier.padding(bottom = 4.dp)) {
                     if (!canGoBack) {
                         Image(painterResource(R.drawable.careva_logo), "Careva+", Modifier.fillMaxWidth(0.7f).padding(vertical = 8.dp))
-                        Text("Download a model to start. Models run entirely on your phone: no account, no API key, no cost per message, and chats never leave the device.", color = Muted)
+                        Text("Download a model to start. Models run entirely on your phone: no API key and no cost per message. Chats stay on the phone unless you sign in to sync them between your phones.", color = Muted)
                         Spacer(Modifier.height(8.dp))
                     }
                     Text("Each model is a free, open model. Bigger models are smarter but need more memory and are slower. You can install several and switch any time.", color = Muted, style = MaterialTheme.typography.bodyMedium)
@@ -186,6 +194,104 @@ private fun Badge(text: String) {
         modifier = Modifier.padding(start = 8.dp).background(Color(0xFFE8F3DF), RoundedCornerShape(50)).padding(horizontal = 8.dp, vertical = 2.dp))
 }
 
+// ---------- account ----------
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AccountScreen(vm: ChatViewModel) {
+    BackHandler { vm.screen = Screen.CHAT }
+    Scaffold(
+        containerColor = Paper,
+        topBar = {
+            TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Paper),
+                navigationIcon = { IconButton(onClick = { vm.screen = Screen.CHAT }) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") } },
+                title = { Text("Account", fontWeight = FontWeight.SemiBold) },
+            )
+        },
+    ) { pad ->
+        Column(Modifier.fillMaxSize().padding(pad).imePadding().verticalScroll(rememberScrollState()).padding(20.dp)) {
+            Image(painterResource(R.drawable.careva_logo), "Careva+", Modifier.fillMaxWidth(0.6f).padding(bottom = 16.dp))
+            if (vm.account != null) SignedIn(vm) else SignInForm(vm)
+        }
+    }
+}
+
+@Composable
+private fun SignedIn(vm: ChatViewModel) {
+    val s = vm.sync
+    Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth().border(1.dp, Line, RoundedCornerShape(18.dp))) {
+        Column(Modifier.padding(18.dp)) {
+            Text("Signed in as", color = Muted, style = MaterialTheme.typography.bodySmall)
+            Text(vm.account.orEmpty(), fontWeight = FontWeight.Bold, color = Navy, style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(12.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                when {
+                    s.running -> { CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = Green); Spacer(Modifier.width(8.dp)); Text("Syncing…", color = Muted) }
+                    s.error != null -> { Icon(Icons.Outlined.CloudOff, null, tint = Color(0xFFB3261E), modifier = Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(s.error, color = Color(0xFFB3261E), style = MaterialTheme.typography.bodySmall) }
+                    s.lastOk > 0 -> { Icon(Icons.Outlined.CloudDone, null, tint = Green, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Synced ${ago(s.lastOk)}", color = Muted) }
+                    else -> Text("Not synced yet", color = Muted)
+                }
+            }
+            Spacer(Modifier.height(14.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = vm::syncNow, enabled = !s.running, shape = RoundedCornerShape(12.dp)) {
+                    Icon(Icons.Outlined.Sync, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Sync now")
+                }
+                OutlinedButton(onClick = vm::signOut, enabled = !vm.busy && !s.running, shape = RoundedCornerShape(12.dp)) { Text("Sign out") }
+            }
+        }
+    }
+    Spacer(Modifier.height(16.dp))
+    Text(
+        "Your chats are saved to your Careva+ account and appear on every phone where you sign in with this email. Only you can see them. " +
+            "The AI still runs on each phone, so download a model on each phone too. Signing out removes the chats from this phone only; they stay in your account.",
+        color = Muted, style = MaterialTheme.typography.bodySmall,
+    )
+}
+
+@Composable
+private fun SignInForm(vm: ChatViewModel) {
+    var email by rememberSaveable { mutableStateOf("") }
+    var password by rememberSaveable { mutableStateOf("") }
+    var show by remember { mutableStateOf(false) }
+    Text("Use your chats on every phone", fontWeight = FontWeight.Bold, color = Navy, style = MaterialTheme.typography.titleLarge)
+    Text("Sign in with your email to keep your chats in the Careva+ cloud and continue them on any phone. The app also works without an account.", color = Muted, style = MaterialTheme.typography.bodyMedium)
+    Spacer(Modifier.height(18.dp))
+    OutlinedTextField(
+        value = email, onValueChange = { email = it }, label = { Text("Email") }, singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+        leadingIcon = { Icon(Icons.Outlined.Email, null) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp),
+    )
+    Spacer(Modifier.height(10.dp))
+    OutlinedTextField(
+        value = password, onValueChange = { password = it }, label = { Text("Password") }, singleLine = true,
+        visualTransformation = if (show) VisualTransformation.None else PasswordVisualTransformation(),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+        keyboardActions = KeyboardActions(onDone = { vm.signIn(email, password) }),
+        leadingIcon = { Icon(Icons.Outlined.Lock, null) },
+        trailingIcon = { IconButton(onClick = { show = !show }) { Icon(if (show) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility, if (show) "Hide password" else "Show password") } },
+        modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp),
+    )
+    vm.authError?.let { Text(it, color = Color(0xFFB3261E), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 10.dp)) }
+    vm.authInfo?.let { Text(it, color = Green, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 10.dp)) }
+    Spacer(Modifier.height(16.dp))
+    Button(onClick = { vm.signIn(email, password) }, enabled = !vm.authBusy, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().height(48.dp)) {
+        if (vm.authBusy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = Color.White) else Text("Sign in")
+    }
+    Spacer(Modifier.height(8.dp))
+    OutlinedButton(onClick = { vm.signUp(email, password) }, enabled = !vm.authBusy, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().height(48.dp)) { Text("Create account") }
+    if (vm.authInfo != null || vm.authError?.contains("confirm") == true)
+        TextButton(onClick = { vm.resendConfirmation(email) }, enabled = !vm.authBusy) { Text("Resend confirmation email") }
+    Spacer(Modifier.height(12.dp))
+    Text("New accounts get a confirmation email first. Use at least 6 characters for the password.", color = Muted, style = MaterialTheme.typography.bodySmall)
+}
+
+private fun ago(t: Long): String {
+    val s = (System.currentTimeMillis() - t) / 1000
+    return when { s < 10 -> "just now"; s < 60 -> "${s}s ago"; s < 3600 -> "${s / 60} min ago"; else -> "${s / 3600} h ago" }
+}
+
 // ---------- chat ----------
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -218,6 +324,17 @@ private fun ChatScreen(vm: ChatViewModel) {
                             )
                         }
                     }
+                    HorizontalDivider(color = Line, modifier = Modifier.padding(vertical = 6.dp))
+                    NavigationDrawerItem(
+                        icon = { Icon(if (vm.account != null) Icons.Outlined.CloudDone else Icons.Outlined.AccountCircle, null) },
+                        label = {
+                            Column {
+                                Text(vm.account ?: "Sign in to sync", maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
+                                Text(if (vm.account != null) "Chats synced across your phones" else "Use your chats on every phone", color = Muted, style = MaterialTheme.typography.bodySmall)
+                            }
+                        },
+                        selected = false, onClick = { vm.screen = Screen.ACCOUNT; scope.launch { drawer.close() } },
+                    )
                 }
             }
         },
