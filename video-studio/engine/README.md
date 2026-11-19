@@ -58,7 +58,7 @@ Scratch files go to `video-studio/.build/<video>/` (git-ignored). The SRT is wri
 | `quantize` | Round each scene up to a multiple of this many seconds, for example one beat (`0.8333` at 72 BPM), so cuts land on the music |
 | `music` | `{ "file": "...", "gain": 0.8 }`: a music bed mixed under the narration (path relative to the video folder) |
 | `loudness` | Target loudness of the final mix in LUFS, for example `-14` for social platforms |
-| `crf` | x264 quality, default 17; the bitrate is capped at 14 Mbit/s |
+| `crf`, `maxrate` | x264 quality (default 17) and bitrate cap (default `"14M"`); film grain needs a cap such as `"6M"` to keep files small |
 | `captionChars` | Max characters per subtitle line, default 42 (raise it for scripts such as Tamil, whose vowel signs count as characters) |
 | `tts` | `{ "engine": "edge", "voice": "ta-IN-PallaviNeural", "rate": "-4%" }` uses a Microsoft Edge neural voice instead of Kokoro, for languages Kokoro does not speak. Needs `pip install edge-tts`; set `EDGE_PYTHON` to that Python if it isn't `python3` |
 

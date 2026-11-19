@@ -9,6 +9,7 @@
   "quantize": 0.8333333,
   "music": { "file": "../.build/2026-11-19-careva-plus-brand-film/music.wav", "gain": 0.8 },
   "loudness": -14,
-  "crf": 21,
+  "crf": 22,
+  "maxrate": "6M",
   "sayAs": [["Careva\\+", "Care Eva plus"], ["\\bAI\\b", "A I"]]
 }

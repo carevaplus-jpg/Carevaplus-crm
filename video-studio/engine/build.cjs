@@ -29,6 +29,7 @@ function readConfig() {
     music: c.music || null,                  // { file, gain }: music bed mixed under the narration
     loudness: c.loudness ?? null,            // target LUFS for the final mix, for example -14 for social
     crf: c.crf ?? 17,
+    maxrate: c.maxrate || "14M",             // video bitrate cap
     captionChars: c.captionChars ?? 42,      // max characters per subtitle line (two lines per cue)                        // x264 quality: lower is better and bigger
   };
 }
@@ -174,7 +175,7 @@ async function video() {
     "-f", "image2pipe", "-framerate", String(FPS), "-c:v", "png", "-i", "-", ...audioIn,
     "-filter_complex", "[0:v]scale=out_color_matrix=bt709:out_range=tv:flags=lanczos+accurate_rnd+full_chroma_int,format=yuv420p[v];" + af + "[a]",
     "-map", "[v]", "-map", "[a]",
-    "-c:v", "libx264", "-preset", "medium", "-crf", String(CFG.crf), "-maxrate", "14M", "-bufsize", "28M",
+    "-c:v", "libx264", "-preset", "medium", "-crf", String(CFG.crf), "-maxrate", CFG.maxrate, "-bufsize", (parseFloat(CFG.maxrate) * 2) + "M",
     "-x264-params", "aq-mode=3:colorprim=bt709:transfer=bt709:colormatrix=bt709",
     "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-r", String(FPS), "-fps_mode", "cfr",
     "-c:a", "aac", "-b:a", "160k", "-ar", String(RATE), "-movflags", "+faststart", "-tag:v", "avc1", tmpFile],
