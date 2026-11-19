@@ -1,17 +1,43 @@
 # Careva+ AI (Android)
 
-A private AI chat assistant that runs **entirely on the phone**: no account, no API key and no cost per message.
+A private AI chat assistant that runs **entirely on the phone**: no account, no API key and no cost per message. Choose from six free open models and four effort levels.
 
-- **Model:** [Qwen 2.5 1.5B Instruct](https://huggingface.co/litert-community/Qwen2.5-1.5B-Instruct) (Apache-2.0), run on the device with Google's MediaPipe LLM Inference.
-- **First launch:** the app downloads the model once (about 1.6 GB, Wi-Fi recommended). After that it works offline and chats never leave the phone.
-- **Features:** streaming replies, stop button, saved conversations (drawer), new chat, copy, light Markdown (headings, bullets, bold, code), English and Tamil.
-- **Honest limits:** this is a small on-device model. It is good for everyday questions, drafting messages and simple explanations, and much weaker than large cloud models for complex reasoning, long documents or facts. It is not a medical tool.
+## Models
+
+All are free open-weight models (Apache-2.0), run on the device with Google's [LiteRT-LM](https://github.com/google-ai-edge/LiteRT-LM). Download the ones you want from the **Models** screen and switch at any time.
+
+| In the app | Open model | Download | Best for | Phone RAM |
+|---|---|---|---|---|
+| **Careva Plus** (recommended) | Google Gemma 4 E2B | 2.6 GB | Everyday chat, writing, **Tamil** and English | 6 GB |
+| Careva Pro | Google Gemma 4 E4B | 3.7 GB | Detailed answers, harder questions | 8 GB |
+| Careva Think | Qwen3 4B Thinking 2507 | 2.3 GB | Maths, logic, planning (always reasons) | 6 GB |
+| Careva Code | Qwen3.5 4B | 2.8 GB | Writing and fixing code, technical work | 6 GB |
+| Careva Max | Qwen3 8B | 4.9 GB | Hardest tasks on flagship phones | 12 GB |
+| Careva Lite | Qwen3 1.7B | 1.0 GB | Quick answers on smaller phones | 4 GB |
+
+The engine also writes a weight cache about as large as the model the first time it loads, so each model needs roughly **twice its download size** in free storage. Deleting a model removes its cache too.
+
+## Effort
+
+| Effort | What it does |
+|---|---|
+| Low | No thinking: fastest replies |
+| Medium | Thinks briefly (about 500 tokens) before answering |
+| High | Thinks carefully (about 1,500 tokens) and checks its answer |
+| Ultra | Deepest thinking (up to about 3,000 tokens), step-by-step self-checking; slowest |
+
+The model's reasoning appears in a collapsible **Thinking** section above each answer. In testing, the question "a nurse visits 3 patients a day, 6 days a week; how many visits in 4 weeks?" was answered wrongly at Low effort by every model except Careva Think, and correctly (72) at High effort.
+
+## Honest limits
+
+These are the strongest free models that fit on a phone, and they are much smaller than cloud AI such as Claude or ChatGPT: expect more mistakes, especially with facts, long documents and hard reasoning. The most powerful open models that compete with Claude need hundreds of gigabytes of memory and server GPUs, so they can't run on a phone. Careva+ AI is not a medical tool.
 
 ## Install
 
-1. Copy `release/careva-ai-1.0.0.apk` to an Android phone (Android 8.0 or newer, 64-bit, about 6 GB RAM and 3 GB free storage recommended).
-2. Open it and allow "Install unknown apps" for your file manager or browser when asked.
-3. Open **Careva+ AI** and tap **Download model**.
+1. Copy `release/careva-ai-2.0.0.apk` to an Android phone (Android 8.0 or newer, 64-bit).
+2. Open it and allow "Install unknown apps" when asked. Version 2.0 replaces 1.0 and removes its old model file.
+3. Open **Careva+ AI**, download **Careva Plus** first, then add others as needed.
+4. Optional: turn on **Use GPU** on the Models screen for faster replies on many phones.
 
 This build is signed with a development key. To publish on the Play Store, create your own upload key and add `keystore.properties` (see `app/build.gradle.kts`).
 
@@ -28,7 +54,8 @@ echo "sdk.dir=/path/to/android/sdk" > local.properties
 
 | File | What it does |
 |---|---|
-| `Engine.kt` | Model info, the one-time download (Android DownloadManager), loading and streaming generation with MediaPipe |
-| `Chats.kt` | Conversation data, private JSON storage, and the prompt builder (Qwen chat format, keeps within the 4K context) |
-| `ChatViewModel.kt` | App state: download progress, model loading, sending, stopping, saving |
-| `Ui.kt` | Jetpack Compose interface: setup screen, chat, drawer, composer, Markdown rendering |
+| `Models.kt` | The model catalogue, effort levels and what each effort changes |
+| `Engine.kt` | Model downloads (Android DownloadManager) and the LiteRT-LM engine: loading, streaming replies and thinking, stop |
+| `Chats.kt` | Conversation storage (private JSON) and the system prompt |
+| `ChatViewModel.kt` | App state: models, downloads, effort, sending, stopping, saving |
+| `Ui.kt` | Jetpack Compose interface: chat, model and effort picker, Models screen, Thinking sections |

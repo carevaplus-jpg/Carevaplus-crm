@@ -5,8 +5,16 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.util.UUID
+import com.google.ai.edge.litertlm.Message as LmMessage
 
-data class Msg(val role: String, val text: String) {
+data class Msg(
+    val role: String,
+    val text: String,
+    val thought: String = "",
+    val model: String = "",
+    val effort: String = "",
+    val seconds: Int = 0,
+) {
     val isUser get() = role == "user"
 }
 
@@ -32,7 +40,8 @@ class ChatStore(ctx: Context) {
                     title = o.optString("title", "Chat"),
                     updated = o.optLong("updated"),
                     messages = (0 until ms.length()).map { j ->
-                        val m = ms.getJSONObject(j); Msg(m.getString("role"), m.getString("text"))
+                        val m = ms.getJSONObject(j)
+                        Msg(m.getString("role"), m.getString("text"), m.optString("thought"), m.optString("model"), m.optString("effort"), m.optInt("seconds"))
                     },
                 )
             }.sortedByDescending { it.updated }
@@ -45,7 +54,10 @@ class ChatStore(ctx: Context) {
             arr.put(JSONObject().apply {
                 put("id", c.id); put("title", c.title); put("updated", c.updated)
                 put("messages", JSONArray().apply {
-                    c.messages.forEach { m -> put(JSONObject().put("role", m.role).put("text", m.text)) }
+                    c.messages.forEach { m ->
+                        put(JSONObject().put("role", m.role).put("text", m.text).put("thought", m.thought)
+                            .put("model", m.model).put("effort", m.effort).put("seconds", m.seconds))
+                    }
                 })
             })
         }
@@ -55,35 +67,26 @@ class ChatStore(ctx: Context) {
     }
 }
 
-/** Formats a conversation in Qwen's chat format and keeps it inside the model's context window. */
-object PromptBuilder {
-    const val SYSTEM = """You are Careva+ AI, a friendly and professional assistant made by Careva+, a home health care service. You run privately on the user's phone.
-- Answer clearly and concisely. Use short paragraphs or bullet points when helpful.
+object Prompt {
+    fun system() = """You are Careva+ AI, a friendly and professional assistant made by Careva+, a home health care service. You run privately on the user's phone.
+- Answer clearly and concisely. Use short paragraphs, bullet points or code blocks when helpful.
 - Reply in the same language the user writes in (English or Tamil).
 - If you are not sure about something, say so instead of guessing.
-- You are not a doctor. For medical questions give general information only, and tell the user to consult a doctor; in an emergency tell them to call 108 or go to the nearest hospital."""
+- You are not a doctor. For medical questions give general information only and advise consulting a doctor; in an emergency tell the user to call 108 or go to the nearest hospital."""
 
-    private const val INPUT_BUDGET = 3000 // tokens; the rest of the 4096 window is left for the reply
-
-    private fun turn(role: String, text: String) = "<|im_start|>$role\n$text<|im_end|>\n"
-
-    fun build(messages: List<Msg>, count: (String) -> Int): String {
-        val head = turn("system", SYSTEM)
-        var history = messages
-        while (true) {
-            val body = history.joinToString("") { turn(if (it.isUser) "user" else "assistant", it.text) }
-            val prompt = head + body + "<|im_start|>assistant\n"
-            if (history.size <= 1 || count(prompt) <= INPUT_BUDGET) {
-                return if (history.size == 1 && count(prompt) > INPUT_BUDGET) {
-                    // A single very long message: keep its end.
-                    val last = history.last()
-                    head + turn("user", last.text.takeLast(INPUT_BUDGET * 2)) + "<|im_start|>assistant\n"
-                } else prompt
-            }
-            history = history.drop(if (history.size >= 3) 2 else 1) // drop the oldest exchange
+    /** Earlier turns to seed a fresh model conversation with, newest kept, within about half the context window. */
+    fun seed(history: List<Msg>, model: AiModel): List<LmMessage> {
+        var budget = model.contextTokens / 2 * 3 // rough characters
+        val kept = ArrayList<Msg>()
+        for (m in history.asReversed()) {
+            budget -= m.text.length
+            if (budget < 0) break
+            kept.add(m)
         }
+        if (kept.isNotEmpty() && !kept.last().isUser) kept.removeAt(kept.lastIndex) // start with a user turn
+        return kept.asReversed().map { if (it.isUser) LmMessage.user(it.text) else LmMessage.model(it.text) }
     }
 
-    private val special = Regex("<\\|(im_end|im_start|endoftext)\\|>")
-    fun clean(text: String): String = text.replace(special, "").replace(Regex("^assistant\\n"), "").trim()
+    private val special = Regex("<\\|(im_end|im_start|endoftext)\\|>|<end_of_turn>|<start_of_turn>(model|user)?")
+    fun clean(text: String) = text.replace(special, "").trim()
 }
