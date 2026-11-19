@@ -1,0 +1,41 @@
+1
+00:00:00,400 --> 00:00:00,937
+Hello!
+
+2
+00:00:01,157 --> 00:00:02,758
+Welcome to Careva+.
+
+3
+00:00:02,978 --> 00:00:05,244
+Trusted home health
+care, right at your door.
+
+4
+00:00:05,767 --> 00:00:08,021
+Our trained nurses and
+caretakers come to you.
+
+5
+00:00:08,241 --> 00:00:10,417
+Every patient gets safe, personal care.
+
+6
+00:00:11,233 --> 00:00:13,819
+Every enquiry goes into our smart CRM.
+
+7
+00:00:14,039 --> 00:00:16,365
+A follow-up task is created automatically.
+
+8
+00:00:16,585 --> 00:00:18,575
+So no family waits for a call back.
+
+9
+00:00:19,600 --> 00:00:20,563
+Careva+.
+
+10
+00:00:20,784 --> 00:00:21,784
+Care that comes home.

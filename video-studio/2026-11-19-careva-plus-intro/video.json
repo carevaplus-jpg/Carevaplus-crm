@@ -1,0 +1,11 @@
+{
+  "name": "careva-plus-intro",
+  "voice": "af_heart",
+  "speed": 1.05,
+  "gap": 0.22,
+  "lead": { "1": 0.4 },
+  "tail": { "1": 0.3, "2": 0.6, "3": 0.8, "4": 1.6 },
+  "leadDefault": 0.2,
+  "tailDefault": 0.35,
+  "sayAs": [["Careva\\+", "Care Eva plus"], ["\\bCRM\\b", "C R M"]]
+}
