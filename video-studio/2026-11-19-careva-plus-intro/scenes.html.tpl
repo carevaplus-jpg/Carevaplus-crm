@@ -18,9 +18,8 @@ body{font-family:Inter,"Noto Sans Tamil","Liberation Sans",Arial,sans-serif;colo
 .scene{position:absolute;inset:0}
 .ta{font-family:"Noto Sans Tamil",Inter,sans-serif}
 .en{font-family:Inter,sans-serif}
-#mark{left:64px;top:44px;display:flex;align-items:center;gap:12px;font-size:26px;font-weight:800;color:var(--fg);letter-spacing:.5px;z-index:6}
-#mark i{width:30px;height:30px;border-radius:8px;background:var(--teal);color:#fff;font-style:normal;font-size:26px;font-weight:900;display:flex;align-items:center;justify-content:center}
-#mark span{color:var(--muted);font-weight:600;font-size:22px;margin-left:6px}
+#mark{left:56px;top:30px;height:66px;z-index:6}
+#mark img{height:66px;display:block}
 
 /* The nurse photo glides between a layout per scene. */
 #photo{position:absolute;z-index:4;overflow:hidden;background:#dfe7f1;border:10px solid #fff;box-shadow:0 30px 70px rgba(15,27,61,.22)}
@@ -40,14 +39,15 @@ body{font-family:Inter,"Noto Sans Tamil","Liberation Sans",Arial,sans-serif;colo
 /* 1 welcome */
 #bubble{left:640px;top:150px;background:var(--fg);color:#fff;font-size:40px;font-weight:700;padding:14px 30px 18px;border-radius:18px;transform-origin:0% 100%;z-index:6}
 #bubble:after{content:"";position:absolute;left:34px;bottom:-18px;border:18px solid transparent;border-top-color:var(--fg);border-bottom:0;border-left:0}
-#s1k{left:900px;top:190px}
-#s1t{left:892px;top:226px;font-size:168px;letter-spacing:-5px;line-height:1.1}
-#s1s{left:900px;top:430px;font-size:46px;font-weight:700;color:var(--coral2)}
-#s1e{left:902px;top:500px;font-size:30px;color:var(--muted);font-weight:500}
-.chips{left:900px;top:580px;display:flex;flex-direction:column;gap:18px}
+#s1k{left:900px;top:176px}
+#s1t{left:888px;top:222px;width:720px}
+#s1t img{width:100%;display:block}
+#s1s{left:900px;top:470px;font-size:46px;font-weight:700;color:var(--coral2)}
+#s1e{left:902px;top:540px;font-size:30px;color:var(--muted);font-weight:500}
+.chips{left:900px;top:604px;display:flex;flex-direction:column;gap:14px}
 .chip{display:flex;align-items:center;gap:20px}
-.chip span{width:58px;height:58px;border-radius:15px;background:var(--teal);color:#fff;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:900;flex:none}
-.chip b{display:block;font-size:34px;font-weight:700;line-height:1.2}
+.chip span{width:54px;height:54px;border-radius:15px;background:var(--teal);color:#fff;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:900;flex:none}
+.chip b{display:block;font-size:31px;font-weight:700;line-height:1.2}
 .chip small{display:block;font-size:21px;color:var(--muted);font-weight:500}
 
 /* 2 and 4: left column */
@@ -111,10 +111,11 @@ body{font-family:Inter,"Noto Sans Tamil","Liberation Sans",Arial,sans-serif;colo
 #ripple{position:absolute;width:20px;height:20px;border-radius:50%;border:4px solid var(--blue);z-index:2}
 
 /* 5 close */
-#s5t{left:0;width:1920px;top:470px;text-align:center;font-size:150px;letter-spacing:-4px;line-height:1.1}
-#s5s{left:0;width:1920px;top:654px;text-align:center;font-size:52px;font-weight:700;color:var(--coral2)}
-#s5e{left:0;width:1920px;top:732px;text-align:center;font-size:30px;font-weight:500;color:var(--muted)}
-#s5c{left:0;width:1920px;top:790px;display:flex;justify-content:center}
+#s5t{left:0;width:1920px;top:392px;display:flex;justify-content:center}
+#s5t img{width:720px;display:block}
+#s5s{left:0;width:1920px;top:632px;text-align:center;font-size:52px;font-weight:700;color:var(--coral2)}
+#s5e{left:0;width:1920px;top:712px;text-align:center;font-size:30px;font-weight:500;color:var(--muted)}
+#s5c{left:0;width:1920px;top:772px;display:flex;justify-content:center}
 #s5c span{display:flex;align-items:center;gap:14px;background:var(--blue);color:#fff;font-size:30px;font-weight:700;padding:14px 34px 16px;border-radius:999px;box-shadow:0 14px 34px rgba(37,99,235,.3)}
 #s5c small{font-family:Inter,sans-serif;font-size:22px;font-weight:600;opacity:.85}
 
@@ -123,7 +124,7 @@ body{font-family:Inter,"Noto Sans Tamil","Liberation Sans",Arial,sans-serif;colo
 </style></head>
 <body>
 <div id="dots"></div>
-<div id="mark" class="abs"><i>+</i>CAREVA+<span>Home health care</span></div>
+<div id="mark" class="abs"><img src="__ASSETS__/images/careva-logo.png" alt="Careva+"></div>
 
 <div id="photo"><i></i></div>
 <div id="badge"><b>✓</b><div class="ta">பயிற்சி பெற்ற செவிலியர்<small class="en">Trained home nurse</small></div></div>
@@ -132,7 +133,7 @@ body{font-family:Inter,"Noto Sans Tamil","Liberation Sans",Arial,sans-serif;colo
 <div class="scene" id="s1">
   <div id="bubble" class="abs ta">வணக்கம்!</div>
   <div id="s1k" class="abs kicker">Trusted home health care</div>
-  <div id="s1t" class="abs title">Careva<span class="plus">+</span></div>
+  <div id="s1t" class="abs"><img src="__ASSETS__/images/careva-logo.png" alt="Careva+"></div>
   <div id="s1s" class="abs ta">நம்பகமான வீட்டு மருத்துவ சேவை</div>
   <div id="s1e" class="abs">Care that comes home.</div>
   <div class="abs chips">
@@ -205,7 +206,7 @@ body{font-family:Inter,"Noto Sans Tamil","Liberation Sans",Arial,sans-serif;colo
 
 <!-- 5. Close -->
 <div class="scene" id="s5">
-  <div id="s5t" class="abs title">Careva<span class="plus">+</span></div>
+  <div id="s5t" class="abs"><img src="__ASSETS__/images/careva-logo.png" alt="Careva+"></div>
   <div id="s5s" class="abs ta">அன்பான கவனிப்பு, உங்கள் வீட்டிலேயே.</div>
   <div id="s5e" class="abs">Care that comes home.</div>
   <div id="s5c" class="abs"><span><b class="ta">இன்றே முன்பதிவு செய்யுங்கள்</b><small>· Book a home visit today</small></span></div>
@@ -232,11 +233,11 @@ function pop(el, lt, tIn, dur = .35) {
 }
 
 // Photo layout per scene: x, y, width, height, corner radius (a circle when radius = width / 2).
-const PHOTO = [[150, 130, 610, 790, 40], [210, 600, 270, 270, 135], [1240, 150, 520, 690, 260], [210, 600, 270, 270, 135], [810, 120, 300, 300, 150]];
+const PHOTO = [[150, 130, 610, 790, 40], [210, 600, 270, 270, 135], [1240, 150, 520, 690, 260], [210, 600, 270, 270, 135], [825, 96, 270, 270, 135]];
 let CONV;
 window.READY = document.fonts.ready.then(() => {
-  const img = new Image(); img.src = "__ASSETS__/images/nurse.jpg";
-  return img.decode().then(() => {
+  const imgs = ["nurse.jpg", "careva-logo.png"].map((n) => { const i = new Image(); i.src = "__ASSETS__/images/" + n; return i.decode(); });
+  return Promise.all(imgs).then(() => {
     const m = $("main").getBoundingClientRect(), c = $("cv").getBoundingClientRect();
     CONV = { x: c.left - m.left + c.width / 2, y: c.top - m.top + c.height / 2 };
     return true;
@@ -375,6 +376,9 @@ window.render = (f) => {
     if (op > 0) SCENES[i](t - s.t0);
   });
   photo(t, k);
+  // The corner logo steps aside while the large logo is on screen.
+  const big = k === 0 ? 1 - clamp((t - (SC[0].t0 + SC[0].dur - 0.4)) / 0.4) : k === 4 ? clamp((t - (SC[4].t0 - 0.2)) / 0.4) : 0;
+  $("mark").style.opacity = 1 - big;
   subtitle(t);
   return f;
 };

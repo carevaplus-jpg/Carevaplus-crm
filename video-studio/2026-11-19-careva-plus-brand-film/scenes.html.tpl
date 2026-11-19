@@ -84,10 +84,11 @@ em{font-style:italic;color:var(--teal2)}
 #trackOn{position:absolute;left:22px;top:38px;width:2px;background:var(--teal);transform-origin:50% 0}
 
 /* 6 end card */
-#mark{left:900px;top:300px;width:120px;height:120px}
-#word{left:0;width:1920px;top:470px;text-align:center;font-size:150px;line-height:1}
-#word .w{background:linear-gradient(100deg,var(--ink) 0%,var(--ink) 42%,#FFFFFF 50%,var(--ink) 58%,var(--ink) 100%);background-size:300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent}
-#word .p{color:var(--teal)}
+#logo{left:490px;top:282px;width:940px;height:288px}
+#logo img{width:100%;height:100%;display:block}
+#sweep{position:absolute;inset:0;-webkit-mask:url("__ASSETS__/images/careva-logo-on-dark.png") center/100% 100% no-repeat;mask:url("__ASSETS__/images/careva-logo-on-dark.png") center/100% 100% no-repeat;
+  background:linear-gradient(100deg,transparent 0%,transparent 40%,rgba(255,255,255,.55) 50%,transparent 60%,transparent 100%);background-size:300% 100%}
+#s6line{left:480px;top:425px;width:960px;height:2px;background:linear-gradient(90deg,transparent,var(--teal) 20%,var(--teal) 80%,transparent);transform-origin:50% 50%}
 #tag{left:0;width:1920px;top:648px;text-align:center;font-size:52px;color:var(--mute)}
 #s6rule{left:900px;top:742px;width:120px}
 #cta{left:0;width:1920px;top:782px;display:flex;justify-content:center}
@@ -192,12 +193,8 @@ em{font-style:italic;color:var(--teal2)}
 
 <!-- 6. End card -->
 <div class="scene" id="s6">
-  <svg id="mark" class="abs" viewBox="0 0 120 120">
-    <rect id="markFill" x="4" y="4" width="112" height="112" rx="30" fill="#2FB8B0"/>
-    <rect id="markLine" x="4" y="4" width="112" height="112" rx="30" fill="none" stroke="#5FD3CB" stroke-width="3" pathLength="1"/>
-    <g id="markPlus"><rect x="52" y="30" width="16" height="60" rx="8" fill="#F3EFE7"/><rect x="30" y="52" width="60" height="16" rx="8" fill="#F3EFE7"/></g>
-  </svg>
-  <div id="word" class="abs serif"><span class="w">Careva</span><span class="p">+</span></div>
+  <div id="s6line" class="abs"></div>
+  <div id="logo" class="abs"><img src="__ASSETS__/images/careva-logo-on-dark.png" alt="Careva+"><div id="sweep"></div></div>
   <div id="tag" class="abs serif"><span class="ln"><span><em style="color:inherit">Care that comes home.</em></span></span></div>
   <div id="s6rule" class="abs rule"></div>
   <div id="cta" class="abs"><span>BOOK A HOME VISIT</span></div>
@@ -242,7 +239,7 @@ window.READY = document.fonts.ready.then(() => {
   const p = $("hb"), L = p.getTotalLength(); HB = [];
   for (let s = 0; s <= L; s += 2) { const q = p.getPointAtLength(s); HB.push([q.x, q.y]); }
   VW = ["v1", "v2", "v3"].map((id) => $(id).querySelector(".ln>span").getBoundingClientRect().width);
-  return true;
+  return $("logo").querySelector("img").decode().then(() => true);
 });
 function hbAt(x) { let best = HB[0]; for (const q of HB) { if (q[0] <= x) best = q; else break; } return best; }
 
@@ -326,17 +323,15 @@ function scene5(lt) {
   $("trackOn").style.height = h + "px";
 }
 
-// 6. End card: the line draws the mark, the wordmark settles, a light sweep, then stillness.
+// 6. End card: the teal line draws across, the Careva+ logo wipes in from it and settles, a light sweep, then stillness.
 function scene6(lt) {
-  const d = eIO((lt - 0.05) / 1.0), ml = $("markLine");
-  ml.style.strokeDasharray = "1 1"; ml.style.strokeDashoffset = 1 - d; ml.style.opacity = d > 0 ? 1 - clamp((lt - 1.3) / .5) : 0;
-  const f = eOut((lt - 0.85) / .6); $("markFill").style.opacity = f;
-  const pk = eOut((lt - 1.0) / .7); $("markPlus").style.opacity = clamp((lt - 1.0) / .2);
-  $("markPlus").style.transform = `scale(${0.4 + 0.6 * pk})`; $("markPlus").style.transformOrigin = "60px 60px";
-  const w = $("word"), wk = eOut((lt - T(5, 0, -0.2)) / 1.2);
-  w.style.opacity = clamp((lt - T(5, 0, -0.2)) / .5); w.style.letterSpacing = `${(1 - wk) * 0.08}em`;
+  const ln = $("s6line"), d = eIO((lt - 0.05) / 0.9);
+  ln.style.transform = `scaleX(${d})`; ln.style.opacity = d > 0 ? 1 - clamp((lt - 1.0) / .5) : 0;
+  const lg = $("logo"), w0 = T(5, 0, -0.45), wk = eOut((lt - w0) / 1.1);
+  lg.style.clipPath = `inset(0 ${(1 - wk) * 100}% 0 0)`; lg.style.opacity = clamp((lt - w0) / .3);
+  lg.style.transform = `scale(${1.035 - 0.035 * eOut((lt - w0) / 2.2)})`;
   const sw = eIO((lt - T(5, 1, 0.3, 1)) / 1.3);
-  w.querySelector(".w").style.backgroundPosition = `${100 - sw * 100}% 0`;
+  $("sweep").style.backgroundPosition = `${100 - sw * 100}% 0`;
   lines($("tag"), lt, T(5, 1, -0.15), 1.0);
   rule($("s6rule"), lt, T(5, 1, 0.5));
   fade($("cta"), lt, T(5, 1, 0.75), .9, 14);

@@ -160,7 +160,8 @@ async function still(sec, png) {
 async function video() {
   const tl = JSON.parse(fs.readFileSync(path.join(BUILD, "timeline.json"), "utf8"));
   const { browser, page } = await open();
-  const outFile = path.join(VIDEO, CFG.name + ".mp4");
+  // Encode into the build folder and move the finished file into place, so a half-written MP4 never sits in the repo.
+  const outFile = path.join(VIDEO, CFG.name + ".mp4"), tmpFile = path.join(BUILD, CFG.name + ".mp4");
   // Audio: the narration alone, or the narration over a music bed; optionally normalised to a loudness target.
   const audioIn = ["-i", path.join(BUILD, "narration.wav")];
   let af = "[1:a]anull";
@@ -176,7 +177,7 @@ async function video() {
     "-c:v", "libx264", "-preset", "medium", "-crf", String(CFG.crf), "-maxrate", "14M", "-bufsize", "28M",
     "-x264-params", "aq-mode=3:colorprim=bt709:transfer=bt709:colormatrix=bt709",
     "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-r", String(FPS), "-fps_mode", "cfr",
-    "-c:a", "aac", "-b:a", "160k", "-ar", String(RATE), "-movflags", "+faststart", "-tag:v", "avc1", outFile],
+    "-c:a", "aac", "-b:a", "160k", "-ar", String(RATE), "-movflags", "+faststart", "-tag:v", "avc1", tmpFile],
     { stdio: ["pipe", "inherit", "inherit"] });
   const done = new Promise((res, rej) => ff.on("close", (c) => (c ? rej(new Error("ffmpeg exit " + c)) : res())));
   const started = Date.now();
@@ -187,6 +188,7 @@ async function video() {
     if (f % 90 === 0) console.log(`frame ${f}/${tl.frames}`);
   }
   ff.stdin.end(); await done; await browser.close();
+  fs.copyFileSync(tmpFile, outFile); fs.rmSync(tmpFile);
   console.log(`wrote ${outFile} in ${((Date.now() - started) / 1000).toFixed(0)} s`);
 }
 

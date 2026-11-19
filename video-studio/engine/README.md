@@ -42,7 +42,7 @@ node ../engine/build.cjs . still 3.5 /tmp/frame.png  # check one frame
 node ../engine/build.cjs . video                     # render the MP4
 ```
 
-Scratch files go to `video-studio/.build/<video>/` (git-ignored). The MP4 and SRT are written into the video folder.
+Scratch files go to `video-studio/.build/<video>/` (git-ignored). The SRT is written into the video folder; the MP4 is encoded in the build folder and copied into the video folder only once it is complete.
 
 ## video.json
 
@@ -68,7 +68,7 @@ In `scenes.html.tpl`, `__ASSETS__` is replaced with the video folder's file URL,
 
 | Video | Length |
 |---|---|
-| [2026-11-19-careva-plus-intro](../2026-11-19-careva-plus-intro/script.md) | 23.4 s |
+| [2026-11-19-careva-plus-intro](../2026-11-19-careva-plus-intro/script.md) (Tamil voice-over, nurse photo) | 44.8 s |
 | [2026-11-19-careva-plus-brand-film](../2026-11-19-careva-plus-brand-film/script.md) (premium brand spot, with music) | 35.8 s |
 
 ## Credit

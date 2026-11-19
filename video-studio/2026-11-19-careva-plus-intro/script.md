@@ -4,6 +4,7 @@ A Tamil-language intro to Careva+ home health care. 16:9, 1920×1080, 30 fps, ab
 
 - **Voice:** Microsoft neural Tamil voice `ta-IN-PallaviNeural` (see `video.json`; needs `pip install edge-tts`).
 - **Text:** Tamil subtitles that match the voice; headings in Tamil with a small English line.
+- **Logo:** `images/careva-logo.png`, the Careva+ logo cut out of its white background; shown in the corner, as the hero in scene 1 and on the closing card.
 - **Picture:** an AI-generated photo of a home-care nurse (`images/nurse.jpg`, made with Canva). Swap in a real Careva+ nurse photo with the same file name when you have one.
 
 Build from this folder (see `../engine/README.md`):

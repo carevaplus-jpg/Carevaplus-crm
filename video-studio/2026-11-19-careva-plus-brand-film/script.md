@@ -6,6 +6,8 @@ A 36-second premium brand spot for Careva+ home health care. 16:9, 1920×1080, 3
 
 **Look:** deep navy (#0B1430), off-white (#F3EFE7), teal (#2FB8B0) as the single accent, a touch of coral (#F2557A) for the heart. Instrument Serif for headlines, Inter for support text. Soft glows, film grain, slow camera drift. Expo-out entrances, expo-in exits, generous holds.
 
+**Logo:** the Careva+ logo with light lettering for the dark background (`images/careva-logo-on-dark.png`), revealed on the end card.
+
 **Sound:** Kokoro `af_heart` voice at 0.97 speed over an original 72 BPM music bed made by `music.cjs` (warm pads, a soft piano note on each key reveal, a heartbeat on the opening pulse). Scenes are rounded to whole beats so every cut lands on the music. Mixed to −14 LUFS. On-screen text carries the message with the sound off; subtitles are delivered as `careva-plus-brand-film.srt` rather than burned in.
 
 **Build** (from this folder):
@@ -33,5 +35,5 @@ Every care plan is shaped around one person. Their comfort, their safety, their 
 **5. Smart AI CRM** ("Every enquiry answered. Every follow-up, on time."; a glass timeline: enquiry, call back, nurse assigned, follow-up)
 Behind every visit, a smart AI system is at work. It keeps every enquiry and follow-up on track.
 
-**6. End card** (the line draws the Careva+ mark; wordmark, tagline, "Book a home visit"; light sweep; hold)
+**6. End card** (the teal line draws across and the Careva+ logo wipes in from it; tagline, "Book a home visit"; light sweep; hold)
 Careva+. Care that comes home.
