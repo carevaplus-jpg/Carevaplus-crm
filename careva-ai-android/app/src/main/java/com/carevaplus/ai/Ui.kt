@@ -48,6 +48,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 // ---------- theme ----------
@@ -234,14 +235,16 @@ private fun ChatScreen(vm: ChatViewModel) {
         ) { pad ->
             Column(Modifier.fillMaxSize().padding(pad).imePadding()) {
                 when (val s = vm.engineState) {
-                    is EngineState.Loading -> StatusBar("Starting ${s.model.name}…", progress = true)
+                    is EngineState.Loading -> StatusBar(
+                        if (s.firstTime) "Preparing ${s.model.name} for first use. This happens only once and can take 1–3 minutes; later starts take seconds."
+                        else "Starting ${s.model.name}…", progress = true)
                     is EngineState.Failed -> StatusBar(s.message, progress = false, action = "Models") { vm.screen = Screen.MODELS }
                     EngineState.NoModel -> StatusBar("No model selected.", progress = false, action = "Choose") { vm.screen = Screen.MODELS }
                     is EngineState.Ready -> {}
                 }
                 val messages = vm.current?.messages.orEmpty()
                 if (messages.isEmpty() && vm.streaming == null) Welcome(vm, Modifier.weight(1f))
-                else Messages(messages, vm.streaming, vm.streamingThought, Modifier.weight(1f))
+                else Messages(messages, vm.streaming, vm.streamingThought, Live(vm.phase, vm.startedAt, vm.wordsPerSecond), Modifier.weight(1f))
                 Composer(vm)
             }
         }
@@ -345,14 +348,20 @@ private fun Welcome(vm: ChatViewModel, modifier: Modifier) {
     }
 }
 
+/** Live progress of the reply being written. */
+private data class Live(val phase: Phase, val startedAt: Long, val wordsPerSecond: Double)
+
 @Composable
-private fun Messages(messages: List<Msg>, streaming: String?, thought: String, modifier: Modifier) {
+private fun Messages(messages: List<Msg>, streaming: String?, thought: String, live: Live, modifier: Modifier) {
     val list = rememberLazyListState()
     val count = messages.size + if (streaming != null) 1 else 0
-    LaunchedEffect(count, streaming?.length, thought.length) { if (count > 0) list.scrollToItem(count - 1, Int.MAX_VALUE / 2) }
+    // Follow the reply as it grows, without re-scrolling on every word.
+    LaunchedEffect(count, (streaming?.length ?: 0) / 60, thought.length / 120, live.phase) {
+        if (count > 0) list.scrollToItem(count - 1, Int.MAX_VALUE / 2)
+    }
     LazyColumn(modifier.fillMaxWidth(), state = list, contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp)) {
-        items(messages) { m -> if (m.isUser) UserMessage(m.text) else AssistantMessage(m, live = false) }
-        if (streaming != null) item { AssistantMessage(Msg("assistant", Prompt.clean(streaming), thought), live = true) }
+        items(messages) { m -> if (m.isUser) UserMessage(m.text) else AssistantMessage(m, live = null) }
+        if (streaming != null) item { AssistantMessage(Msg("assistant", Prompt.clean(streaming), thought), live = live) }
     }
 }
 
@@ -365,43 +374,76 @@ private fun UserMessage(text: String) {
     }
 }
 
+/** What the AI is doing right now: phase, a one-line summary of its current thought, a timer and the writing speed. */
 @Composable
-private fun AssistantMessage(m: Msg, live: Boolean) {
+private fun ActivityLine(live: Live, thought: String) {
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) { while (true) { delay(250); now = System.currentTimeMillis() } }
+    val secs = ((now - live.startedAt) / 1000).coerceAtLeast(0)
+    val pulse = rememberInfiniteTransition(label = "dot")
+    val a by pulse.animateFloat(0.25f, 1f, infiniteRepeatable(tween(650), RepeatMode.Reverse), label = "a")
+    Row(
+        Modifier.fillMaxWidth().padding(bottom = 6.dp).background(Soft, RoundedCornerShape(12.dp)).padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(8.dp).alpha(a).background(Green, CircleShape))
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text(live.phase.label + "…", color = Ink, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
+            if (live.phase == Phase.THINKING) {
+                val summary = thoughtSummary(thought)
+                if (summary.isNotEmpty()) Text(summary, color = Muted, fontStyle = FontStyle.Italic, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+        }
+        Spacer(Modifier.width(8.dp))
+        Text(
+            "${secs}s" + if (live.phase == Phase.WRITING && live.wordsPerSecond > 0) " · %.0f words/s".format(live.wordsPerSecond) else "",
+            color = Muted, style = MaterialTheme.typography.labelSmall,
+        )
+    }
+}
+
+@Composable
+private fun AssistantMessage(m: Msg, live: Live?) {
     val clipboard = LocalClipboardManager.current
     var showThought by remember { mutableStateOf(false) }
     Row(Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
         Image(painterResource(R.drawable.careva_mark), null, Modifier.size(28.dp).padding(top = 2.dp))
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
+            if (live != null) ActivityLine(live, m.thought)
             if (m.thought.isNotBlank()) {
-                val thinkingNow = live && m.text.isEmpty()
                 Row(
                     Modifier.clip(RoundedCornerShape(10.dp)).clickable { showThought = !showThought }.padding(vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(Icons.Outlined.Psychology, null, tint = Muted, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
-                    if (thinkingNow) Pulsing("Thinking…") else Text(if (m.seconds > 0) "Thought for ${m.seconds}s" else "Thoughts", color = Muted, style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        when { live != null -> if (showThought) "Hide thinking" else "Show thinking"; m.seconds > 0 -> "Thought for ${m.seconds}s"; else -> "Thoughts" },
+                        color = Muted, style = MaterialTheme.typography.bodyMedium,
+                    )
                     Icon(Icons.Rounded.KeyboardArrowDown, null, tint = Muted, modifier = Modifier.size(18.dp))
                 }
-                AnimatedVisibility(showThought || thinkingNow) {
+                AnimatedVisibility(showThought) {
                     Text(
-                        m.thought.trim().let { if (thinkingNow) it.takeLast(600) else it },
+                        m.thought.trim().let { if (live != null) it.takeLast(1500) else it },
                         color = Muted, style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp),
-                        modifier = Modifier.padding(start = 8.dp, top = 4.dp, bottom = 8.dp).border(width = 0.dp, color = Color.Transparent)
-                            .background(Soft, RoundedCornerShape(10.dp)).padding(10.dp),
+                        modifier = Modifier.padding(start = 8.dp, top = 4.dp, bottom = 8.dp).background(Soft, RoundedCornerShape(10.dp)).padding(10.dp),
                     )
                 }
             }
-            if (live && m.text.isEmpty() && m.thought.isBlank()) Pulsing("Thinking…")
-            else if (m.text.isNotEmpty()) SelectionContainer {
-                Text(markdown(m.text + if (live) " ▍" else ""), color = Ink, style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 24.sp))
+            if (m.text.isNotEmpty()) SelectionContainer {
+                Text(markdown(m.text + if (live != null) " ▍" else ""), color = Ink, style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 24.sp))
             }
-            if (!live) Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { clipboard.setText(AnnotatedString(m.text)) }, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Outlined.ContentCopy, "Copy", tint = Muted, modifier = Modifier.size(18.dp))
+            if (live == null) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = { clipboard.setText(AnnotatedString(m.text)) }, modifier = Modifier.size(36.dp)) {
+                        Icon(Icons.Outlined.ContentCopy, "Copy", tint = Muted, modifier = Modifier.size(18.dp))
+                    }
+                    if (m.model.isNotEmpty()) Text("${m.model} · ${m.effort}", color = Muted, style = MaterialTheme.typography.labelSmall)
                 }
-                if (m.model.isNotEmpty()) Text("${m.model} · ${m.effort}", color = Muted, style = MaterialTheme.typography.labelSmall)
+                if (m.stats.isNotEmpty()) Text(m.stats, color = Muted, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(start = 10.dp))
             }
         }
     }

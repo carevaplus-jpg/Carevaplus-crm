@@ -20,7 +20,7 @@ import kotlinx.coroutines.withContext
 
 sealed interface EngineState {
     data object NoModel : EngineState
-    data class Loading(val model: AiModel) : EngineState
+    data class Loading(val model: AiModel, val firstTime: Boolean) : EngineState
     data class Ready(val model: AiModel, val gpu: Boolean) : EngineState
     data class Failed(val model: AiModel, val message: String) : EngineState
 }
@@ -28,6 +28,21 @@ sealed interface EngineState {
 data class DownloadInfo(val done: Long, val total: Long, val paused: Boolean, val failed: String? = null)
 
 enum class Screen { CHAT, MODELS }
+
+/** What the AI is doing right now, shown live above the reply. */
+enum class Phase(val label: String) { READING("Reading your message"), THINKING("Thinking"), WRITING("Writing") }
+
+/** A one-line summary of the latest finished sentence of the model's reasoning, for the live status. */
+fun thoughtSummary(thought: String): String {
+    val clean = thought.replace(Regex("[*#`>_|]"), "").replace(Regex("^\\s*\\d+\\.\\s*", RegexOption.MULTILINE), "")
+        .replace(Regex("\\s+"), " ").trim()
+    if (clean.isEmpty()) return ""
+    val sentences = clean.split(Regex("(?<=[.!?:])\\s+"))
+    val done = sentences.dropLast(1).lastOrNull { it.length > 8 } ?: sentences.last()
+    return if (done.length > 90) done.take(88).trimEnd() + "…" else done
+}
+
+private fun wordCount(s: String) = s.trim().split(Regex("\\s+")).count { it.isNotEmpty() }
 
 class ChatViewModel(app: Application) : AndroidViewModel(app) {
     private val downloader = ModelDownloader(app)
@@ -41,13 +56,16 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     val downloads = mutableStateMapOf<String, DownloadInfo>()
     var activeModelId by mutableStateOf(prefs.getString("model", null)); private set
     var effort by mutableStateOf(Effort.entries.firstOrNull { it.name == prefs.getString("effort", null) } ?: Effort.LOW); private set
-    var useGpu by mutableStateOf(prefs.getBoolean("gpu", false)); private set
+    var useGpu by mutableStateOf(prefs.getBoolean("gpu", true)); private set
 
     val chats = mutableStateListOf<Chat>()
     var currentId by mutableStateOf<String?>(null); private set
     /** The reply being written, or null when idle. */
     var streaming by mutableStateOf<String?>(null); private set
     var streamingThought by mutableStateOf(""); private set
+    var phase by mutableStateOf(Phase.READING); private set
+    var startedAt by mutableStateOf(0L); private set
+    var wordsPerSecond by mutableStateOf(0.0); private set
     private var replyJob: Job? = null
 
     val activeModel get() = Catalog.byId(activeModelId)
@@ -133,7 +151,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun load(m: AiModel) {
-        engineState = EngineState.Loading(m)
+        engineState = EngineState.Loading(m, needsPreparing(getApplication(), m))
         viewModelScope.launch {
             engineState = try {
                 withContext(Dispatchers.Default) { engine.load(m, downloader.file(m).absolutePath, useGpu) }
@@ -176,25 +194,52 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             updated = System.currentTimeMillis(),
         )
         put(chat); store.save(chats)
-        streaming = ""; streamingThought = ""
-        val started = System.currentTimeMillis()
+        streaming = ""; streamingThought = ""; phase = Phase.READING; wordsPerSecond = 0.0
+        val started = System.currentTimeMillis(); startedAt = started
         val effortUsed = effort
+        // The engine's pieces arrive on a background thread; collect them in buffers and redraw the
+        // screen at most ~12 times a second instead of on every word.
+        val lock = Any()
+        val text = StringBuilder(); val thought = StringBuilder()
+        var firstThought = 0L; var firstText = 0L
+        fun flush() {
+            val (t, th) = synchronized(lock) { text.toString() to thought.toString() }
+            if (th.length != streamingThought.length) streamingThought = th
+            if (t.length != (streaming?.length ?: 0)) streaming = t
+            phase = when { t.isNotEmpty() -> Phase.WRITING; th.isNotEmpty() -> Phase.THINKING; else -> Phase.READING }
+            if (firstText > 0) {
+                val secs = (System.currentTimeMillis() - firstText) / 1000.0
+                if (secs > 0.5) wordsPerSecond = wordCount(t) / secs
+            }
+        }
         replyJob = viewModelScope.launch {
+            val ticker = launch { while (isActive) { delay(80); flush() } }
             var error: Throwable? = null
             try {
                 withContext(Dispatchers.Default) {
                     engine.reply(chat.id, history, input, effortUsed,
-                        onThought = { t -> launch(Dispatchers.Main) { streamingThought += t } },
-                        onText = { t -> launch(Dispatchers.Main) { streaming = (streaming ?: "") + t } })
+                        onThought = { t -> synchronized(lock) { if (firstThought == 0L) firstThought = System.currentTimeMillis(); thought.append(t) } },
+                        onText = { t -> synchronized(lock) { if (firstText == 0L) firstText = System.currentTimeMillis(); text.append(t) } })
                 }
             } catch (t: Throwable) { error = t }
-            finish(chat.id, ready.model, effortUsed, ((System.currentTimeMillis() - started) / 1000).toInt(), error)
+            ticker.cancel(); flush()
+            val end = System.currentTimeMillis()
+            val thinkSecs = if (firstThought > 0) (((if (firstText > 0) firstText else end) - firstThought) / 1000).toInt() else 0
+            val words = wordCount(streaming ?: "")
+            val speed = if (firstText > 0 && end - firstText > 300) words * 1000.0 / (end - firstText) else 0.0
+            val stats = buildList {
+                add("$words words")
+                if (speed > 0) add("%.0f words/s".format(speed))
+                add("${(end - started) / 1000}s")
+                add(if (engine.loadedOnGpu) "GPU" else "CPU")
+            }.joinToString(" · ")
+            finish(chat.id, ready.model, effortUsed, thinkSecs, stats, error)
         }
     }
 
     fun stop() = engine.stop()
 
-    private fun finish(chatId: String, model: AiModel, effortUsed: Effort, seconds: Int, err: Throwable?) {
+    private fun finish(chatId: String, model: AiModel, effortUsed: Effort, seconds: Int, stats: String, err: Throwable?) {
         var reply = Prompt.clean(streaming ?: "")
         if (reply.isEmpty()) reply = when {
             err is CancellationException -> "(Stopped.)"
@@ -205,7 +250,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         streaming = null; streamingThought = ""
         val chat = chats.firstOrNull { it.id == chatId } ?: return
         put(chat.copy(
-            messages = chat.messages + Msg("assistant", reply, thought, model.name, effortUsed.label, seconds),
+            messages = chat.messages + Msg("assistant", reply, thought, model.name, effortUsed.label, seconds, stats),
             updated = System.currentTimeMillis(),
         ))
         store.save(chats)

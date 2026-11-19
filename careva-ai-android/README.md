@@ -28,14 +28,22 @@ The engine also writes a weight cache about as large as the model the first time
 
 The model's reasoning appears in a collapsible **Thinking** section above each answer. In testing, the question "a nurse visits 3 patients a day, 6 days a week; how many visits in 4 weeks?" was answered wrongly at Low effort by every model except Careva Think, and correctly (72) at High effort.
 
+## Speed and the live view
+
+- **First start of each model is slow, once.** The engine prepares the model's weights the first time it loads (1–3 minutes on a phone; the app says so). They are kept in permanent app storage, so later starts take about a second.
+- **GPU is on by default** (Models screen → Use GPU), falling back to the CPU automatically if the phone's GPU can't run the model.
+- **Low effort is fastest.** Higher effort adds thinking time before the answer.
+- For reference, Careva Plus on a 4-core server CPU wrote about 17 words per second, with the first word after under half a second (once prepared).
+- While it works, a status line shows **what the AI is doing**: Reading your message → Thinking (with a one-line summary of its current reasoning) → Writing, plus a timer and words per second. Tap **Show thinking** for the full reasoning. Each finished reply shows its words, speed, time and whether it ran on GPU or CPU.
+
 ## Honest limits
 
 These are the strongest free models that fit on a phone, and they are much smaller than cloud AI such as Claude or ChatGPT: expect more mistakes, especially with facts, long documents and hard reasoning. The most powerful open models that compete with Claude need hundreds of gigabytes of memory and server GPUs, so they can't run on a phone. Careva+ AI is not a medical tool.
 
 ## Install
 
-1. Copy `release/careva-ai-2.0.0.apk` to an Android phone (Android 8.0 or newer, 64-bit).
-2. Open it and allow "Install unknown apps" when asked. Version 2.0 replaces 1.0 and removes its old model file.
+1. Copy `release/careva-ai-2.1.0.apk` to an Android phone (Android 8.0 or newer, 64-bit).
+2. Open it and allow "Install unknown apps" when asked. Installing over an older version keeps your chats and models.
 3. Open **Careva+ AI**, download **Careva Plus** first, then add others as needed.
 4. Optional: turn on **Use GPU** on the Models screen for faster replies on many phones.
 

@@ -14,6 +14,8 @@ data class Msg(
     val model: String = "",
     val effort: String = "",
     val seconds: Int = 0,
+    /** For example "142 words · 16 words/s · GPU". */
+    val stats: String = "",
 ) {
     val isUser get() = role == "user"
 }
@@ -41,7 +43,7 @@ class ChatStore(ctx: Context) {
                     updated = o.optLong("updated"),
                     messages = (0 until ms.length()).map { j ->
                         val m = ms.getJSONObject(j)
-                        Msg(m.getString("role"), m.getString("text"), m.optString("thought"), m.optString("model"), m.optString("effort"), m.optInt("seconds"))
+                        Msg(m.getString("role"), m.getString("text"), m.optString("thought"), m.optString("model"), m.optString("effort"), m.optInt("seconds"), m.optString("stats"))
                     },
                 )
             }.sortedByDescending { it.updated }
@@ -56,7 +58,7 @@ class ChatStore(ctx: Context) {
                 put("messages", JSONArray().apply {
                     c.messages.forEach { m ->
                         put(JSONObject().put("role", m.role).put("text", m.text).put("thought", m.thought)
-                            .put("model", m.model).put("effort", m.effort).put("seconds", m.seconds))
+                            .put("model", m.model).put("effort", m.effort).put("seconds", m.seconds).put("stats", m.stats))
                     }
                 })
             })

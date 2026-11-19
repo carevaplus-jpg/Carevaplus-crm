@@ -74,7 +74,8 @@ class ModelDownloader(private val ctx: Context) {
     fun delete(m: AiModel) {
         cancel(m); file(m).delete()
         // and the engine's weight cache for it (named after the model file)
-        File(ctx.cacheDir, "litertlm").listFiles()?.filter { it.name.startsWith(m.file) }?.forEach { it.delete() }
+        for (d in listOf(weightCacheDir(ctx), File(ctx.cacheDir, "litertlm")))
+            d.listFiles()?.filter { it.name.startsWith(m.file) }?.forEach { it.delete() }
     }
 
     /** Free space for models, counting what an existing download of [m] already uses. */
@@ -88,6 +89,16 @@ class ModelDownloader(private val ctx: Context) {
         ctx.getSharedPreferences("model", Context.MODE_PRIVATE).edit().clear().apply()
     }
 }
+
+/**
+ * Where the engine keeps each model's prepared weights. Building them takes a minute or more the first time a
+ * model loads; this folder is permanent (unlike the cache folder Android clears when storage is low), so it
+ * only happens once.
+ */
+fun weightCacheDir(ctx: Context) = File(ctx.noBackupFilesDir, "litertlm").apply { mkdirs() }
+
+/** True until a model has been prepared once on this phone. */
+fun needsPreparing(ctx: Context, m: AiModel) = weightCacheDir(ctx).listFiles()?.none { it.name.startsWith(m.file) } ?: true
 
 /** Runs one model at a time on the phone with Google's LiteRT-LM, keeping the chat in the model's memory between turns. */
 class AiEngine(private val ctx: Context) {
@@ -103,7 +114,7 @@ class AiEngine(private val ctx: Context) {
     fun load(model: AiModel, path: String, gpu: Boolean) {
         if (loaded?.id == model.id && engine != null && loadedOnGpu == gpu) return
         unload()
-        val cache = File(ctx.cacheDir, "litertlm").apply { mkdirs() }.absolutePath
+        val cache = weightCacheDir(ctx).absolutePath
         fun open(backend: Backend) = Engine(EngineConfig(modelPath = path, backend = backend, maxNumTokens = model.contextTokens, cacheDir = cache)).also { it.initialize() }
         engine = if (gpu) {
             try { open(Backend.GPU()).also { loadedOnGpu = true } } catch (e: Throwable) { loadedOnGpu = false; open(Backend.CPU()) }
