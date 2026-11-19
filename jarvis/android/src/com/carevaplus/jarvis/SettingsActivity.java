@@ -475,6 +475,8 @@ public class SettingsActivity extends Activity implements ModelDownloads.Watcher
         b.setPadding(dp(16), 0, dp(16), 0);
         b.setMinHeight(dp(40));
         b.setMinimumHeight(dp(40));
+        b.setMinWidth(dp(48));        // Android's default minimum (88dp) made the ↻ button far too wide
+        b.setMinimumWidth(dp(48));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(40));
         lp.setMargins(0, dp(6), dp(8), dp(2));
         b.setLayoutParams(lp);
