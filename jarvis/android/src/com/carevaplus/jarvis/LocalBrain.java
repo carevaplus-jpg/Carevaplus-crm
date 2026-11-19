@@ -15,8 +15,6 @@ public class LocalBrain implements Brain {
             "https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/main/" + MODEL_FILE;
     public static final long MODEL_BYTES = 1_280_835_840L;
 
-    public interface Listener { void onPartial(String textSoFar); }
-
     private static final int N_CTX = 4096;
     private static final int MAX_REPLY_TOKENS = 700;
 
@@ -25,14 +23,16 @@ public class LocalBrain implements Brain {
 
     private final File modelFile;
     private final String system;
-    private Listener listener;
+    private Brain.Listener listener;
 
     public LocalBrain(File modelFile, String profile) {
         this.modelFile = modelFile;
         this.system = Persona.systemPrompt(profile);
     }
 
-    public void setListener(Listener l) { this.listener = l; }
+    @Override public void setListener(Brain.Listener l) { this.listener = l; }
+
+    @Override public void stop() { stopAll(); }
 
     @Override public String label() { return "On phone · Qwen 3.5"; }
 
@@ -58,7 +58,7 @@ public class LocalBrain implements Brain {
         if (handle != 0) { LlamaNative.free(handle); handle = 0; loadedPath = null; }
     }
 
-    public static void stop() {
+    public static void stopAll() {
         long h = handle;
         if (h != 0) LlamaNative.stop(h);
     }

@@ -25,7 +25,10 @@ public class JarvisClient implements Brain {
 
     /** A user-friendly error message, safe to show on screen. */
     public static class JarvisException extends Exception {
-        public JarvisException(String message) { super(message); }
+        /** True when another brain might succeed (rate limit, busy server, timeout). */
+        public final boolean retryable;
+        public JarvisException(String message) { this(message, false); }
+        public JarvisException(String message, boolean retryable) { super(message); this.retryable = retryable; }
     }
 
     private static final int CONNECT_TIMEOUT_MS = 8000;
@@ -149,7 +152,7 @@ public class JarvisClient implements Brain {
         } catch (JarvisException e) {
             throw e;
         } catch (SocketTimeoutException e) {
-            throw new JarvisException("Jarvis took too long to answer. Try a shorter question, or check your computer.");
+            throw new JarvisException("Jarvis took too long to answer. Try a shorter question, or check your computer.", true);
         } catch (ConnectException | UnknownHostException e) {
             throw new JarvisException("Can't reach your computer at " + baseUrl + ". Check that it is on, that your phone is on the same Wi-Fi, and that 'jarvis serve --host 0.0.0.0' is running.");
         } catch (IOException e) {

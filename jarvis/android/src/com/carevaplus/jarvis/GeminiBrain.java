@@ -21,6 +21,7 @@ public class GeminiBrain implements Brain {
     private final String system;
     private final String base;
     private String model; // e.g. "gemini-2.5-flash"; resolved on first use when empty
+    private static volatile String autoModel = ""; // remembered "Auto" pick for this app session
 
     public GeminiBrain(String apiKey, String profile, String cachedModel) { this(apiKey, profile, cachedModel, BASE); }
 
@@ -45,7 +46,8 @@ public class GeminiBrain implements Brain {
     public String reply(List<String[]> history) throws JarvisClient.JarvisException {
         if (apiKey.isEmpty()) throw new JarvisClient.JarvisException("Add your Gemini API key in Settings (⚙).");
         try {
-            if (model.isEmpty()) model = pickModel();
+            if (model.isEmpty()) model = autoModel;
+            if (model.isEmpty()) { model = pickModel(); autoModel = model; }
             JSONArray contents = new JSONArray();
             for (String[] m : Http.trimToUserStart(history)) {
                 contents.put(new JSONObject()
@@ -59,17 +61,17 @@ public class GeminiBrain implements Brain {
             Http.Response r = Http.send("POST", base + "/models/" + model + ":generateContent",
                     headers(), body.toString(), 15000, 5 * 60 * 1000);
             if (r.code == 404) {
-                model = ""; // model retired: pick again next time
-                throw new JarvisClient.JarvisException("That Gemini model is no longer available. Please send your message again.");
+                model = ""; autoModel = ""; // model retired: pick again next time
+                throw new JarvisClient.JarvisException("That Gemini model is no longer available. Please send your message again.", true);
             }
-            if (r.code != 200) throw new JarvisClient.JarvisException(errorMessage(r));
+            if (r.code != 200) throw new JarvisClient.JarvisException(errorMessage(r), r.code == 429 || r.code >= 500);
             return parse(r.body);
         } catch (JSONException e) {
             throw new JarvisClient.JarvisException("Gemini sent a reply this app could not read. Please try again.");
         } catch (UnknownHostException e) {
             throw new JarvisClient.JarvisException("No internet connection. Check your Wi-Fi or mobile data.");
         } catch (SocketTimeoutException e) {
-            throw new JarvisClient.JarvisException("Gemini took too long to answer. Please try again.");
+            throw new JarvisClient.JarvisException("Gemini took too long to answer. Please try again.", true);
         } catch (IOException e) {
             throw new JarvisClient.JarvisException("Connection problem: " + e.getMessage());
         }
@@ -80,6 +82,32 @@ public class GeminiBrain implements Brain {
         Http.Response r = Http.send("GET", base + "/models?pageSize=1000", headers(), null, 15000, 30000);
         if (r.code != 200) throw new JarvisClient.JarvisException(errorMessage(r));
         return choose(new JSONObject(r.body).optJSONArray("models"));
+    }
+
+    /** All Gemini chat models this key can use, newest Flash first. */
+    public java.util.List<String> listModels() throws JarvisClient.JarvisException {
+        try {
+            Http.Response r = Http.send("GET", base + "/models?pageSize=1000", headers(), null, 15000, 30000);
+            if (r.code != 200) throw new JarvisClient.JarvisException(errorMessage(r));
+            JSONArray models = new JSONObject(r.body).optJSONArray("models");
+            java.util.List<String> out = new java.util.ArrayList<>();
+            String best = choose(models);
+            out.add(best);
+            for (int i = 0; models != null && i < models.length(); i++) {
+                JSONObject m = models.getJSONObject(i);
+                String name = m.optString("name").replaceFirst("^models/", "");
+                JSONArray methods = m.optJSONArray("supportedGenerationMethods");
+                if (methods == null || !methods.toString().contains("\"generateContent\"")) continue;
+                if (!name.startsWith("gemini-") || name.contains("image") || name.contains("tts") || name.contains("live")
+                        || name.contains("embedding") || out.contains(name)) continue;
+                out.add(name);
+            }
+            return out;
+        } catch (JSONException e) {
+            throw new JarvisClient.JarvisException("Could not read Gemini's model list.");
+        } catch (IOException e) {
+            throw new JarvisClient.JarvisException("Could not reach Gemini: " + e.getMessage());
+        }
     }
 
     static String choose(JSONArray models) throws JSONException, JarvisClient.JarvisException {

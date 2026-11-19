@@ -1,5 +1,6 @@
 package com.carevaplus.jarvis;
 
+import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
@@ -8,104 +9,108 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.graphics.Color;
 import android.graphics.Typeface;
-import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.speech.RecognizerIntent;
 import android.speech.tts.TextToSpeech;
 import android.text.InputType;
-import android.util.TypedValue;
+import android.text.format.DateFormat;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
-import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
-import android.widget.CheckBox;
-import android.widget.EditText;
+import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
-import android.widget.RadioButton;
-import android.widget.RadioGroup;
+import android.widget.EditText;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.io.File;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class MainActivity extends Activity implements TextToSpeech.OnInitListener {
-
-    // Colours
-    private static final int BG = Color.parseColor("#0A1018");
-    private static final int PANEL = Color.parseColor("#111B26");
-    private static final int ACCENT = Color.parseColor("#29C5F6");
-    private static final int ACCENT_DIM = Color.parseColor("#1B6F8C");
-    private static final int USER_BUBBLE = Color.parseColor("#1479A3");
-    private static final int JARVIS_BUBBLE = Color.parseColor("#17222E");
-    private static final int TEXT = Color.parseColor("#E8F4FA");
-    private static final int MUTED = Color.parseColor("#7F93A3");
-    private static final int ERROR = Color.parseColor("#FF8A80");
+public class MainActivity extends Activity implements TextToSpeech.OnInitListener, ModelDownloads.Watcher {
 
     private static final int REQ_VOICE = 42;
-    private static final int MAX_HISTORY = 16;
+    private static final int MAX_HISTORY = 20;
 
-    private static final String PREFS = "jarvis";
-    private static final String K_URL = "url";
-    private static final String K_KEY = "key";
-    private static final String K_SPEAK = "speak";
-    private static final String K_BRAIN = "brain";          // claude | gemini | local | computer
-    private static final String K_CLAUDE_KEY = "claude_key";
-    private static final String K_GEMINI_KEY = "gemini_key";
-    private static final String K_GEMINI_MODEL = "gemini_model";
-    private static final String K_PROFILE = "profile";
+    /** Quick actions for everyday Careva+ work: {chip label, text put in the message box}. */
+    private static final String[][] QUICK = {
+            {"✉  Reply to enquiry", "Draft a warm WhatsApp reply to this new enquiry and list the details I should collect: "},
+            {"🔔  Follow-up", "Write a short, polite follow-up message to a family who enquired 2 days ago about "},
+            {"📅  Shift plan", "Make a clear shift plan for these nurses/caretakers and patients: "},
+            {"💰  Quotation", "Prepare a simple quotation for: "},
+            {"🧾  Invoice", "Write an invoice message for: "},
+            {"📣  Social post", "Write an Instagram post (with hashtags) about our "},
+            {"📋  Staff notice", "Write a short notice to all nurses and caretakers about "},
+    };
 
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
     private final Handler ui = new Handler(Looper.getMainLooper());
-    private final List<String[]> history = new ArrayList<>();
+    private final List<ChatStore.Msg> msgs = new ArrayList<>();
 
     private SharedPreferences prefs;
     private LinearLayout chat;
     private ScrollView scroll;
     private EditText input;
     private Button sendBtn;
-    private TextView status;
-    private TextView thinking;
+    private TextView chip;
+    private ArcView arc;
+    private View welcome;
+    private View typing;
+    private TextView liveBubble;
+    private ValueAnimator typingAnim;
     private TextToSpeech tts;
     private boolean ttsReady;
     private boolean busy;
-    private final ExecutorService downloader = Executors.newSingleThreadExecutor();
-    private ModelDownloader download;      // non-null while downloading
-    private String downloadStatus = "";
     private Brain activeBrain;
+    private String lastShownDownload = "";
 
-    // ------------------------------------------------------------------ setup
+    private int dp(float v) { return Ui.dp(this, v); }
+
+    // ------------------------------------------------------------------ lifecycle
 
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
-        prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
-        getWindow().setStatusBarColor(BG);
-        getWindow().setNavigationBarColor(BG);
+        prefs = BrainFactory.prefs(this);
+        BrainFactory.migrate(prefs);
+        getWindow().setStatusBarColor(Ui.BG_TOP);
+        getWindow().setNavigationBarColor(Ui.PANEL);
         getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         setContentView(buildUi());
         tts = new TextToSpeech(this, this);
 
-        addJarvis("Good day. I'm Jarvis, the Careva+ assistant.\n"
-                + "Ask me to draft replies, plan shifts, prepare quotations, or anything else. "
-                + "Tap the microphone to speak, and long-press any reply to copy or share it. "
-                + "Choose where my brain runs in Settings (⚙).");
-        if (!prefs.contains(K_BRAIN)) {
-            ui.postDelayed(this::showSettings, 400);
-        } else {
-            refreshStatus();
+        msgs.addAll(ChatStore.load(prefs));
+        if (msgs.isEmpty()) showWelcome();
+        else for (ChatStore.Msg m : msgs) addView(m);
+        scrollToBottom();
+
+        if (!prefs.contains(BrainFactory.K_BRAIN)) {
+            ui.postDelayed(() -> startActivity(new Intent(this, SettingsActivity.class)), 600);
         }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        ModelDownloads.watch(this);
+        onChange();
+    }
+
+    @Override
+    protected void onPause() {
+        ModelDownloads.unwatch(this);
+        super.onPause();
     }
 
     @Override
@@ -120,120 +125,150 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
 
     @Override
     protected void onDestroy() {
-        LocalBrain.stop();
+        if (activeBrain != null) activeBrain.stop();
         worker.execute(LocalBrain::unload);
         worker.shutdown();
-        if (download != null) download.cancel();
-        downloader.shutdownNow();
+        if (typingAnim != null) typingAnim.cancel();
         if (tts != null) { tts.stop(); tts.shutdown(); }
         super.onDestroy();
     }
 
-    private int dp(float v) {
-        return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, getResources().getDisplayMetrics());
+    /** Download progress / result, and the status chip. */
+    @Override
+    public void onChange() {
+        if (!ModelDownloads.running && !ModelDownloads.lastResult.isEmpty()
+                && !ModelDownloads.lastResult.equals(lastShownDownload)) {
+            lastShownDownload = ModelDownloads.lastResult;
+            addMessage(ModelDownloads.lastOk ? "note" : "error", ModelDownloads.lastResult);
+        }
+        if (ModelDownloads.running) getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        refreshChip(null);
     }
 
-    private GradientDrawable rounded(int color, float radiusDp) {
-        GradientDrawable d = new GradientDrawable();
-        d.setColor(color);
-        d.setCornerRadius(dp(radiusDp));
-        return d;
-    }
+    // ------------------------------------------------------------------ layout
 
     private View buildUi() {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(BG);
+        root.setBackground(Ui.gradient(Ui.BG_TOP, Ui.BG_BOTTOM));
         root.setFitsSystemWindows(true);
 
-        // Header
+        // Header: animated core, title, brain chip, actions
         LinearLayout header = new LinearLayout(this);
-        header.setOrientation(LinearLayout.HORIZONTAL);
         header.setGravity(Gravity.CENTER_VERTICAL);
-        header.setPadding(dp(16), dp(12), dp(8), dp(12));
-        header.setBackgroundColor(PANEL);
+        header.setPadding(dp(14), dp(10), dp(6), dp(10));
+        arc = new ArcView(this);
+        header.addView(arc, new LinearLayout.LayoutParams(dp(46), dp(46)));
 
         LinearLayout titles = new LinearLayout(this);
         titles.setOrientation(LinearLayout.VERTICAL);
+        titles.setPadding(dp(12), 0, 0, 0);
         TextView title = new TextView(this);
         title.setText("J.A.R.V.I.S.");
-        title.setTextColor(ACCENT);
-        title.setTextSize(20);
+        title.setTextColor(Ui.ACCENT);
+        title.setTextSize(19);
         title.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
-        title.setLetterSpacing(0.12f);
-        status = new TextView(this);
-        status.setTextColor(MUTED);
-        status.setTextSize(12);
-        status.setText("● Not connected");
+        title.setLetterSpacing(0.14f);
         titles.addView(title);
-        titles.addView(status);
+        chip = new TextView(this);
+        chip.setTextSize(12);
+        chip.setPadding(dp(10), dp(3), dp(10), dp(3));
+        chip.setBackground(Ui.pill(this, Ui.CARD, Ui.CARD_STROKE));
+        chip.setContentDescription("Switch brain");
+        chip.setOnClickListener(v -> showBrainSwitcher());
+        LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        clp.topMargin = dp(3);
+        titles.addView(chip, clp);
         header.addView(titles, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
 
-        Button clear = headerButton("New");
-        clear.setContentDescription("New conversation");
-        clear.setOnClickListener(v -> newConversation());
-        header.addView(clear);
-        Button settings = headerButton("⚙");
-        settings.setTextSize(20);
-        settings.setContentDescription("Settings");
-        settings.setOnClickListener(v -> showSettings());
+        Button newChat = iconButton("＋", "New conversation");
+        newChat.setOnClickListener(v -> newConversation());
+        header.addView(newChat);
+        Button settings = iconButton("⚙", "Settings");
+        settings.setOnClickListener(v -> startActivity(new Intent(this, SettingsActivity.class)));
         header.addView(settings);
         root.addView(header);
 
-        // Chat area
+        View line = new View(this);
+        line.setBackgroundColor(Ui.CARD_STROKE);
+        root.addView(line, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1));
+
+        // Conversation
         scroll = new ScrollView(this);
         scroll.setFillViewport(true);
         chat = new LinearLayout(this);
         chat.setOrientation(LinearLayout.VERTICAL);
-        chat.setPadding(dp(12), dp(12), dp(12), dp(12));
+        chat.setPadding(dp(12), dp(10), dp(12), dp(14));
         scroll.addView(chat);
         root.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
-        // Input row
-        LinearLayout bar = new LinearLayout(this);
-        bar.setOrientation(LinearLayout.HORIZONTAL);
-        bar.setGravity(Gravity.BOTTOM);
-        bar.setPadding(dp(10), dp(8), dp(10), dp(10));
-        bar.setBackgroundColor(PANEL);
+        // Quick actions
+        HorizontalScrollView chipsScroll = new HorizontalScrollView(this);
+        chipsScroll.setHorizontalScrollBarEnabled(false);
+        LinearLayout chips = new LinearLayout(this);
+        chips.setPadding(dp(10), dp(6), dp(10), dp(4));
+        for (String[] q : QUICK) {
+            TextView c = new TextView(this);
+            c.setText(q[0]);
+            c.setTextColor(Ui.TEXT);
+            c.setTextSize(13);
+            c.setPadding(dp(14), dp(7), dp(14), dp(7));
+            c.setBackground(Ui.pill(this, Ui.CARD, Ui.CARD_STROKE));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            lp.setMargins(dp(3), 0, dp(3), 0);
+            c.setOnClickListener(v -> {
+                input.setText(q[1]);
+                input.setSelection(input.getText().length());
+                input.requestFocus();
+                InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                if (imm != null) imm.showSoftInput(input, InputMethodManager.SHOW_IMPLICIT);
+            });
+            chips.addView(c, lp);
+        }
+        chipsScroll.addView(chips);
+        chipsScroll.setBackgroundColor(Ui.PANEL);
+        root.addView(chipsScroll);
 
-        Button mic = roundButton("🎤", JARVIS_BUBBLE);
+        // Input bar
+        LinearLayout bar = new LinearLayout(this);
+        bar.setGravity(Gravity.BOTTOM);
+        bar.setPadding(dp(10), dp(6), dp(10), dp(10));
+        bar.setBackgroundColor(Ui.PANEL);
+        Button mic = roundButton("🎤", Ui.CARD);
         mic.setContentDescription("Speak to Jarvis");
         mic.setOnClickListener(v -> startVoice());
         bar.addView(mic);
-
         input = new EditText(this);
-        input.setHint("Message Jarvis…");
-        input.setHintTextColor(MUTED);
-        input.setTextColor(TEXT);
+        input.setHint("Ask Jarvis anything…");
+        input.setHintTextColor(Ui.MUTED);
+        input.setTextColor(Ui.TEXT);
         input.setTextSize(16);
-        input.setMaxLines(5);
-        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE
-                | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
-        input.setImeOptions(EditorInfo.IME_ACTION_SEND);
-        input.setBackground(rounded(JARVIS_BUBBLE, 22));
-        input.setPadding(dp(16), dp(10), dp(16), dp(10));
+        input.setMaxLines(6);
+        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        input.setBackground(Ui.card(this, Ui.CARD, Ui.CARD_STROKE, 23));
+        input.setPadding(dp(16), dp(11), dp(16), dp(11));
         LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1);
         ip.setMargins(dp(8), 0, dp(8), 0);
         bar.addView(input, ip);
-
-        sendBtn = roundButton("➤", ACCENT);
-        sendBtn.setTextColor(BG);
+        sendBtn = roundButton("➤", Ui.ACCENT);
+        sendBtn.setTextColor(Ui.BG_TOP);
         sendBtn.setContentDescription("Send");
-        sendBtn.setOnClickListener(v -> send(input.getText().toString()));
+        sendBtn.setOnClickListener(v -> onSendTapped());
         bar.addView(sendBtn);
         root.addView(bar);
         return root;
     }
 
-    private Button headerButton(String label) {
+    private Button iconButton(String label, String description) {
         Button b = new Button(this);
         b.setText(label);
-        b.setAllCaps(false);
-        b.setTextColor(ACCENT);
-        b.setTextSize(15);
+        b.setTextColor(Ui.ACCENT);
+        b.setTextSize(21);
         b.setBackground(null);
-        b.setMinWidth(dp(48));
-        b.setMinimumWidth(dp(48));
+        b.setMinWidth(dp(46));
+        b.setMinimumWidth(dp(46));
+        b.setContentDescription(description);
         return b;
     }
 
@@ -241,11 +276,11 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
         Button b = new Button(this);
         b.setText(label);
         b.setTextSize(18);
-        b.setTextColor(TEXT);
+        b.setTextColor(Ui.TEXT);
         b.setAllCaps(false);
         b.setPadding(0, 0, 0, 0);
-        GradientDrawable d = new GradientDrawable();
-        d.setShape(GradientDrawable.OVAL);
+        android.graphics.drawable.GradientDrawable d = new android.graphics.drawable.GradientDrawable();
+        d.setShape(android.graphics.drawable.GradientDrawable.OVAL);
         d.setColor(color);
         b.setBackground(d);
         b.setMinWidth(0);
@@ -256,231 +291,423 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
         return b;
     }
 
-    // ------------------------------------------------------------------ chat bubbles
+    // ------------------------------------------------------------------ status chip & brain switcher
 
-    private TextView bubble(String text, boolean fromUser, int textColor) {
-        TextView tv = new TextView(this);
-        tv.setText(text);
-        tv.setTextColor(textColor);
-        tv.setTextSize(16);
-        tv.setLineSpacing(0, 1.15f);
-        tv.setTextIsSelectable(false);
-        tv.setPadding(dp(14), dp(10), dp(14), dp(10));
-        tv.setBackground(rounded(fromUser ? USER_BUBBLE : JARVIS_BUBBLE, 16));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.gravity = fromUser ? Gravity.END : Gravity.START;
-        lp.setMargins(fromUser ? dp(48) : 0, dp(5), fromUser ? 0 : dp(48), dp(5));
-        tv.setLayoutParams(lp);
-        tv.setOnLongClickListener(v -> { showMessageActions(tv.getText().toString()); return true; });
-        chat.addView(tv);
-        scrollToBottom();
-        return tv;
+    private void refreshChip(String override) {
+        String id = BrainFactory.chosen(prefs);
+        Providers.Provider p = Providers.byId(id);
+        if (ModelDownloads.running) {
+            setChip("⬇ " + ModelDownloads.status, Ui.ACCENT);
+        } else if (override != null) {
+            setChip("● " + override + "  ▾", Ui.OK);
+        } else if (!BrainFactory.isReady(this, id)) {
+            setChip("● " + p.name + " · tap to set up  ▾", Ui.WARN);
+        } else {
+            String model = prefs.getString(BrainFactory.modelPref(id), "");
+            String label = p.name + (model.isEmpty() ? "" : " · " + OpenAICompatBrain.shortName(model));
+            setChip("● " + label + "  ▾", Ui.MUTED);
+        }
     }
 
-    private void addUser(String text) { bubble(text, true, TEXT); }
-    private void addJarvis(String text) { bubble(text, false, TEXT); }
-    private void addError(String text) { bubble("⚠ " + text, false, ERROR); }
-
-    private void scrollToBottom() {
-        scroll.post(() -> scroll.fullScroll(View.FOCUS_DOWN));
+    private void setChip(String text, int color) {
+        chip.setText(text);
+        chip.setTextColor(color);
     }
 
-    private void showMessageActions(String text) {
+    private void showBrainSwitcher() {
+        List<Providers.Provider> list = Providers.ALL;
+        String chosen = BrainFactory.chosen(prefs);
+        String[] items = new String[list.size() + 1];
+        for (int i = 0; i < list.size(); i++) {
+            Providers.Provider p = list.get(i);
+            boolean ready = BrainFactory.isReady(this, p.id);
+            items[i] = (p.id.equals(chosen) ? "◉  " : "○  ") + p.name + "  ·  " + String.join(" ", p.badges)
+                    + (ready ? "" : "   (set up)");
+        }
+        items[list.size()] = "⚙  Open settings";
         new AlertDialog.Builder(this)
-                .setItems(new String[]{"Copy", "Share (WhatsApp, SMS, email…)", "Read aloud"}, (d, which) -> {
-                    if (which == 0) {
-                        ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-                        cm.setPrimaryClip(ClipData.newPlainText("Jarvis", text));
-                        Toast.makeText(this, "Copied", Toast.LENGTH_SHORT).show();
-                    } else if (which == 1) {
-                        Intent send = new Intent(Intent.ACTION_SEND);
-                        send.setType("text/plain");
-                        send.putExtra(Intent.EXTRA_TEXT, text);
-                        startActivity(Intent.createChooser(send, "Share with"));
-                    } else {
-                        speak(text, true);
-                    }
+                .setTitle("Jarvis's brain")
+                .setItems(items, (d, which) -> {
+                    if (which == list.size()) { startActivity(new Intent(this, SettingsActivity.class)); return; }
+                    Providers.Provider p = list.get(which);
+                    prefs.edit().putString(BrainFactory.K_BRAIN, p.id).apply();
+                    if (!BrainFactory.isReady(this, p.id)) startActivity(new Intent(this, SettingsActivity.class));
+                    refreshChip(null);
                 })
                 .show();
     }
 
+    // ------------------------------------------------------------------ messages
+
+    private void showWelcome() {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setGravity(Gravity.CENTER_HORIZONTAL);
+        card.setPadding(dp(20), dp(36), dp(20), dp(20));
+        ArcView big = new ArcView(this);
+        card.addView(big, new LinearLayout.LayoutParams(dp(110), dp(110)));
+        TextView hello = new TextView(this);
+        hello.setText(greeting());
+        hello.setTextColor(Ui.TEXT);
+        hello.setTextSize(22);
+        hello.setTypeface(Typeface.DEFAULT_BOLD);
+        hello.setGravity(Gravity.CENTER);
+        hello.setPadding(0, dp(18), 0, dp(6));
+        card.addView(hello);
+        TextView sub = new TextView(this);
+        sub.setText("I'm Jarvis, the Careva+ assistant. Ask me to reply to enquiries, plan shifts, write quotations, "
+                + "follow-ups and posts. Tap a quick action below, type, or tap 🎤 to speak.");
+        sub.setTextColor(Ui.MUTED);
+        sub.setTextSize(14);
+        sub.setGravity(Gravity.CENTER);
+        sub.setLineSpacing(0, 1.2f);
+        card.addView(sub);
+        welcome = card;
+        chat.addView(card);
+    }
+
+    private String greeting() {
+        int h = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
+        String g = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+        String profile = prefs.getString(BrainFactory.K_PROFILE, "");
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("(?i)call me\\s+([^.,\\n]+)").matcher(profile);
+        if (m.find()) return g + ", " + m.group(1).trim() + ".";
+        return g + ".";
+    }
+
+    private void addMessage(String role, String text) {
+        ChatStore.Msg m = new ChatStore.Msg(role, text, System.currentTimeMillis());
+        msgs.add(m);
+        ChatStore.save(prefs, msgs);
+        addView(m);
+        scrollToBottom();
+    }
+
+    private void addView(ChatStore.Msg m) {
+        if (welcome != null) { chat.removeView(welcome); welcome = null; }
+        switch (m.role) {
+            case "user": chat.addView(userBubble(m)); break;
+            case "assistant": chat.addView(jarvisBubble(m.text, m.time, false)); break;
+            case "note": chat.addView(noteView(m.text)); break;
+            default: chat.addView(errorView(m.text)); break;
+        }
+    }
+
+    private String time(long t) { return DateFormat.getTimeFormat(this).format(new Date(t)); }
+
+    private View userBubble(ChatStore.Msg m) {
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.setGravity(Gravity.END);
+        TextView tv = new TextView(this);
+        tv.setText(m.text);
+        tv.setTextColor(0xFFFFFFFF);
+        tv.setTextSize(16);
+        tv.setLineSpacing(0, 1.15f);
+        tv.setPadding(dp(14), dp(10), dp(14), dp(10));
+        android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.TL_BR, new int[]{Ui.ACCENT_2, 0xFF1479A3});
+        float r = dp(18), s = dp(5);
+        g.setCornerRadii(new float[]{r, r, r, r, s, s, r, r});
+        tv.setBackground(g);
+        tv.setOnLongClickListener(v -> { showActions(m.text); return true; });
+        col.addView(tv);
+        col.addView(meta(time(m.time), Gravity.END));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.setMargins(dp(48), dp(6), 0, dp(4));
+        col.setLayoutParams(lp);
+        return col;
+    }
+
+    /** Jarvis bubble with avatar, formatted text and Copy / Share / Read actions. */
+    private View jarvisBubble(String text, long at, boolean live) {
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.TOP);
+        TextView avatar = new TextView(this);
+        avatar.setText("J");
+        avatar.setGravity(Gravity.CENTER);
+        avatar.setTextColor(Ui.BG_TOP);
+        avatar.setTypeface(Typeface.DEFAULT_BOLD);
+        avatar.setTextSize(13);
+        android.graphics.drawable.GradientDrawable av = new android.graphics.drawable.GradientDrawable();
+        av.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+        av.setColor(Ui.ACCENT);
+        avatar.setBackground(av);
+        LinearLayout.LayoutParams alp = new LinearLayout.LayoutParams(dp(28), dp(28));
+        alp.setMargins(0, dp(2), dp(8), 0);
+        row.addView(avatar, alp);
+
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        TextView tv = new TextView(this);
+        tv.setText(Markdown.render(text));
+        tv.setTextColor(Ui.TEXT);
+        tv.setTextSize(16);
+        tv.setLineSpacing(0, 1.18f);
+        tv.setPadding(dp(14), dp(10), dp(14), dp(10));
+        android.graphics.drawable.GradientDrawable g = Ui.corners(this, Ui.CARD, 5, 18, 18, 18);
+        g.setStroke(1, Ui.CARD_STROKE);
+        tv.setBackground(g);
+        tv.setOnLongClickListener(v -> { showActions(JarvisClient.plainText(text)); return true; });
+        col.addView(tv);
+        if (live) {
+            liveBubble = tv;
+        } else {
+            LinearLayout actions = new LinearLayout(this);
+            actions.setGravity(Gravity.CENTER_VERTICAL);
+            actions.setPadding(dp(4), dp(2), 0, 0);
+            String plain = JarvisClient.plainText(text);
+            actions.addView(action("Copy", v -> copy(plain)));
+            actions.addView(action("Share", v -> share(plain)));
+            actions.addView(action("Read", v -> speak(plain, true)));
+            actions.addView(meta(time(at), Gravity.START));
+            col.addView(actions);
+        }
+        row.addView(col, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.setMargins(0, dp(6), dp(24), dp(4));
+        row.setLayoutParams(lp);
+        return row;
+    }
+
+    private TextView action(String label, View.OnClickListener l) {
+        TextView t = new TextView(this);
+        t.setText(label);
+        t.setTextColor(Ui.ACCENT);
+        t.setTextSize(12);
+        t.setPadding(dp(6), dp(6), dp(10), dp(6));
+        t.setOnClickListener(l);
+        return t;
+    }
+
+    private TextView meta(String text, int gravity) {
+        TextView t = new TextView(this);
+        t.setText(text);
+        t.setTextColor(Ui.MUTED);
+        t.setTextSize(11);
+        t.setGravity(gravity);
+        t.setPadding(dp(6), dp(2), dp(6), 0);
+        return t;
+    }
+
+    private View noteView(String text) {
+        TextView t = new TextView(this);
+        t.setText(text);
+        t.setTextColor(Ui.MUTED);
+        t.setTextSize(12);
+        t.setGravity(Gravity.CENTER);
+        t.setPadding(dp(24), dp(6), dp(24), dp(6));
+        return t;
+    }
+
+    private View errorView(String text) {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(14), dp(10), dp(14), dp(8));
+        box.setBackground(Ui.card(this, 0x22FF8A80, 0x66FF8A80, 14));
+        TextView t = new TextView(this);
+        t.setText("⚠  " + text);
+        t.setTextColor(Ui.ERROR);
+        t.setTextSize(14);
+        box.addView(t);
+        LinearLayout acts = new LinearLayout(this);
+        acts.addView(action("Retry", v -> retry()));
+        acts.addView(action("Settings", v -> startActivity(new Intent(this, SettingsActivity.class))));
+        box.addView(acts);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.setMargins(dp(36), dp(6), dp(24), dp(4));
+        box.setLayoutParams(lp);
+        return box;
+    }
+
+    /** Animated "…" bubble shown until the first words arrive. */
+    private View typingView() {
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(36), dp(8), 0, dp(8));
+        LinearLayout dots = new LinearLayout(this);
+        dots.setPadding(dp(14), dp(12), dp(14), dp(12));
+        dots.setBackground(Ui.corners(this, Ui.CARD, 5, 18, 18, 18));
+        final View[] d = new View[3];
+        for (int i = 0; i < 3; i++) {
+            View v = new View(this);
+            android.graphics.drawable.GradientDrawable c = new android.graphics.drawable.GradientDrawable();
+            c.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+            c.setColor(Ui.ACCENT);
+            v.setBackground(c);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(8), dp(8));
+            lp.setMargins(dp(3), 0, dp(3), 0);
+            dots.addView(v, lp);
+            d[i] = v;
+        }
+        row.addView(dots);
+        TextView label = new TextView(this);
+        label.setText("  Jarvis is thinking…");
+        label.setTextColor(Ui.MUTED);
+        label.setTextSize(12);
+        row.addView(label);
+        typingAnim = ValueAnimator.ofFloat(0f, 3f);
+        typingAnim.setDuration(1100);
+        typingAnim.setRepeatCount(ValueAnimator.INFINITE);
+        typingAnim.addUpdateListener(a -> {
+            float t = (float) a.getAnimatedValue();
+            for (int i = 0; i < 3; i++) {
+                float k = Math.max(0f, 1f - Math.abs(t - i - 0.5f));
+                d[i].setAlpha(0.3f + 0.7f * k);
+                d[i].setTranslationY(-dp(3) * k);
+            }
+        });
+        typingAnim.start();
+        return row;
+    }
+
+    private void scrollToBottom() { scroll.post(() -> scroll.fullScroll(View.FOCUS_DOWN)); }
+
+    private void showActions(String text) {
+        new AlertDialog.Builder(this)
+                .setItems(new String[]{"Copy", "Share (WhatsApp, SMS, email…)", "Read aloud"}, (d, which) -> {
+                    if (which == 0) copy(text);
+                    else if (which == 1) share(text);
+                    else speak(text, true);
+                })
+                .show();
+    }
+
+    private void copy(String text) {
+        ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        cm.setPrimaryClip(ClipData.newPlainText("Jarvis", text));
+        Toast.makeText(this, "Copied", Toast.LENGTH_SHORT).show();
+    }
+
+    private void share(String text) {
+        Intent send = new Intent(Intent.ACTION_SEND);
+        send.setType("text/plain");
+        send.putExtra(Intent.EXTRA_TEXT, text);
+        startActivity(Intent.createChooser(send, "Share with"));
+    }
+
     private void newConversation() {
         if (busy) { Toast.makeText(this, "Please wait for Jarvis to finish", Toast.LENGTH_SHORT).show(); return; }
-        history.clear();
-        chat.removeAllViews();
-        if (tts != null) tts.stop();
-        addJarvis("New conversation. How can I help?");
+        if (msgs.isEmpty()) return;
+        new AlertDialog.Builder(this)
+                .setMessage("Start a new conversation? This clears the current chat.")
+                .setPositiveButton("New conversation", (d, w) -> {
+                    msgs.clear();
+                    ChatStore.save(prefs, msgs);
+                    chat.removeAllViews();
+                    if (tts != null) tts.stop();
+                    showWelcome();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     // ------------------------------------------------------------------ talking to Jarvis
 
-    private String brainKind() { return prefs.getString(K_BRAIN, "claude"); }
-
-    private File modelFile() { return new File(getFilesDir(), LocalBrain.MODEL_FILE); }
-
-    private Brain makeBrain() {
-        String profile = prefs.getString(K_PROFILE, "");
-        switch (brainKind()) {
-            case "gemini":
-                return new GeminiBrain(prefs.getString(K_GEMINI_KEY, ""), profile, prefs.getString(K_GEMINI_MODEL, ""));
-            case "local":
-                return new LocalBrain(modelFile(), profile);
-            case "computer":
-                return new JarvisClient(prefs.getString(K_URL, ""), prefs.getString(K_KEY, ""));
-            default:
-                return new ClaudeBrain(prefs.getString(K_CLAUDE_KEY, ""), profile);
-        }
-    }
-
-    private void setStatus(String text, int color) {
-        status.setText(text);
-        status.setTextColor(color);
-    }
-
-    /** Shows which brain is active, or what is still missing, without making a network call. */
-    private void refreshStatus() {
-        if (download != null) { setStatus("● " + downloadStatus, ACCENT); return; }
-        String kind = brainKind();
-        boolean ready;
-        switch (kind) {
-            case "gemini": ready = !prefs.getString(K_GEMINI_KEY, "").isEmpty(); break;
-            case "local": ready = LocalBrain.isModelReady(modelFile()); break;
-            case "computer": ready = !prefs.getString(K_URL, "").isEmpty(); break;
-            default: ready = !prefs.getString(K_CLAUDE_KEY, "").isEmpty();
-        }
-        Brain b = makeBrain();
-        if (ready) setStatus("● Ready · " + b.label(), ACCENT);
-        else if ("local".equals(kind)) setStatus("● On-phone AI not downloaded · open ⚙", ERROR);
-        else setStatus("● " + b.label() + " needs setting up · open ⚙", ERROR);
-    }
-
-    private void send(String raw) {
-        String text = raw == null ? "" : raw.trim();
+    private void onSendTapped() {
         if (busy) {
-            if ("local".equals(brainKind())) LocalBrain.stop();  // the send button acts as "stop"
+            if (activeBrain != null) activeBrain.stop();
             return;
         }
+        String text = input.getText().toString().trim();
         if (text.isEmpty()) return;
+        if (!BrainFactory.isReady(this, BrainFactory.chosen(prefs))) {
+            Toast.makeText(this, "Set up Jarvis's brain first", Toast.LENGTH_SHORT).show();
+            startActivity(new Intent(this, SettingsActivity.class));
+            return;
+        }
         input.setText("");
-        addUser(text);
-        history.add(new String[]{"user", text});
-        while (history.size() > MAX_HISTORY) history.remove(0);
-        final List<String[]> snapshot = new ArrayList<>(history);
-        final Brain brain = makeBrain();
+        addMessage("user", text);
+        ask();
+    }
+
+    private void retry() {
+        if (busy) return;
+        List<String[]> h = ChatStore.history(msgs, MAX_HISTORY);
+        if (h.isEmpty() || !"user".equals(h.get(h.size() - 1)[0])) {
+            Toast.makeText(this, "Nothing to retry", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        ask();
+    }
+
+    private void ask() {
+        final List<String[]> history = ChatStore.history(msgs, MAX_HISTORY);
+        final Brain brain = BrainFactory.createWithBackups(this);
         activeBrain = brain;
         setBusy(true);
-        if (brain instanceof LocalBrain) {
-            ((LocalBrain) brain).setListener(partial -> ui.post(() -> {
-                if (thinking != null && !partial.isEmpty()) {
-                    thinking.setText(JarvisClient.plainText(partial));
-                    thinking.setTextColor(TEXT);
-                    scrollToBottom();
-                }
-            }));
-            setStatus("● Thinking on this phone…", ACCENT);
-        }
+        brain.setListener(partial -> ui.post(() -> {
+            if (!busy) return;
+            if (partial.isEmpty()) {                 // a backup brain is starting over
+                if (liveBubble != null) { chat.removeView((View) liveBubble.getParent().getParent()); liveBubble = null; }
+                if (typing == null) { typing = typingView(); chat.addView(typing); }
+                return;
+            }
+            if (liveBubble == null) {
+                removeTyping();
+                chat.addView(jarvisBubble(partial, System.currentTimeMillis(), true));
+            } else {
+                liveBubble.setText(Markdown.render(partial));
+            }
+            scrollToBottom();
+        }));
         worker.execute(() -> {
             try {
-                String reply = brain.reply(snapshot);
+                String reply = brain.reply(history);
+                String note = brain instanceof FallbackBrain ? ((FallbackBrain) brain).note() : "";
                 ui.post(() -> {
-                    if (brain instanceof GeminiBrain) {
-                        prefs.edit().putString(K_GEMINI_MODEL, ((GeminiBrain) brain).getModel()).apply();
-                    }
+                    finishLive();
                     setBusy(false);
-                    setStatus("● Online · " + brain.label(), ACCENT);
-                    history.add(new String[]{"assistant", reply});
-                    String shown = JarvisClient.plainText(reply);
-                    addJarvis(shown);
-                    speak(shown, false);
+                    addMessage("assistant", reply);
+                    if (!note.isEmpty()) addMessage("note", note);
+                    refreshChip(brain.label());
+                    speak(JarvisClient.plainText(reply), false);
                 });
             } catch (JarvisClient.JarvisException e) {
                 ui.post(() -> {
-                    if (brain instanceof GeminiBrain) {
-                        prefs.edit().putString(K_GEMINI_MODEL, ((GeminiBrain) brain).getModel()).apply();
-                    }
+                    finishLive();
                     setBusy(false);
-                    // Drop the unanswered question so the conversation stays consistent.
-                    if (!history.isEmpty() && "user".equals(history.get(history.size() - 1)[0])) {
-                        history.remove(history.size() - 1);
-                    }
-                    refreshStatus();
-                    addError(e.getMessage());
+                    if (!"Stopped.".equals(e.getMessage())) addMessage("error", e.getMessage());
+                    else addMessage("note", "Stopped.");
+                    refreshChip(null);
                 });
             } catch (RuntimeException e) {
                 ui.post(() -> {
+                    finishLive();
                     setBusy(false);
-                    if (!history.isEmpty() && "user".equals(history.get(history.size() - 1)[0])) {
-                        history.remove(history.size() - 1);
-                    }
-                    refreshStatus();
-                    addError("Something went wrong: " + e.getMessage());
+                    addMessage("error", "Something went wrong: " + e.getMessage());
+                    refreshChip(null);
                 });
             }
         });
+    }
+
+    private void finishLive() {
+        removeTyping();
+        if (liveBubble != null) {
+            chat.removeView((View) liveBubble.getParent().getParent());
+            liveBubble = null;
+        }
+    }
+
+    private void removeTyping() {
+        if (typing != null) {
+            chat.removeView(typing);
+            typing = null;
+        }
+        if (typingAnim != null) { typingAnim.cancel(); typingAnim = null; }
     }
 
     private void setBusy(boolean b) {
         busy = b;
-        boolean local = "local".equals(brainKind());
-        sendBtn.setText(b && local ? "■" : "➤");
-        sendBtn.setEnabled(!b || local);
-        sendBtn.setAlpha(b && !local ? 0.4f : 1f);
+        arc.setBusy(b);
+        sendBtn.setText(b ? "■" : "➤");
+        sendBtn.setContentDescription(b ? "Stop" : "Send");
         if (b) {
-            thinking = bubble(local ? "Jarvis is thinking on your phone…" : "Jarvis is thinking…", false, MUTED);
-        } else if (thinking != null) {
-            chat.removeView(thinking);
-            thinking = null;
+            typing = typingView();
+            chat.addView(typing);
+            scrollToBottom();
         }
-    }
-
-    // ------------------------------------------------------------------ on-phone model download
-
-    private void startDownload() {
-        if (download != null) return;
-        final ModelDownloader d = new ModelDownloader();
-        download = d;
-        downloadStatus = "Downloading AI model…";
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        refreshStatus();
-        addJarvis("Downloading my on-phone brain (about 1.3 GB). Use Wi-Fi and keep this app open. "
-                + "If it stops, tap Download again and it will continue where it left off.");
-        downloader.execute(() -> {
-            String result;
-            boolean ok = false;
-            try {
-                d.download(LocalBrain.MODEL_URL, modelFile(), LocalBrain.MODEL_BYTES, (done, total) -> ui.post(() -> {
-                    downloadStatus = String.format(Locale.US, "Downloading AI model %d%% (%d of %d MB)",
-                            done * 100 / total, done / 1_000_000, total / 1_000_000);
-                    if (download != null) setStatus("● " + downloadStatus, ACCENT);
-                }));
-                ok = true;
-                result = "Download complete. I can now work on this phone without internet.";
-            } catch (JarvisClient.JarvisException e) {
-                result = e.getMessage();
-            }
-            final String msg = result;
-            final boolean success = ok;
-            ui.post(() -> {
-                download = null;
-                getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-                if (success) addJarvis(msg); else addError(msg);
-                refreshStatus();
-            });
-        });
-    }
-
-    private void deleteModel() {
-        if (busy) { Toast.makeText(this, "Please wait for Jarvis to finish", Toast.LENGTH_SHORT).show(); return; }
-        worker.execute(() -> {
-            LocalBrain.unload();
-            File f = modelFile();
-            //noinspection ResultOfMethodCallIgnored
-            f.delete();
-            //noinspection ResultOfMethodCallIgnored
-            new File(f.getPath() + ".part").delete();
-            ui.post(() -> { addJarvis("On-phone AI model deleted (1.3 GB freed)."); refreshStatus(); });
-        });
     }
 
     // ------------------------------------------------------------------ voice
@@ -501,170 +728,17 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == REQ_VOICE && resultCode == RESULT_OK && data != null) {
             ArrayList<String> results = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
-            if (results != null && !results.isEmpty()) send(results.get(0));
+            if (results != null && !results.isEmpty()) {
+                input.setText(results.get(0));
+                onSendTapped();
+            }
         }
     }
 
     private void speak(String text, boolean force) {
         if (!ttsReady || tts == null) return;
-        if (!force && !prefs.getBoolean(K_SPEAK, true)) return;
-        String t = text.replace("•", "").replace("☐", "");
+        if (!force && !prefs.getBoolean(BrainFactory.K_SPEAK, true)) return;
+        String t = text.replace("•", "").replace("☐", "").replace("☑", "");
         tts.speak(t.length() > 3900 ? t.substring(0, 3900) : t, TextToSpeech.QUEUE_FLUSH, null, "jarvis");
-    }
-
-    // ------------------------------------------------------------------ settings
-
-    private TextView label(String text) {
-        TextView t = new TextView(this);
-        t.setText(text);
-        t.setTextSize(13);
-        t.setPadding(0, dp(10), 0, 0);
-        return t;
-    }
-
-    private EditText field(String hint, String value, boolean secret) {
-        EditText e = new EditText(this);
-        e.setHint(hint);
-        e.setSingleLine(true);
-        e.setInputType(InputType.TYPE_CLASS_TEXT | (secret ? InputType.TYPE_TEXT_VARIATION_PASSWORD : InputType.TYPE_TEXT_VARIATION_URI));
-        e.setText(value);
-        return e;
-    }
-
-    private void showSettings() {
-        ScrollView sv = new ScrollView(this);
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(22), dp(8), dp(22), dp(8));
-        sv.addView(box);
-
-        box.addView(label("Where should Jarvis's brain run?"));
-        RadioGroup group = new RadioGroup(this);
-        String[][] options = {
-                {"claude", "Claude (online) — smartest, small cost per use"},
-                {"gemini", "Gemini (online) — free tier available"},
-                {"local", "On this phone — private, works offline, slower"},
-                {"computer", "My computer (OpenJarvis on the same Wi-Fi)"}};
-        String current = brainKind();
-        for (int i = 0; i < options.length; i++) {
-            RadioButton rb = new RadioButton(this);
-            rb.setId(1000 + i);
-            rb.setText(options[i][1]);
-            rb.setTag(options[i][0]);
-            group.addView(rb);
-            if (options[i][0].equals(current)) rb.setChecked(true);
-        }
-        box.addView(group);
-
-        // Claude
-        LinearLayout claudeBox = new LinearLayout(this);
-        claudeBox.setOrientation(LinearLayout.VERTICAL);
-        claudeBox.addView(label("Claude API key — get one at console.anthropic.com (Settings → API keys). "
-                + "Messages are sent to Anthropic."));
-        EditText claudeKey = field("sk-ant-…", prefs.getString(K_CLAUDE_KEY, ""), true);
-        claudeBox.addView(claudeKey);
-        box.addView(claudeBox);
-
-        // Gemini
-        LinearLayout geminiBox = new LinearLayout(this);
-        geminiBox.setOrientation(LinearLayout.VERTICAL);
-        geminiBox.addView(label("Gemini API key — free at aistudio.google.com (Get API key). "
-                + "Messages are sent to Google; on the free tier Google may use them to improve its products."));
-        EditText geminiKey = field("AIza…", prefs.getString(K_GEMINI_KEY, ""), true);
-        geminiBox.addView(geminiKey);
-        box.addView(geminiBox);
-
-        // On phone
-        LinearLayout localBox = new LinearLayout(this);
-        localBox.setOrientation(LinearLayout.VERTICAL);
-        boolean haveModel = LocalBrain.isModelReady(modelFile());
-        localBox.addView(label(haveModel
-                ? "AI model is downloaded (1.3 GB). Everything stays on this phone."
-                : (download != null ? downloadStatus
-                   : "Needs a one-time 1.3 GB download (use Wi-Fi). Best on phones with 6 GB+ memory. "
-                     + "Answers take longer than online AI and can contain mistakes.")));
-        Button modelBtn = new Button(this);
-        modelBtn.setAllCaps(false);
-        modelBtn.setText(haveModel ? "Delete model" : (download != null ? "Downloading…" : "Download model (1.3 GB)"));
-        modelBtn.setEnabled(download == null);
-        localBox.addView(modelBtn);
-        box.addView(localBox);
-
-        // Computer
-        LinearLayout pcBox = new LinearLayout(this);
-        pcBox.setOrientation(LinearLayout.VERTICAL);
-        pcBox.addView(label("On your computer run:  jarvis auth create-key  and  jarvis serve --host 0.0.0.0\n"
-                + "Then enter its address (e.g. 192.168.1.5) and the key. Same Wi-Fi only."));
-        EditText url = field("Computer address, e.g. 192.168.1.5", prefs.getString(K_URL, ""), false);
-        EditText key = field("Access key (starts with oj_sk_)", prefs.getString(K_KEY, ""), true);
-        pcBox.addView(url);
-        pcBox.addView(key);
-        box.addView(pcBox);
-
-        // Profile + voice
-        box.addView(label("About you (Jarvis remembers this): name, how to address you, city, services and prices, hours."));
-        EditText profile = new EditText(this);
-        profile.setHint("e.g. Name: Priya. Call me Ma'am. City: Pune. 12-hour caretaker: Rs 900 per shift.");
-        profile.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
-        profile.setMinLines(2);
-        profile.setMaxLines(6);
-        profile.setText(prefs.getString(K_PROFILE, ""));
-        box.addView(profile);
-
-        CheckBox speakBox = new CheckBox(this);
-        speakBox.setText("Speak Jarvis's replies aloud");
-        speakBox.setChecked(prefs.getBoolean(K_SPEAK, true));
-        box.addView(speakBox);
-
-        Runnable showFor = () -> {
-            View checked = group.findViewById(group.getCheckedRadioButtonId());
-            String k = checked == null ? "" : (String) checked.getTag();
-            claudeBox.setVisibility("claude".equals(k) ? View.VISIBLE : View.GONE);
-            geminiBox.setVisibility("gemini".equals(k) ? View.VISIBLE : View.GONE);
-            localBox.setVisibility("local".equals(k) ? View.VISIBLE : View.GONE);
-            pcBox.setVisibility("computer".equals(k) ? View.VISIBLE : View.GONE);
-        };
-        group.setOnCheckedChangeListener((g, id) -> showFor.run());
-        if (group.getCheckedRadioButtonId() == -1) ((RadioButton) group.getChildAt(0)).setChecked(true);
-        showFor.run();
-
-        Runnable save = () -> {
-            View checked = group.findViewById(group.getCheckedRadioButtonId());
-            String k = checked == null ? "claude" : (String) checked.getTag();
-            String oldGeminiKey = prefs.getString(K_GEMINI_KEY, "");
-            SharedPreferences.Editor ed = prefs.edit()
-                    .putString(K_BRAIN, k)
-                    .putString(K_CLAUDE_KEY, claudeKey.getText().toString().trim())
-                    .putString(K_GEMINI_KEY, geminiKey.getText().toString().trim())
-                    .putString(K_URL, JarvisClient.normalizeUrl(url.getText().toString()))
-                    .putString(K_KEY, key.getText().toString().trim())
-                    .putString(K_PROFILE, profile.getText().toString().trim())
-                    .putBoolean(K_SPEAK, speakBox.isChecked());
-            if (!oldGeminiKey.equals(geminiKey.getText().toString().trim())) ed.remove(K_GEMINI_MODEL);
-            ed.apply();
-            if (!"local".equals(k)) worker.execute(LocalBrain::unload);  // free the phone's memory
-            refreshStatus();
-        };
-
-        AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Jarvis settings")
-                .setView(sv)
-                .setPositiveButton("Save", (d, w) -> save.run())
-                .setNegativeButton("Cancel", null)
-                .create();
-        modelBtn.setOnClickListener(v -> {
-            save.run();
-            dialog.dismiss();
-            if (LocalBrain.isModelReady(modelFile())) {
-                new AlertDialog.Builder(this)
-                        .setMessage("Delete the on-phone AI model? You can download it again later.")
-                        .setPositiveButton("Delete", (d2, w2) -> deleteModel())
-                        .setNegativeButton("Cancel", null)
-                        .show();
-            } else {
-                startDownload();
-            }
-        });
-        dialog.show();
     }
 }

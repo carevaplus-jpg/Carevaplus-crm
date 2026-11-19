@@ -60,4 +60,14 @@ final class Http {
         while (i < history.size() && !"user".equals(history.get(i)[0])) i++;
         return history.subList(i, history.size());
     }
+
+    /** Removes reasoning tags some models add, and a trailing broken character from partial UTF-8. */
+    static String cleanReply(String s) {
+        if (s == null) return "";
+        String t = s.replaceAll("(?s)<think>.*?</think>", "");
+        int open = t.indexOf("<think>");
+        if (open >= 0) t = t.substring(0, open);
+        while (t.endsWith("\uFFFD")) t = t.substring(0, t.length() - 1);
+        return t.trim();
+    }
 }

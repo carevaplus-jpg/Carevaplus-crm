@@ -22,17 +22,24 @@ public class ClaudeBrain implements Brain {
     private final String apiKey;
     private final String system;
     private final String baseUrl;
+    private final String model;
 
-    public ClaudeBrain(String apiKey, String profile) { this(apiKey, profile, URL); }
+    public ClaudeBrain(String apiKey, String profile) { this(apiKey, profile, URL, ""); }
+
+    public ClaudeBrain(String apiKey, String profile, String model) { this(apiKey, profile, URL, model); }
 
     /** baseUrl is overridable for tests. */
-    ClaudeBrain(String apiKey, String profile, String baseUrl) {
+    ClaudeBrain(String apiKey, String profile, String baseUrl, String model) {
         this.apiKey = apiKey == null ? "" : apiKey.trim();
         this.system = Persona.systemPrompt(profile);
         this.baseUrl = baseUrl;
+        this.model = model == null || model.trim().isEmpty() ? MODEL : model.trim();
     }
 
-    @Override public String label() { return "Claude"; }
+    @Override public String label() { return "Claude · " + model.replace("claude-", ""); }
+
+    /** Server-side refusal fallback exists for Opus and Sonnet; Haiku has none. */
+    static boolean supportsFallback(String model) { return model.contains("opus") || model.contains("sonnet"); }
 
     @Override
     public String reply(List<String[]> history) throws JarvisClient.JarvisException {
@@ -43,25 +50,27 @@ public class ClaudeBrain implements Brain {
                 messages.put(new JSONObject().put("role", m[0]).put("content", m[1]));
             }
             JSONObject body = new JSONObject()
-                    .put("model", MODEL)
+                    .put("model", model)
                     .put("max_tokens", 16000)
                     .put("system", system)
                     .put("output_config", new JSONObject().put("effort", "medium"))
-                    .put("fallbacks", "default")
                     .put("messages", messages);
             Map<String, String> h = new HashMap<>();
             h.put("x-api-key", apiKey);
             h.put("anthropic-version", API_VERSION);
-            h.put("anthropic-beta", FALLBACK_BETA);
+            if (supportsFallback(model)) {
+                body.put("fallbacks", "default");
+                h.put("anthropic-beta", FALLBACK_BETA);
+            }
             Http.Response r = Http.send("POST", baseUrl, h, body.toString(), 15000, 5 * 60 * 1000);
-            if (r.code != 200) throw new JarvisClient.JarvisException(errorMessage(r));
+            if (r.code != 200) throw new JarvisClient.JarvisException(errorMessage(r), r.code == 429 || r.code >= 500);
             return parse(r.body);
         } catch (JSONException e) {
             throw new JarvisClient.JarvisException("Claude sent a reply this app could not read. Please try again.");
         } catch (UnknownHostException e) {
             throw new JarvisClient.JarvisException("No internet connection. Check your Wi-Fi or mobile data.");
         } catch (SocketTimeoutException e) {
-            throw new JarvisClient.JarvisException("Claude took too long to answer. Please try again.");
+            throw new JarvisClient.JarvisException("Claude took too long to answer. Please try again.", true);
         } catch (IOException e) {
             throw new JarvisClient.JarvisException("Connection problem: " + e.getMessage());
         }

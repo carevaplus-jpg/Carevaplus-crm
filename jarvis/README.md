@@ -71,24 +71,41 @@ When the app first opens it asks about sharing usage data. Choose **Continue wit
 
 <img src="android/icon.png" width="72" align="right" alt="Jarvis app icon">
 
-The **Jarvis** Android app works **without your computer**. In ⚙ Settings, choose where its "brain" runs:
+The **Jarvis** Android app works **without your computer**. Open ⚙ **Settings** and choose Jarvis's "brain":
 
-| Brain | Good for | Needs |
-|---|---|---|
-| **Claude** (online) | The smartest answers | Internet and a Claude API key from [console.anthropic.com](https://console.anthropic.com). You pay a little per message. |
-| **Gemini** (online) | Good answers, free to start | Internet and a free API key from [aistudio.google.com](https://aistudio.google.com) |
-| **On this phone** | Privacy and no internet | A one-time 1.3 GB download, and a 64-bit phone with 6 GB+ memory works best. Slower, and makes more mistakes. |
-| **My computer** | Using the Jarvis on your computer | Your computer switched on, and the phone on the same Wi-Fi (see below) |
+| Brain | Cost | Good for | What it runs |
+|---|---|---|---|
+| **Groq** | Free | Speed: replies in about a second | GPT-OSS 120B, Llama 3.3 70B |
+| **NVIDIA** | Free | The biggest open models | Kimi K3.1 Pro, Mistral Large 4 (1T), Nemotron 3 Ultra 550B |
+| **OpenRouter** | Free (about 50 messages a day) | More free models | Nemotron 3 Ultra 550B, Gemma 4 31B |
+| **Google Gemini** | Free tier | Fast, solid answers | Newest Gemini Flash |
+| **Claude** | Paid, a little per message | The strongest answers | Claude Opus 5.5 (or Sonnet / Haiku) |
+| **On this phone** | Free | Privacy, no internet needed | Qwen 3.5 2B (1.3 GB download) |
+| **My computer** | Free | Your OpenJarvis setup | Whatever your computer runs |
 
-All four use the same Careva+ Jarvis personality.
-In Settings, fill in **About you** (name, how to address you, city, services and prices) so Jarvis can use it.
+**Recommended:** set up **Groq** for speed and **NVIDIA** for heavy questions, both free.
 
-In the app:
+Turn on **Backup**, which is on by default. When one brain is busy or reaches its free limit, Jarvis automatically answers with another one you've set up.
 
-- Type, or tap 🎤 to speak. Jarvis can read its replies aloud (you can turn this off in ⚙).
-- Long-press a reply to **copy** it or **share** it to WhatsApp, SMS or email.
-- **New** starts a fresh conversation.
-- With the on-phone brain, the reply appears word by word. Tap ■ to stop it.
+The free models are very capable, but none of them matches Claude's top models.
+Use Claude when quality matters most.
+
+**Getting a free key** (about a minute each):
+
+1. In Settings, open a brain's card and tap **Get free key ↗**.
+2. Sign up, create an API key, and copy it.
+3. Paste the key into the card.
+4. Tap **Test**. You should see "✓ Works" and how long the reply took.
+5. Tap ↻ to see every model available to you. **Auto** uses the best one.
+
+**In the chat:**
+
+- Replies appear word by word, with bold text and bullet points.
+- Under each reply you'll find **Copy**, **Share** (to WhatsApp, SMS or email) and **Read** (spoken aloud).
+- **Quick actions** above the message box start common Careva+ tasks: reply to an enquiry, follow-up, shift plan, quotation, invoice, social post, staff notice.
+- Tap the status chip under the title to switch brains quickly. Tap ■ to stop a reply.
+- The conversation is kept when you close the app. Tap **＋** to start a new one.
+- Fill in **About you** in Settings (name, how to address you, city, services and prices). Every brain uses it.
 
 **Install:** on your Android phone (Android 7.0 or newer), download [`android/Jarvis-Careva.apk`](android/Jarvis-Careva.apk) and open it.
 If Android asks, allow your browser to **install unknown apps**.
@@ -96,9 +113,10 @@ If you installed an older Jarvis app before, this one installs over it.
 
 **Privacy:**
 
-- With Claude, your messages are sent to Anthropic.
-- With Gemini, they go to Google, and on Gemini's free tier Google may use them to improve its products.
-- For sensitive patient details, use **On this phone**, where nothing leaves the phone.
+- Online brains (Groq, NVIDIA, OpenRouter, Gemini, Claude) send your messages to that company.
+- Free tiers may keep prompts; OpenRouter's free models in particular may log them.
+- For sensitive patient details, use **On this phone** or **My computer**.
+- Your keys and chats are stored only on the phone.
 
 **Using the on-phone brain:**
 
