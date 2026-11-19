@@ -21,7 +21,7 @@ import java.util.List;
  * (OpenAI-compatible: GET /v1/info, POST /v1/chat/completions).
  * Uses only java.* and org.json so it also runs on a desktop JVM for testing.
  */
-public class JarvisClient {
+public class JarvisClient implements Brain {
 
     /** A user-friendly error message, safe to show on screen. */
     public static class JarvisException extends Exception {
@@ -55,6 +55,16 @@ public class JarvisClient {
     }
 
     public String getBaseUrl() { return baseUrl; }
+
+    private String model = "";
+
+    @Override public String label() { return model.isEmpty() ? "My computer" : "My computer · " + model; }
+
+    @Override
+    public String reply(List<String[]> history) throws JarvisException {
+        if (model.isEmpty()) model = fetchModel();
+        return chat(model, Http.trimToUserStart(history));
+    }
 
     /** Checks the server and the access key; returns the model Jarvis is using. */
     public String fetchModel() throws JarvisException {

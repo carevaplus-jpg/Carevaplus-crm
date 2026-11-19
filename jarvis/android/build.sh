@@ -28,6 +28,13 @@ echo "3/5 Converting to Android bytecode"
 echo "4/5 Packaging"
 cp "$OUT/base.apk" "$OUT/unsigned.apk"
 (cd "$OUT" && zip -q -j unsigned.apk classes.dex)
+# On-phone AI engine (from build-native.sh). Without it the app still works with the online brains.
+if ls libs/arm64-v8a/*.so >/dev/null 2>&1; then
+    mkdir -p "$OUT/apkroot/lib/arm64-v8a" && cp libs/arm64-v8a/*.so "$OUT/apkroot/lib/arm64-v8a/"
+    (cd "$OUT/apkroot" && zip -q -r ../unsigned.apk lib)
+else
+    echo "   (no native libraries in libs/ - on-phone AI will be unavailable; run build-native.sh)"
+fi
 "$BT/zipalign" -f -p 4 "$OUT/unsigned.apk" "$OUT/aligned.apk"
 
 echo "5/5 Signing"

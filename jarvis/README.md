@@ -71,48 +71,61 @@ When the app first opens it asks about sharing usage data. Choose **Continue wit
 
 <img src="android/icon.png" width="72" align="right" alt="Jarvis app icon">
 
-The **Jarvis** Android app is a chat screen for the Jarvis running on your computer, with voice.
+The **Jarvis** Android app works **without your computer**. In ⚙ Settings, choose where its "brain" runs:
 
-- Type or tap 🎤 to speak. Jarvis can read its replies aloud (turn this off in ⚙).
-- Long-press a reply to **copy** it or **share** it straight to WhatsApp, SMS or email.
+| Brain | Good for | Needs |
+|---|---|---|
+| **Claude** (online) | The smartest answers | Internet and a Claude API key from [console.anthropic.com](https://console.anthropic.com). You pay a little per message. |
+| **Gemini** (online) | Good answers, free to start | Internet and a free API key from [aistudio.google.com](https://aistudio.google.com) |
+| **On this phone** | Privacy and no internet | A one-time 1.3 GB download, and a 64-bit phone with 6 GB+ memory works best. Slower, and makes more mistakes. |
+| **My computer** | Using the Jarvis on your computer | Your computer switched on, and the phone on the same Wi-Fi (see below) |
+
+All four use the same Careva+ Jarvis personality.
+In Settings, fill in **About you** (name, how to address you, city, services and prices) so Jarvis can use it.
+
+In the app:
+
+- Type, or tap 🎤 to speak. Jarvis can read its replies aloud (you can turn this off in ⚙).
+- Long-press a reply to **copy** it or **share** it to WhatsApp, SMS or email.
 - **New** starts a fresh conversation.
+- With the on-phone brain, the reply appears word by word. Tap ■ to stop it.
 
-The phone does not run the AI. It needs your computer switched on, with your phone **on the same Wi-Fi**.
+**Install:** on your Android phone (Android 7.0 or newer), download [`android/Jarvis-Careva.apk`](android/Jarvis-Careva.apk) and open it.
+If Android asks, allow your browser to **install unknown apps**.
+If you installed an older Jarvis app before, this one installs over it.
 
-**1. On your computer** (one time), create an access key so only you can connect:
+**Privacy:**
 
-```bash
-jarvis auth create-key        # prints a key starting with oj_sk_  - keep it private
-```
+- With Claude, your messages are sent to Anthropic.
+- With Gemini, they go to Google, and on Gemini's free tier Google may use them to improve its products.
+- For sensitive patient details, use **On this phone**, where nothing leaves the phone.
 
-Then start Jarvis so your phone can reach it. Run this every time you want to use the app:
+**Using the on-phone brain:**
 
-```bash
-jarvis serve --host 0.0.0.0
-```
+1. In ⚙, choose **On this phone**.
+2. Tap **Download model (1.3 GB)** while on Wi-Fi, and keep the app open.
+   If the download stops, tap Download again and it continues where it left off.
+3. After that it works with no internet at all.
 
-If Windows asks whether to let Python through the firewall, choose **Allow** for **private networks**.
+The first reply takes a little longer while the model loads.
+On a mid-range phone, expect a few words per second.
+Always check prices and facts in its replies before sending them; small models make more mistakes.
 
-**2. Find your computer's address**
+**Using your computer as the brain (optional):**
 
-- Windows: run `ipconfig` and use the **IPv4 Address**, for example `192.168.1.5`.
-- Mac: System Settings → Wi-Fi → Details → IP address.
-- Linux: run `hostname -I`.
+1. On your computer, run `jarvis auth create-key` once.
+2. Each time you want to use it, run `jarvis serve --host 0.0.0.0`.
+3. In the app, choose **My computer** and enter the computer's address and the key.
+   To find the address on Windows, run `ipconfig` and use the "IPv4 Address".
 
-**3. Install the app on your Android phone**
+This only works on the same Wi-Fi.
+Messages travel over your Wi-Fi without encryption, so use it only on Wi-Fi you trust.
+After creating a key, paste the same key into the browser app's Settings (`jarvis gui`).
 
-1. On the phone, open this repository on GitHub and download [`android/Jarvis-Careva.apk`](android/Jarvis-Careva.apk).
-2. Open the downloaded file. If Android asks, allow your browser to **install unknown apps**.
-3. Open **Jarvis**, tap ⚙, enter the address and the key, and tap **Save & connect**.
-   The top bar shows **● Online** when it works.
+**Rebuilding the app from source:**
 
-Things to know:
-
-- **Use it at home or in the office only.** It works on the same Wi-Fi only. Away from home, use Telegram (below).
-- **Avoid public Wi-Fi.** Messages travel unencrypted over your Wi-Fi, so use it only on Wi-Fi you trust.
-- **The browser app needs the key too.** After you create a key, paste the same key into the browser app's Settings (`jarvis gui`).
-- **Answers can be slow.** A small model on a slow computer can take a minute or more per answer.
-- Needs Android 7.0 or newer. To rebuild the app from source, see `android/build.sh`.
+1. Run `android/build-native.sh` to build the on-phone AI engine (llama.cpp, for 64-bit ARM phones).
+2. Run `android/build.sh` to build the APK.
 
 ## Use Jarvis on your phone (Telegram)
 
@@ -160,7 +173,7 @@ jarvis config set intelligence.default_model qwen3.5:9b
 | `home/config.toml` | Model, tools, memory and privacy settings |
 | `install-jarvis.sh` / `install-jarvis.ps1` | One-command installers |
 | `setup-phone.sh` / `setup-phone.ps1` | Connect Jarvis to Telegram for phone use |
-| `android/Jarvis-Careva.apk` | Android app (source in `android/src`, built with `android/build.sh`) |
+| `android/Jarvis-Careva.apk` | Android app: Claude, Gemini, on-phone AI or your computer (source in `android/src` and `android/jni`) |
 
 After you edit a file in `home/`, run the installer again to apply it.
 It keeps your filled-in `USER.md`.

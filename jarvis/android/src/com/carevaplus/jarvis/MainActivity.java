@@ -27,10 +27,13 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -57,6 +60,11 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
     private static final String K_URL = "url";
     private static final String K_KEY = "key";
     private static final String K_SPEAK = "speak";
+    private static final String K_BRAIN = "brain";          // claude | gemini | local | computer
+    private static final String K_CLAUDE_KEY = "claude_key";
+    private static final String K_GEMINI_KEY = "gemini_key";
+    private static final String K_GEMINI_MODEL = "gemini_model";
+    private static final String K_PROFILE = "profile";
 
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
     private final Handler ui = new Handler(Looper.getMainLooper());
@@ -72,7 +80,10 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
     private TextToSpeech tts;
     private boolean ttsReady;
     private boolean busy;
-    private String model = "";
+    private final ExecutorService downloader = Executors.newSingleThreadExecutor();
+    private ModelDownloader download;      // non-null while downloading
+    private String downloadStatus = "";
+    private Brain activeBrain;
 
     // ------------------------------------------------------------------ setup
 
@@ -88,11 +99,12 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
 
         addJarvis("Good day. I'm Jarvis, the Careva+ assistant.\n"
                 + "Ask me to draft replies, plan shifts, prepare quotations, or anything else. "
-                + "Tap the microphone to speak, and long-press any reply to copy or share it.");
-        if (prefs.getString(K_URL, "").isEmpty()) {
+                + "Tap the microphone to speak, and long-press any reply to copy or share it. "
+                + "Choose where my brain runs in Settings (⚙).");
+        if (!prefs.contains(K_BRAIN)) {
             ui.postDelayed(this::showSettings, 400);
         } else {
-            connect(false);
+            refreshStatus();
         }
     }
 
@@ -108,7 +120,11 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
 
     @Override
     protected void onDestroy() {
-        worker.shutdownNow();
+        LocalBrain.stop();
+        worker.execute(LocalBrain::unload);
+        worker.shutdown();
+        if (download != null) download.cancel();
+        downloader.shutdownNow();
         if (tts != null) { tts.stop(); tts.shutdown(); }
         super.onDestroy();
     }
@@ -299,8 +315,22 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
 
     // ------------------------------------------------------------------ talking to Jarvis
 
-    private JarvisClient client() {
-        return new JarvisClient(prefs.getString(K_URL, ""), prefs.getString(K_KEY, ""));
+    private String brainKind() { return prefs.getString(K_BRAIN, "claude"); }
+
+    private File modelFile() { return new File(getFilesDir(), LocalBrain.MODEL_FILE); }
+
+    private Brain makeBrain() {
+        String profile = prefs.getString(K_PROFILE, "");
+        switch (brainKind()) {
+            case "gemini":
+                return new GeminiBrain(prefs.getString(K_GEMINI_KEY, ""), profile, prefs.getString(K_GEMINI_MODEL, ""));
+            case "local":
+                return new LocalBrain(modelFile(), profile);
+            case "computer":
+                return new JarvisClient(prefs.getString(K_URL, ""), prefs.getString(K_KEY, ""));
+            default:
+                return new ClaudeBrain(prefs.getString(K_CLAUDE_KEY, ""), profile);
+        }
     }
 
     private void setStatus(String text, int color) {
@@ -308,46 +338,57 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
         status.setTextColor(color);
     }
 
-    private void connect(boolean announce) {
-        setStatus("● Connecting…", MUTED);
-        JarvisClient c = client();
-        worker.execute(() -> {
-            try {
-                String m = c.fetchModel();
-                ui.post(() -> {
-                    model = m;
-                    setStatus("● Online · " + m, ACCENT);
-                    if (announce) addJarvis("Connected to your computer. I'm ready.");
-                });
-            } catch (JarvisClient.JarvisException e) {
-                ui.post(() -> {
-                    model = "";
-                    setStatus("● Offline", ERROR);
-                    if (announce) addError(e.getMessage());
-                });
-            }
-        });
+    /** Shows which brain is active, or what is still missing, without making a network call. */
+    private void refreshStatus() {
+        if (download != null) { setStatus("● " + downloadStatus, ACCENT); return; }
+        String kind = brainKind();
+        boolean ready;
+        switch (kind) {
+            case "gemini": ready = !prefs.getString(K_GEMINI_KEY, "").isEmpty(); break;
+            case "local": ready = LocalBrain.isModelReady(modelFile()); break;
+            case "computer": ready = !prefs.getString(K_URL, "").isEmpty(); break;
+            default: ready = !prefs.getString(K_CLAUDE_KEY, "").isEmpty();
+        }
+        Brain b = makeBrain();
+        if (ready) setStatus("● Ready · " + b.label(), ACCENT);
+        else if ("local".equals(kind)) setStatus("● On-phone AI not downloaded · open ⚙", ERROR);
+        else setStatus("● " + b.label() + " needs setting up · open ⚙", ERROR);
     }
 
     private void send(String raw) {
         String text = raw == null ? "" : raw.trim();
-        if (text.isEmpty() || busy) return;
-        if (prefs.getString(K_URL, "").isEmpty()) { showSettings(); return; }
+        if (busy) {
+            if ("local".equals(brainKind())) LocalBrain.stop();  // the send button acts as "stop"
+            return;
+        }
+        if (text.isEmpty()) return;
         input.setText("");
         addUser(text);
         history.add(new String[]{"user", text});
         while (history.size() > MAX_HISTORY) history.remove(0);
         final List<String[]> snapshot = new ArrayList<>(history);
+        final Brain brain = makeBrain();
+        activeBrain = brain;
         setBusy(true);
-        JarvisClient c = client();
+        if (brain instanceof LocalBrain) {
+            ((LocalBrain) brain).setListener(partial -> ui.post(() -> {
+                if (thinking != null && !partial.isEmpty()) {
+                    thinking.setText(JarvisClient.plainText(partial));
+                    thinking.setTextColor(TEXT);
+                    scrollToBottom();
+                }
+            }));
+            setStatus("● Thinking on this phone…", ACCENT);
+        }
         worker.execute(() -> {
             try {
-                String m = model.isEmpty() ? c.fetchModel() : model;
-                String reply = c.chat(m, snapshot);
+                String reply = brain.reply(snapshot);
                 ui.post(() -> {
-                    model = m;
-                    setStatus("● Online · " + m, ACCENT);
+                    if (brain instanceof GeminiBrain) {
+                        prefs.edit().putString(K_GEMINI_MODEL, ((GeminiBrain) brain).getModel()).apply();
+                    }
                     setBusy(false);
+                    setStatus("● Online · " + brain.label(), ACCENT);
                     history.add(new String[]{"assistant", reply});
                     String shown = JarvisClient.plainText(reply);
                     addJarvis(shown);
@@ -355,14 +396,25 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
                 });
             } catch (JarvisClient.JarvisException e) {
                 ui.post(() -> {
+                    if (brain instanceof GeminiBrain) {
+                        prefs.edit().putString(K_GEMINI_MODEL, ((GeminiBrain) brain).getModel()).apply();
+                    }
                     setBusy(false);
                     // Drop the unanswered question so the conversation stays consistent.
                     if (!history.isEmpty() && "user".equals(history.get(history.size() - 1)[0])) {
                         history.remove(history.size() - 1);
                     }
-                    setStatus("● Offline", ERROR);
-                    model = "";
+                    refreshStatus();
                     addError(e.getMessage());
+                });
+            } catch (RuntimeException e) {
+                ui.post(() -> {
+                    setBusy(false);
+                    if (!history.isEmpty() && "user".equals(history.get(history.size() - 1)[0])) {
+                        history.remove(history.size() - 1);
+                    }
+                    refreshStatus();
+                    addError("Something went wrong: " + e.getMessage());
                 });
             }
         });
@@ -370,14 +422,65 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
 
     private void setBusy(boolean b) {
         busy = b;
-        sendBtn.setEnabled(!b);
-        sendBtn.setAlpha(b ? 0.4f : 1f);
+        boolean local = "local".equals(brainKind());
+        sendBtn.setText(b && local ? "■" : "➤");
+        sendBtn.setEnabled(!b || local);
+        sendBtn.setAlpha(b && !local ? 0.4f : 1f);
         if (b) {
-            thinking = bubble("Jarvis is thinking…", false, MUTED);
+            thinking = bubble(local ? "Jarvis is thinking on your phone…" : "Jarvis is thinking…", false, MUTED);
         } else if (thinking != null) {
             chat.removeView(thinking);
             thinking = null;
         }
+    }
+
+    // ------------------------------------------------------------------ on-phone model download
+
+    private void startDownload() {
+        if (download != null) return;
+        final ModelDownloader d = new ModelDownloader();
+        download = d;
+        downloadStatus = "Downloading AI model…";
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        refreshStatus();
+        addJarvis("Downloading my on-phone brain (about 1.3 GB). Use Wi-Fi and keep this app open. "
+                + "If it stops, tap Download again and it will continue where it left off.");
+        downloader.execute(() -> {
+            String result;
+            boolean ok = false;
+            try {
+                d.download(LocalBrain.MODEL_URL, modelFile(), LocalBrain.MODEL_BYTES, (done, total) -> ui.post(() -> {
+                    downloadStatus = String.format(Locale.US, "Downloading AI model %d%% (%d of %d MB)",
+                            done * 100 / total, done / 1_000_000, total / 1_000_000);
+                    if (download != null) setStatus("● " + downloadStatus, ACCENT);
+                }));
+                ok = true;
+                result = "Download complete. I can now work on this phone without internet.";
+            } catch (JarvisClient.JarvisException e) {
+                result = e.getMessage();
+            }
+            final String msg = result;
+            final boolean success = ok;
+            ui.post(() -> {
+                download = null;
+                getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                if (success) addJarvis(msg); else addError(msg);
+                refreshStatus();
+            });
+        });
+    }
+
+    private void deleteModel() {
+        if (busy) { Toast.makeText(this, "Please wait for Jarvis to finish", Toast.LENGTH_SHORT).show(); return; }
+        worker.execute(() -> {
+            LocalBrain.unload();
+            File f = modelFile();
+            //noinspection ResultOfMethodCallIgnored
+            f.delete();
+            //noinspection ResultOfMethodCallIgnored
+            new File(f.getPath() + ".part").delete();
+            ui.post(() -> { addJarvis("On-phone AI model deleted (1.3 GB freed)."); refreshStatus(); });
+        });
     }
 
     // ------------------------------------------------------------------ voice
@@ -411,48 +514,157 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
 
     // ------------------------------------------------------------------ settings
 
+    private TextView label(String text) {
+        TextView t = new TextView(this);
+        t.setText(text);
+        t.setTextSize(13);
+        t.setPadding(0, dp(10), 0, 0);
+        return t;
+    }
+
+    private EditText field(String hint, String value, boolean secret) {
+        EditText e = new EditText(this);
+        e.setHint(hint);
+        e.setSingleLine(true);
+        e.setInputType(InputType.TYPE_CLASS_TEXT | (secret ? InputType.TYPE_TEXT_VARIATION_PASSWORD : InputType.TYPE_TEXT_VARIATION_URI));
+        e.setText(value);
+        return e;
+    }
+
     private void showSettings() {
+        ScrollView sv = new ScrollView(this);
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(22), dp(8), dp(22), 0);
+        box.setPadding(dp(22), dp(8), dp(22), dp(8));
+        sv.addView(box);
 
-        TextView help = new TextView(this);
-        help.setText("On your computer, run:\n  jarvis auth create-key\n  jarvis serve --host 0.0.0.0\n\n"
-                + "Then enter your computer's address (e.g. 192.168.1.5) and the key it printed. "
-                + "Your phone must be on the same Wi-Fi.");
-        help.setTextSize(13);
-        box.addView(help);
+        box.addView(label("Where should Jarvis's brain run?"));
+        RadioGroup group = new RadioGroup(this);
+        String[][] options = {
+                {"claude", "Claude (online) — smartest, small cost per use"},
+                {"gemini", "Gemini (online) — free tier available"},
+                {"local", "On this phone — private, works offline, slower"},
+                {"computer", "My computer (OpenJarvis on the same Wi-Fi)"}};
+        String current = brainKind();
+        for (int i = 0; i < options.length; i++) {
+            RadioButton rb = new RadioButton(this);
+            rb.setId(1000 + i);
+            rb.setText(options[i][1]);
+            rb.setTag(options[i][0]);
+            group.addView(rb);
+            if (options[i][0].equals(current)) rb.setChecked(true);
+        }
+        box.addView(group);
 
-        EditText url = new EditText(this);
-        url.setHint("Computer address, e.g. 192.168.1.5");
-        url.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
-        url.setText(prefs.getString(K_URL, ""));
-        box.addView(url);
+        // Claude
+        LinearLayout claudeBox = new LinearLayout(this);
+        claudeBox.setOrientation(LinearLayout.VERTICAL);
+        claudeBox.addView(label("Claude API key — get one at console.anthropic.com (Settings → API keys). "
+                + "Messages are sent to Anthropic."));
+        EditText claudeKey = field("sk-ant-…", prefs.getString(K_CLAUDE_KEY, ""), true);
+        claudeBox.addView(claudeKey);
+        box.addView(claudeBox);
 
-        EditText key = new EditText(this);
-        key.setHint("Access key (starts with oj_sk_)");
-        key.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-        key.setText(prefs.getString(K_KEY, ""));
-        box.addView(key);
+        // Gemini
+        LinearLayout geminiBox = new LinearLayout(this);
+        geminiBox.setOrientation(LinearLayout.VERTICAL);
+        geminiBox.addView(label("Gemini API key — free at aistudio.google.com (Get API key). "
+                + "Messages are sent to Google; on the free tier Google may use them to improve its products."));
+        EditText geminiKey = field("AIza…", prefs.getString(K_GEMINI_KEY, ""), true);
+        geminiBox.addView(geminiKey);
+        box.addView(geminiBox);
+
+        // On phone
+        LinearLayout localBox = new LinearLayout(this);
+        localBox.setOrientation(LinearLayout.VERTICAL);
+        boolean haveModel = LocalBrain.isModelReady(modelFile());
+        localBox.addView(label(haveModel
+                ? "AI model is downloaded (1.3 GB). Everything stays on this phone."
+                : (download != null ? downloadStatus
+                   : "Needs a one-time 1.3 GB download (use Wi-Fi). Best on phones with 6 GB+ memory. "
+                     + "Answers take longer than online AI and can contain mistakes.")));
+        Button modelBtn = new Button(this);
+        modelBtn.setAllCaps(false);
+        modelBtn.setText(haveModel ? "Delete model" : (download != null ? "Downloading…" : "Download model (1.3 GB)"));
+        modelBtn.setEnabled(download == null);
+        localBox.addView(modelBtn);
+        box.addView(localBox);
+
+        // Computer
+        LinearLayout pcBox = new LinearLayout(this);
+        pcBox.setOrientation(LinearLayout.VERTICAL);
+        pcBox.addView(label("On your computer run:  jarvis auth create-key  and  jarvis serve --host 0.0.0.0\n"
+                + "Then enter its address (e.g. 192.168.1.5) and the key. Same Wi-Fi only."));
+        EditText url = field("Computer address, e.g. 192.168.1.5", prefs.getString(K_URL, ""), false);
+        EditText key = field("Access key (starts with oj_sk_)", prefs.getString(K_KEY, ""), true);
+        pcBox.addView(url);
+        pcBox.addView(key);
+        box.addView(pcBox);
+
+        // Profile + voice
+        box.addView(label("About you (Jarvis remembers this): name, how to address you, city, services and prices, hours."));
+        EditText profile = new EditText(this);
+        profile.setHint("e.g. Name: Priya. Call me Ma'am. City: Pune. 12-hour caretaker: Rs 900 per shift.");
+        profile.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        profile.setMinLines(2);
+        profile.setMaxLines(6);
+        profile.setText(prefs.getString(K_PROFILE, ""));
+        box.addView(profile);
 
         CheckBox speakBox = new CheckBox(this);
         speakBox.setText("Speak Jarvis's replies aloud");
         speakBox.setChecked(prefs.getBoolean(K_SPEAK, true));
         box.addView(speakBox);
 
-        new AlertDialog.Builder(this)
-                .setTitle("Connect to Jarvis")
-                .setView(box)
-                .setPositiveButton("Save & connect", (d, w) -> {
-                    prefs.edit()
-                            .putString(K_URL, JarvisClient.normalizeUrl(url.getText().toString()))
-                            .putString(K_KEY, key.getText().toString().trim())
-                            .putBoolean(K_SPEAK, speakBox.isChecked())
-                            .apply();
-                    model = "";
-                    connect(true);
-                })
+        Runnable showFor = () -> {
+            View checked = group.findViewById(group.getCheckedRadioButtonId());
+            String k = checked == null ? "" : (String) checked.getTag();
+            claudeBox.setVisibility("claude".equals(k) ? View.VISIBLE : View.GONE);
+            geminiBox.setVisibility("gemini".equals(k) ? View.VISIBLE : View.GONE);
+            localBox.setVisibility("local".equals(k) ? View.VISIBLE : View.GONE);
+            pcBox.setVisibility("computer".equals(k) ? View.VISIBLE : View.GONE);
+        };
+        group.setOnCheckedChangeListener((g, id) -> showFor.run());
+        if (group.getCheckedRadioButtonId() == -1) ((RadioButton) group.getChildAt(0)).setChecked(true);
+        showFor.run();
+
+        Runnable save = () -> {
+            View checked = group.findViewById(group.getCheckedRadioButtonId());
+            String k = checked == null ? "claude" : (String) checked.getTag();
+            String oldGeminiKey = prefs.getString(K_GEMINI_KEY, "");
+            SharedPreferences.Editor ed = prefs.edit()
+                    .putString(K_BRAIN, k)
+                    .putString(K_CLAUDE_KEY, claudeKey.getText().toString().trim())
+                    .putString(K_GEMINI_KEY, geminiKey.getText().toString().trim())
+                    .putString(K_URL, JarvisClient.normalizeUrl(url.getText().toString()))
+                    .putString(K_KEY, key.getText().toString().trim())
+                    .putString(K_PROFILE, profile.getText().toString().trim())
+                    .putBoolean(K_SPEAK, speakBox.isChecked());
+            if (!oldGeminiKey.equals(geminiKey.getText().toString().trim())) ed.remove(K_GEMINI_MODEL);
+            ed.apply();
+            if (!"local".equals(k)) worker.execute(LocalBrain::unload);  // free the phone's memory
+            refreshStatus();
+        };
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Jarvis settings")
+                .setView(sv)
+                .setPositiveButton("Save", (d, w) -> save.run())
                 .setNegativeButton("Cancel", null)
-                .show();
+                .create();
+        modelBtn.setOnClickListener(v -> {
+            save.run();
+            dialog.dismiss();
+            if (LocalBrain.isModelReady(modelFile())) {
+                new AlertDialog.Builder(this)
+                        .setMessage("Delete the on-phone AI model? You can download it again later.")
+                        .setPositiveButton("Delete", (d2, w2) -> deleteModel())
+                        .setNegativeButton("Cancel", null)
+                        .show();
+            } else {
+                startDownload();
+            }
+        });
+        dialog.show();
     }
 }
