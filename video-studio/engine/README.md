@@ -54,12 +54,20 @@ Scratch files go to `video-studio/.build/<video>/` (git-ignored). The MP4 and SR
 | `lead`, `tail` | Per-scene silence before the first and after the last sentence, keyed by scene number |
 | `leadDefault`, `tailDefault` | Used for scenes not listed in `lead` or `tail` |
 | `sayAs` | `[regex, spoken]` pairs, for example `["\\$200", "two hundred dollars"]`; subtitles keep the written form |
+| `gaps` | Per-scene override of `gap`, keyed by scene number |
+| `quantize` | Round each scene up to a multiple of this many seconds, for example one beat (`0.8333` at 72 BPM), so cuts land on the music |
+| `music` | `{ "file": "...", "gain": 0.8 }`: a music bed mixed under the narration (path relative to the video folder) |
+| `loudness` | Target loudness of the final mix in LUFS, for example `-14` for social platforms |
+| `crf` | x264 quality, default 17; the bitrate is capped at 14 Mbit/s |
+
+In `scenes.html.tpl`, `__ASSETS__` is replaced with the video folder's file URL, so a video can load its own fonts and images, for example `url("__ASSETS__/fonts/my-font.woff2")`.
 
 ## Videos
 
 | Video | Length |
 |---|---|
 | [2026-11-19-careva-plus-intro](../2026-11-19-careva-plus-intro/script.md) | 23.4 s |
+| [2026-11-19-careva-plus-brand-film](../2026-11-19-careva-plus-brand-film/script.md) (premium brand spot, with music) | 35.8 s |
 
 ## Credit
 

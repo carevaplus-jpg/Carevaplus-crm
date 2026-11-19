@@ -22,8 +22,13 @@ function readConfig() {
   return {
     name: c.name || path.basename(VIDEO).replace(/^\d{4}-\d{2}-\d{2}-/, ""),
     gap: c.gap ?? 0.2,                       // silence between sentences
+    gaps: c.gaps || {},                      // per-scene override of gap, keyed by scene number
     lead: c.lead || {}, tail: c.tail || {},  // per-scene silence before the first and after the last sentence
     leadDefault: c.leadDefault ?? 0.15, tailDefault: c.tailDefault ?? 0.3,
+    quantize: c.quantize || 0,               // round each scene up to a multiple of this many seconds (one beat or bar)
+    music: c.music || null,                  // { file, gain }: music bed mixed under the narration
+    loudness: c.loudness ?? null,            // target LUFS for the final mix, for example -14 for social
+    crf: c.crf ?? 17,                        // x264 quality: lower is better and bigger
   };
 }
 
@@ -56,9 +61,10 @@ function tts() {
     let t = lead;
     for (const [i, x] of s.sentences.entries()) {
       x.start = +t.toFixed(4); x.end = +(t + x.dur).toFixed(4);
-      t = x.end + (i < s.sentences.length - 1 ? CFG.gap : 0);
+      t = x.end + (i < s.sentences.length - 1 ? (CFG.gaps[s.n] ?? CFG.gap) : 0);
     }
-    s.frames = Math.ceil((t + tail) * FPS); s.dur = s.frames / FPS;
+    const len = CFG.quantize ? Math.ceil((t + tail) / CFG.quantize - 1e-6) * CFG.quantize : t + tail;
+    s.frames = Math.ceil(len * FPS - 1e-6); s.dur = s.frames / FPS;
     s.startFrame = frame0; s.t0 = frame0 / FPS; frame0 += s.frames;
     // Scene audio, exactly s.frames / FPS long.
     const pcm = Buffer.alloc(Math.round(s.dur * RATE) * 2);
@@ -121,7 +127,9 @@ function tts() {
 
 function makePage() {
   const tl = fs.readFileSync(path.join(BUILD, "timeline.json"), "utf8");
-  const html = fs.readFileSync(path.join(VIDEO, "scenes.html.tpl"), "utf8").replace("__TL__", tl);
+  // __ASSETS__ is the video folder as a file URL, for fonts and images kept next to the scenes.
+  const html = fs.readFileSync(path.join(VIDEO, "scenes.html.tpl"), "utf8").replace("__TL__", tl)
+    .replaceAll("__ASSETS__", pathToFileURL(VIDEO).href);
   const out = path.join(BUILD, "page.html");
   fs.writeFileSync(out, html);
   return out;
@@ -151,11 +159,19 @@ async function video() {
   const tl = JSON.parse(fs.readFileSync(path.join(BUILD, "timeline.json"), "utf8"));
   const { browser, page } = await open();
   const outFile = path.join(VIDEO, CFG.name + ".mp4");
+  // Audio: the narration alone, or the narration over a music bed; optionally normalised to a loudness target.
+  const audioIn = ["-i", path.join(BUILD, "narration.wav")];
+  let af = "[1:a]anull";
+  if (CFG.music) {
+    audioIn.push("-i", path.resolve(VIDEO, CFG.music.file));
+    af = `[2:a]volume=${CFG.music.gain ?? 1}[m];[1:a][m]amix=inputs=2:duration=first:normalize=0`;
+  }
+  if (CFG.loudness != null) af += `,loudnorm=I=${CFG.loudness}:TP=-1.5:LRA=11,aresample=${RATE}`;
   const ff = spawn("ffmpeg", ["-loglevel", "error", "-y",
-    "-f", "image2pipe", "-framerate", String(FPS), "-c:v", "png", "-i", "-",
-    "-i", path.join(BUILD, "narration.wav"), "-map", "0:v:0", "-map", "1:a:0",
-    "-vf", "scale=out_color_matrix=bt709:out_range=tv:flags=lanczos+accurate_rnd+full_chroma_int,format=yuv420p",
-    "-c:v", "libx264", "-preset", "medium", "-crf", "17",
+    "-f", "image2pipe", "-framerate", String(FPS), "-c:v", "png", "-i", "-", ...audioIn,
+    "-filter_complex", "[0:v]scale=out_color_matrix=bt709:out_range=tv:flags=lanczos+accurate_rnd+full_chroma_int,format=yuv420p[v];" + af + "[a]",
+    "-map", "[v]", "-map", "[a]",
+    "-c:v", "libx264", "-preset", "medium", "-crf", String(CFG.crf), "-maxrate", "14M", "-bufsize", "28M",
     "-x264-params", "aq-mode=3:colorprim=bt709:transfer=bt709:colormatrix=bt709",
     "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-r", String(FPS), "-fps_mode", "cfr",
     "-c:a", "aac", "-b:a", "160k", "-ar", String(RATE), "-movflags", "+faststart", "-tag:v", "avc1", outFile],
