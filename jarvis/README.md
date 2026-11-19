@@ -71,6 +71,12 @@ When the app first opens it asks about sharing usage data. Choose **Continue wit
 
 <img src="android/icon.png" width="72" align="right" alt="Jarvis app icon">
 
+<p align="center">
+  <img src="docs/app-home.png" width="240" alt="Jarvis home screen with quick actions">
+  <img src="docs/app-reply.png" width="240" alt="A formatted Jarvis reply with Copy, Share and Read buttons">
+</p>
+<p align="center"><i>Screenshots from an Android emulator. The reply on the right is a sample, used to show the formatting.</i></p>
+
 The **Jarvis** Android app works **without your computer**. Open ⚙ **Settings** and choose Jarvis's "brain":
 
 | Brain | Cost | Good for | What it runs |
