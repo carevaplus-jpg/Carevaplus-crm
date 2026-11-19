@@ -28,7 +28,8 @@ function readConfig() {
     quantize: c.quantize || 0,               // round each scene up to a multiple of this many seconds (one beat or bar)
     music: c.music || null,                  // { file, gain }: music bed mixed under the narration
     loudness: c.loudness ?? null,            // target LUFS for the final mix, for example -14 for social
-    crf: c.crf ?? 17,                        // x264 quality: lower is better and bigger
+    crf: c.crf ?? 17,
+    captionChars: c.captionChars ?? 42,      // max characters per subtitle line (two lines per cue)                        // x264 quality: lower is better and bigger
   };
 }
 
@@ -101,13 +102,14 @@ function tts() {
   const voiced = rms.filter((r) => r > 0.002).sort((x, y) => x - y), p90 = voiced[Math.floor(voiced.length * 0.9)];
   const mouth = rms.map((r) => (r < 0.002 ? 0 : Math.max(1, Math.min(5, Math.round((r / p90) * 5)))));
 
-  // Captions: one cue per sentence, at most two lines of 42 characters.
+  // Captions: one cue per sentence, at most two lines of captionChars characters.
+  const CC = CFG.captionChars;
   const wrap = (t) => {
-    if (t.length <= 42) return t;
+    if (t.length <= CC) return t;
     let best = null; const w = t.split(" ");
     for (let i = 1; i < w.length; i++) {
       const x = w.slice(0, i).join(" "), y = w.slice(i).join(" ");
-      if (x.length <= 42 && y.length <= 42) { const d = Math.abs(x.length - y.length); if (!best || d < best.d) best = { d, v: x + "\n" + y }; }
+      if (x.length <= CC && y.length <= CC) { const d = Math.abs(x.length - y.length); if (!best || d < best.d) best = { d, v: x + "\n" + y }; }
     }
     if (!best) throw new Error("caption too long, split the sentence: " + t);
     return best.v;

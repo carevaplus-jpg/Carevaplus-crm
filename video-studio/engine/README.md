@@ -59,6 +59,8 @@ Scratch files go to `video-studio/.build/<video>/` (git-ignored). The MP4 and SR
 | `music` | `{ "file": "...", "gain": 0.8 }`: a music bed mixed under the narration (path relative to the video folder) |
 | `loudness` | Target loudness of the final mix in LUFS, for example `-14` for social platforms |
 | `crf` | x264 quality, default 17; the bitrate is capped at 14 Mbit/s |
+| `captionChars` | Max characters per subtitle line, default 42 (raise it for scripts such as Tamil, whose vowel signs count as characters) |
+| `tts` | `{ "engine": "edge", "voice": "ta-IN-PallaviNeural", "rate": "-4%" }` uses a Microsoft Edge neural voice instead of Kokoro, for languages Kokoro does not speak. Needs `pip install edge-tts`; set `EDGE_PYTHON` to that Python if it isn't `python3` |
 
 In `scenes.html.tpl`, `__ASSETS__` is replaced with the video folder's file URL, so a video can load its own fonts and images, for example `url("__ASSETS__/fonts/my-font.woff2")`.
 
