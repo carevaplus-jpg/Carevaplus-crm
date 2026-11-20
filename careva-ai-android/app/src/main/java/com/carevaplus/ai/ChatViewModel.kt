@@ -30,7 +30,7 @@ data class SyncStatus(val running: Boolean = false, val lastOk: Long = 0, val er
 
 data class DownloadInfo(val done: Long, val total: Long, val paused: Boolean, val failed: String? = null)
 
-enum class Screen { CHAT, MODELS, ACCOUNT }
+enum class Screen { CHAT, MODELS, ACCOUNT, AGENTS }
 
 /** What the AI is doing right now, shown live above the reply. */
 enum class Phase(val label: String) { READING("Reading your message"), THINKING("Thinking"), WRITING("Writing") }
@@ -81,6 +81,18 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     var phase by mutableStateOf(Phase.READING); private set
     var startedAt by mutableStateOf(0L); private set
     var wordsPerSecond by mutableStateOf(0.0); private set
+    /** What the team of agents is doing (Ultra effort), e.g. "Checker agent is working". */
+    var streamingStep by mutableStateOf(""); private set
+
+    // ---- custom agents ----
+    val agents = mutableStateListOf<Agent>().apply { addAll(store.loadAgents()) }
+    private val deletedAgents = HashMap<String, Long>(prefs.getString("agents_deleted", null)?.let { s ->
+        org.json.JSONObject(s).let { o -> o.keys().asSequence().associateWith { o.getLong(it) } } } ?: emptyMap())
+    /** The agent the next new chat will use. */
+    var pendingAgentId by mutableStateOf<String?>(null); private set
+    val currentAgent: Agent? get() = agents.firstOrNull { it.id == (current?.agentId ?: pendingAgentId.takeIf { current == null }) }
+    /** Image replies are being made. */
+    var makingImage by mutableStateOf(false); private set
     private var replyJob: Job? = null
 
     val activeModel get() = Catalog.byId(activeModelId)
@@ -189,7 +201,72 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---- chats ----
 
-    fun newChat() { if (!busy) { currentId = null; screen = Screen.CHAT } }
+    fun newChat() { if (!busy) { currentId = null; pendingAgentId = null; screen = Screen.CHAT } }
+
+    /** Starts a new chat with a custom agent. */
+    fun chatWith(agentId: String?) { if (!busy) { currentId = null; pendingAgentId = agentId; screen = Screen.CHAT } }
+
+    private fun saveAgentsLocally() {
+        store.saveAgents(agents)
+        prefs.edit().putString("agents_deleted", org.json.JSONObject(deletedAgents as Map<*, *>).toString()).apply()
+    }
+
+    fun saveAgent(a: Agent) {
+        val fresh = a.copy(name = a.name.trim().take(40), emoji = a.emoji.trim().ifEmpty { "🤖" }.take(4), updated = System.currentTimeMillis())
+        val i = agents.indexOfFirst { it.id == a.id }
+        if (i >= 0) agents[i] = fresh else agents.add(0, fresh)
+        saveAgentsLocally(); syncNow()
+    }
+
+    fun deleteAgent(id: String) {
+        agents.removeAll { it.id == id }
+        deletedAgents[id] = System.currentTimeMillis()
+        if (pendingAgentId == id) pendingAgentId = null
+        saveAgentsLocally(); syncNow()
+    }
+
+    /** Newest version of each agent wins; deletions win over older edits. */
+    private suspend fun syncAgents() {
+        val remote = withContext(Dispatchers.IO) { cloud.pullAgents() }
+        val upload = ArrayList<Agent>(); val uploadDeleted = HashMap<String, Long>()
+        val byId = LinkedHashMap<String, Agent>().apply { agents.forEach { put(it.id, it) } }
+        val seen = HashSet<String>()
+        for ((r, gone) in remote) {
+            seen += r.id
+            val mine = byId[r.id]; val myDelete = deletedAgents[r.id]
+            when {
+                gone -> if (mine != null && mine.updated > r.updated) upload += mine else { byId.remove(r.id); deletedAgents[r.id] = maxOf(r.updated, myDelete ?: 0) }
+                myDelete != null && myDelete >= r.updated -> uploadDeleted[r.id] = myDelete
+                mine == null -> { byId[r.id] = r; deletedAgents.remove(r.id) }
+                mine.updated > r.updated -> upload += mine
+                mine.updated < r.updated -> byId[r.id] = r
+            }
+        }
+        byId.values.filter { it.id !in seen }.forEach { upload += it }
+        deletedAgents.filter { it.key !in seen }.forEach { uploadDeleted[it.key] = it.value }
+        val merged = byId.values.toList()
+        if (merged != agents.toList()) { agents.clear(); agents.addAll(merged) }
+        saveAgentsLocally()
+        withContext(Dispatchers.IO) { cloud.pushAgents(upload, uploadDeleted) }
+    }
+
+    /** Makes a picture from [prompt] with a free image model and adds it to the chat. */
+    fun createImage(prompt: String) {
+        val p = prompt.trim()
+        if (p.isEmpty() || busy || makingImage) return
+        val base = current ?: Chat(agentId = pendingAgentId)
+        val now = System.currentTimeMillis()
+        val seed = (now % 1_000_000).toInt()
+        val url = "https://image.pollinations.ai/prompt/" + java.net.URLEncoder.encode(p, "UTF-8").replace("+", "%20") +
+            "?width=1024&height=1024&seed=$seed&nologo=true&enhance=true"
+        put(base.copy(
+            title = if (base.messages.isEmpty()) p.lineSequence().first().take(48) else base.title,
+            messages = base.messages + Msg("user", p) +
+                Msg("assistant", "", model = "Careva Image", stats = "Image · 1024 × 1024 · free model", image = url),
+            updated = now,
+        ))
+        store.save(chats); syncNow()
+    }
 
     fun open(id: String) { if (!busy) { currentId = id; screen = Screen.CHAT } }
 
@@ -213,7 +290,8 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         val input = text.trim()
         val ready = engineState as? EngineState.Ready ?: return
         if (input.isEmpty() || busy) return
-        val base = current ?: Chat()
+        val base = current ?: Chat(agentId = pendingAgentId)
+        val agent = agents.firstOrNull { it.id == base.agentId }
         val history = base.messages
         val chat = base.copy(
             title = if (history.isEmpty()) input.lineSequence().first().take(48) else base.title,
@@ -221,7 +299,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             updated = System.currentTimeMillis(),
         )
         put(chat); store.save(chats)
-        streaming = ""; streamingThought = ""; phase = Phase.READING; wordsPerSecond = 0.0
+        streaming = ""; streamingThought = ""; streamingStep = ""; phase = Phase.READING; wordsPerSecond = 0.0
         val started = System.currentTimeMillis(); startedAt = started
         val effortUsed = effort
         // The engine's pieces arrive on a background thread; collect them in buffers and redraw the
@@ -247,9 +325,10 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                 val onThought = { t: String -> synchronized(lock) { if (firstThought == 0L) firstThought = System.currentTimeMillis(); thought.append(t) }; Unit }
                 val onText = { t: String -> synchronized(lock) { if (firstText == 0L) firstText = System.currentTimeMillis(); text.append(t) }; Unit }
                 if (ready.model.cloud) withContext(Dispatchers.IO) {
-                    servedBy = cloud.chat(ready.model.id, effortUsed, Prompt.cloudMessages(history, input), onThought, onText)
+                    servedBy = cloud.chat(ready.model.id, effortUsed, Prompt.cloudMessages(history, input, agent), onThought, onText,
+                        onStep = { s -> viewModelScope.launch { streamingStep = s } })
                 } else withContext(Dispatchers.Default) {
-                    engine.reply(chat.id, history, input, effortUsed, onThought, onText)
+                    engine.reply(chat.id, history, input, effortUsed, onThought, onText, Prompt.system(agent = agent))
                 }
             } catch (t: Throwable) { error = t }
             ticker.cancel(); flush()
@@ -295,7 +374,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             else -> "(Stopped.)"
         }
         val thought = streamingThought.trim()
-        streaming = null; streamingThought = ""
+        streaming = null; streamingThought = ""; streamingStep = ""
         val chat = chats.firstOrNull { it.id == chatId } ?: return
         put(chat.copy(
             messages = chat.messages + Msg("assistant", reply, thought, model.name, effortUsed.label, seconds, stats),
@@ -357,6 +436,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                 Catalog.models.firstOrNull { it.id in installed }?.let { selectModel(it.id) }
             }
             chats.clear(); currentId = null; deleted.clear(); store.clear()
+            agents.clear(); deletedAgents.clear(); pendingAgentId = null; prefs.edit().remove("agents_deleted").apply()
             engine.closeConversation()
             screen = Screen.CHAT
         }
@@ -383,6 +463,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 deleted.clear(); deleted.putAll(r.tombstones); store.saveDeleted(deleted)
                 withContext(Dispatchers.IO) { cloud.push(r.upload, r.uploadDeleted) }
+                syncAgents()
                 SyncStatus(lastOk = System.currentTimeMillis())
             } catch (e: Exception) {
                 if (cloud.session == null) account = null // sign-in expired

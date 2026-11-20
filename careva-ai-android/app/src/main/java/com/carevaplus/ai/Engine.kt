@@ -141,7 +141,7 @@ class AiEngine(private val ctx: Context) {
      */
     suspend fun reply(
         chatId: String, history: List<Msg>, userText: String, effort: Effort,
-        onThought: (String) -> Unit, onText: (String) -> Unit,
+        onThought: (String) -> Unit, onText: (String) -> Unit, system: String = Prompt.system(),
     ) {
         val model = loaded ?: error("No model loaded")
         val e = engine ?: error("No model loaded")
@@ -156,8 +156,8 @@ class AiEngine(private val ctx: Context) {
                 ConversationConfig(
                     chatTemplate = model.chatTemplate,
                     channels = if (model.chatTemplate != null) listOf(Channel("thought", "<think>", "</think>")) else null,
-                    systemInstruction = Contents.of(Prompt.system()),
-                    initialMessages = Prompt.seed(history, model),
+                    systemInstruction = Contents.of(system),
+                    initialMessages = Prompt.seed(history.filter { it.image.isEmpty() }, model),
                     samplerConfig = SamplerConfig(40, 0.95, plan.temperature, 0),
                     maxOutputToken = plan.maxOutput,
                     thinkingConfig = ThinkingConfig(plan.thinking, plan.thinkingBudget),

@@ -24,6 +24,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.core.content.ContextCompat
 import java.util.Calendar
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -109,6 +115,7 @@ fun App(vm: ChatViewModel) {
         Screen.MODELS -> ModelsScreen(vm)
         Screen.CHAT -> ChatScreen(vm)
         Screen.ACCOUNT -> AccountScreen(vm)
+        Screen.AGENTS -> AgentsScreen(vm)
     }
 }
 
@@ -362,6 +369,7 @@ private fun ChatScreen(vm: ChatViewModel) {
     val dictation = remember { Dictation(ctx.applicationContext) }
     DisposableEffect(Unit) { onDispose { dictation.cancel() } }
     var draft by rememberSaveable { mutableStateOf("") }
+    var imageMode by rememberSaveable { mutableStateOf(false) }
     ModalNavigationDrawer(drawerState = drawer, drawerContent = { ChatDrawer(vm) { scope.launch { drawer.close() } } }) {
         Scaffold(
             containerColor = Paper,
@@ -390,10 +398,10 @@ private fun ChatScreen(vm: ChatViewModel) {
                 val messages = vm.current?.messages.orEmpty()
                 val empty = messages.isEmpty() && vm.streaming == null
                 Box(Modifier.weight(1f)) {
-                    if (empty) Welcome(Modifier.fillMaxSize()) else Messages(vm, messages, Modifier.fillMaxSize())
+                    if (empty) Welcome(vm, Modifier.fillMaxSize()) else Messages(vm, messages, Modifier.fillMaxSize())
                 }
-                if (empty) Suggestions { draft = it }
-                Composer(vm, dictation, draft, { draft = it }, onSettings = { picker = true })
+                if (empty && !imageMode) Suggestions(vm) { draft = it }
+                Composer(vm, dictation, draft, { draft = it }, onSettings = { picker = true }, imageMode = imageMode, setImageMode = { imageMode = it })
             }
         }
     }
@@ -449,7 +457,7 @@ private fun ChatDrawer(vm: ChatViewModel, close: () -> Unit) {
             }
             Spacer(Modifier.height(8.dp))
             DrawerRow(Icons.Outlined.EditNote, "New chat", strong = true) { vm.newChat(); close() }
-            DrawerRow(Icons.Outlined.AutoAwesome, "Models") { vm.screen = Screen.MODELS; close() }
+            DrawerRow(Icons.Outlined.Groups, "Agents") { vm.screen = Screen.AGENTS; close() }
             val shown = vm.chats.filter { c ->
                 query.isBlank() || c.title.contains(query, true) || c.messages.any { it.text.contains(query, true) }
             }
@@ -541,9 +549,21 @@ private fun RenameDialog(current: String, onDone: (String) -> Unit, onDismiss: (
 // ---- empty chat ----
 
 @Composable
-private fun Welcome(modifier: Modifier) {
+private fun Welcome(vm: ChatViewModel, modifier: Modifier) {
     val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
     val greet = when (hour) { in 5..11 -> "Good morning"; in 12..16 -> "Good afternoon"; else -> "Good evening" }
+    val agent = vm.currentAgent
+    if (agent != null) {
+        Column(modifier.padding(horizontal = 28.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(agent.emoji, fontSize = 44.sp)
+            Spacer(Modifier.height(12.dp))
+            Text(agent.name, fontFamily = Serif, fontSize = 30.sp, color = Ink, textAlign = TextAlign.Center)
+            Text(agent.instructions, color = Muted, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center,
+                maxLines = 3, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
+            TextButton(onClick = { vm.chatWith(null) }) { Text("Use the normal assistant instead") }
+        }
+        return
+    }
     Column(modifier.padding(horizontal = 28.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
         Image(painterResource(R.drawable.careva_mark), null, Modifier.size(52.dp))
         Spacer(Modifier.height(18.dp))
@@ -558,7 +578,18 @@ private fun Welcome(modifier: Modifier) {
 private data class Idea(val icon: ImageVector, val label: String, val prompt: String)
 
 @Composable
-private fun Suggestions(onPick: (String) -> Unit) {
+private fun Suggestions(vm: ChatViewModel, onPick: (String) -> Unit) {
+    if (vm.currentAgent == null && vm.agents.isNotEmpty()) {
+        LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 8.dp)) {
+            items(vm.agents, key = { it.id }) { a ->
+                Row(
+                    Modifier.clip(RoundedCornerShape(50)).background(Soft).clickable { vm.chatWith(a.id) }.padding(horizontal = 14.dp, vertical = 9.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) { Text(a.emoji); Spacer(Modifier.width(6.dp)); Text(a.name, color = Ink, style = MaterialTheme.typography.bodyMedium) }
+            }
+        }
+    }
+    if (vm.currentAgent != null) return // an agent chat starts from the agent's own job
     val ideas = listOf(
         Idea(Icons.Outlined.EditNote, "Write a message", "Write a polite message to a patient's family confirming tomorrow's nurse visit at 10 am."),
         Idea(Icons.Outlined.Translate, "தமிழில் எழுது", "தமிழில் ஒரு நன்றி செய்தி எழுதுங்கள்: "),
@@ -587,13 +618,13 @@ private fun Suggestions(onPick: (String) -> Unit) {
 // ---- messages ----
 
 /** Live progress of the reply being written. */
-private data class Live(val phase: Phase, val startedAt: Long, val wordsPerSecond: Double)
+private data class Live(val phase: Phase, val startedAt: Long, val wordsPerSecond: Double, val step: String = "")
 
 @Composable
 private fun Messages(vm: ChatViewModel, messages: List<Msg>, modifier: Modifier) {
     val streaming = vm.streaming
     val thought = vm.streamingThought
-    val live = Live(vm.phase, vm.startedAt, vm.wordsPerSecond)
+    val live = Live(vm.phase, vm.startedAt, vm.wordsPerSecond, vm.streamingStep)
     val list = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val count = messages.size + if (streaming != null) 1 else 0
@@ -644,6 +675,7 @@ private fun ThinkingHeader(m: Msg, live: Live?, open: Boolean, toggle: () -> Uni
     val canOpen = m.thought.isNotBlank()
     val label = when {
         live == null -> if (m.seconds > 0) "Thought for ${m.seconds}s" else "Thought process"
+        live.step.isNotBlank() && live.phase != Phase.WRITING -> live.step
         live.phase == Phase.READING -> "Reading your message"
         live.phase == Phase.THINKING -> "Thinking"
         else -> "Thought process"
@@ -696,20 +728,22 @@ private fun AssistantMessage(m: Msg, live: Live?, canRetry: Boolean, onRetry: ()
         val showHeader = m.thought.isNotBlank() || (live != null && live.phase != Phase.WRITING)
         if (showHeader) ThinkingHeader(m, live, open) { open = !open }
         AnimatedVisibility(open && m.thought.isNotBlank()) { ThoughtPanel(m, live) }
+        if (m.image.isNotEmpty()) GeneratedImage(m.image)
         if (m.text.isNotEmpty()) SelectionContainer {
             Text(markdown(m.text), color = Ink, style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 25.sp), modifier = Modifier.padding(top = 2.dp))
         }
         if (live == null) {
             Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                SmallAction(if (copied) Icons.Outlined.Check else Icons.Outlined.ContentCopy, if (copied) "Copied" else "Copy") {
+                if (m.text.isNotEmpty()) SmallAction(if (copied) Icons.Outlined.Check else Icons.Outlined.ContentCopy, if (copied) "Copied" else "Copy") {
                     clipboard.setText(AnnotatedString(m.text)); copied = true
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 }
-                SmallAction(Icons.Outlined.Share, "Share") {
+                if (m.image.isNotEmpty()) SmallAction(Icons.Outlined.Share, "Share image") { ImageCache.share(ctx, m.image) }
+                else SmallAction(Icons.Outlined.Share, "Share") {
                     val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, m.text)
                     ctx.startActivity(Intent.createChooser(send, "Share reply").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                 }
-                if (canRetry) SmallAction(Icons.Outlined.Refresh, "Retry", onRetry)
+                if (canRetry && m.image.isEmpty()) SmallAction(Icons.Outlined.Refresh, "Retry", onRetry)
                 if (m.stats.isNotEmpty() || m.model.isNotEmpty()) SmallAction(Icons.Outlined.Info, "Details") { details = !details }
             }
             AnimatedVisibility(details) {
@@ -725,10 +759,171 @@ private fun SmallAction(icon: ImageVector, label: String, onClick: () -> Unit) {
     IconButton(onClick = onClick, modifier = Modifier.size(36.dp)) { Icon(icon, label, tint = Muted, modifier = Modifier.size(18.dp)) }
 }
 
+// ---- generated images ----
+
+@Composable
+private fun GeneratedImage(url: String) {
+    val ctx = LocalContext.current
+    var attempt by remember { mutableIntStateOf(0) }
+    var full by remember { mutableStateOf(false) }
+    val bitmap by produceState<android.graphics.Bitmap?>(null, url, attempt) {
+        value = withContext(Dispatchers.IO) { ImageCache.load(ctx.applicationContext, url) }
+        if (value == null) value = null
+    }
+    var failed by remember(url, attempt) { mutableStateOf(false) }
+    LaunchedEffect(url, attempt) { delay(150_000); if (bitmap == null) failed = true }
+    val shape = RoundedCornerShape(18.dp)
+    Box(
+        Modifier.padding(vertical = 4.dp).fillMaxWidth(0.86f).aspectRatio(1f).clip(shape).background(Soft).border(1.dp, Line, shape)
+            .clickable(enabled = bitmap != null || failed) { if (bitmap != null) full = true else { failed = false; attempt++ } },
+        contentAlignment = Alignment.Center,
+    ) {
+        val b = bitmap
+        when {
+            b != null -> Image(b.asImageBitmap(), "Generated image", contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+            failed -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(Icons.Outlined.BrokenImage, null, tint = Muted)
+                Text("Couldn't load the image. Tap to try again.", color = Muted, style = MaterialTheme.typography.bodySmall)
+            }
+            else -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                CircularProgressIndicator(Modifier.size(26.dp), strokeWidth = 2.5.dp, color = Green)
+                Spacer(Modifier.height(10.dp))
+                Pulsing("Creating image…")
+            }
+        }
+    }
+    val b = bitmap
+    if (full && b != null) Dialog(onDismissRequest = { full = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Column(Modifier.fillMaxSize().background(Color.Black).padding(16.dp), verticalArrangement = Arrangement.Center) {
+            Image(b.asImageBitmap(), "Generated image", contentScale = ContentScale.Fit, modifier = Modifier.fillMaxWidth().weight(1f))
+            Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally)) {
+                FilledTonalButton(onClick = {
+                    val ok = ImageCache.saveToGallery(ctx, url) != null
+                    android.widget.Toast.makeText(ctx, if (ok) "Saved to Pictures/Careva+" else "Use Share to save on this phone", android.widget.Toast.LENGTH_SHORT).show()
+                }) { Icon(Icons.Outlined.Download, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Save") }
+                FilledTonalButton(onClick = { ImageCache.share(ctx, url) }) { Icon(Icons.Outlined.Share, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Share") }
+                FilledTonalButton(onClick = { full = false }) { Text("Close") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun Pulsing(text: String) {
+    val t = rememberInfiniteTransition(label = "pulse")
+    val a by t.animateFloat(0.35f, 1f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "a")
+    Text(text, color = Muted, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.alpha(a))
+}
+
+// ---- agents ----
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AgentsScreen(vm: ChatViewModel) {
+    BackHandler { vm.screen = Screen.CHAT }
+    var editing by remember { mutableStateOf<Agent?>(null) }
+    Scaffold(
+        containerColor = Paper,
+        topBar = {
+            TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Paper),
+                navigationIcon = { IconButton(onClick = { vm.screen = Screen.CHAT }) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") } },
+                title = { Text("Agents", fontWeight = FontWeight.SemiBold) },
+            )
+        },
+        floatingActionButton = {
+            ExtendedFloatingActionButton(onClick = { editing = Agent(name = "", instructions = "") }, containerColor = Navy, contentColor = Color.White,
+                icon = { Icon(Icons.Rounded.Add, null) }, text = { Text("New agent") })
+        },
+    ) { pad ->
+        LazyColumn(Modifier.fillMaxSize().padding(pad), contentPadding = PaddingValues(16.dp, 8.dp, 16.dp, 96.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            item {
+                Text("An agent is your own assistant with its own job and instructions. Make one for each task you repeat, then start a chat with it. Your agents sync to all your phones.",
+                    color = Muted, style = MaterialTheme.typography.bodyMedium)
+            }
+            if (vm.agents.isEmpty()) item {
+                Text("You have no agents yet. Add a ready-made one below or tap New agent.", color = Ink, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = 8.dp))
+            }
+            items(vm.agents, key = { it.id }) { a -> AgentCard(a, onChat = { vm.chatWith(a.id) }, onEdit = { editing = a }) }
+            val unused = AgentTemplates.all.filter { t -> vm.agents.none { it.name == t.name } }
+            if (unused.isNotEmpty()) {
+                item { Text("Ready-made agents", fontWeight = FontWeight.Bold, color = Navy, modifier = Modifier.padding(top = 12.dp)) }
+                items(unused, key = { "t-" + it.name }) { t ->
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).border(1.dp, Line, RoundedCornerShape(16.dp)).background(Color.White).padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(t.emoji, fontSize = 24.sp)
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(t.name, fontWeight = FontWeight.SemiBold, color = Ink)
+                            Text(t.instructions, color = Muted, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        }
+                        TextButton(onClick = { vm.saveAgent(t.copy(id = java.util.UUID.randomUUID().toString())) }) { Text("Add") }
+                    }
+                }
+            }
+        }
+    }
+    editing?.let { a -> AgentEditor(a, onSave = { vm.saveAgent(it); editing = null }, onDelete = { vm.deleteAgent(a.id); editing = null }, onDismiss = { editing = null },
+        isNew = vm.agents.none { it.id == a.id }) }
+}
+
+@Composable
+private fun AgentCard(a: Agent, onChat: () -> Unit, onEdit: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color.White).border(1.dp, Line, RoundedCornerShape(16.dp))
+            .clickable(onClick = onChat).padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(44.dp).background(Soft, CircleShape), contentAlignment = Alignment.Center) { Text(a.emoji, fontSize = 22.sp) }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(a.name, fontWeight = FontWeight.SemiBold, color = Ink)
+            Text(a.instructions, color = Muted, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        }
+        IconButton(onClick = onEdit) { Icon(Icons.Outlined.Edit, "Edit ${a.name}", tint = Muted) }
+        FilledTonalButton(onClick = onChat, contentPadding = PaddingValues(horizontal = 14.dp), colors = ButtonDefaults.filledTonalButtonColors(containerColor = Soft, contentColor = Navy)) { Text("Chat") }
+    }
+}
+
+@Composable
+private fun AgentEditor(a: Agent, isNew: Boolean, onSave: (Agent) -> Unit, onDelete: () -> Unit, onDismiss: () -> Unit) {
+    var emoji by remember { mutableStateOf(a.emoji) }
+    var name by remember { mutableStateOf(a.name) }
+    var instructions by remember { mutableStateOf(a.instructions) }
+    AlertDialog(
+        onDismissRequest = onDismiss, containerColor = Paper,
+        title = { Text(if (isNew) "New agent" else "Edit agent") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(emoji, { emoji = it.take(4) }, label = { Text("Emoji") }, singleLine = true, modifier = Modifier.width(84.dp), shape = RoundedCornerShape(12.dp))
+                    Spacer(Modifier.width(8.dp))
+                    OutlinedTextField(name, { name = it.take(40) }, label = { Text("Name") }, singleLine = true, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp))
+                }
+                Spacer(Modifier.height(10.dp))
+                OutlinedTextField(instructions, { instructions = it.take(4000) }, label = { Text("What should it do?") },
+                    placeholder = { Text("For example: You write short, friendly WhatsApp replies to patients' families in Tamil and English.") },
+                    minLines = 5, maxLines = 10, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+                if (!isNew) TextButton(onClick = onDelete, modifier = Modifier.padding(top = 4.dp)) { Text("Delete agent", color = Danger) }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onSave(a.copy(emoji = emoji, name = name, instructions = instructions)) }, enabled = name.isNotBlank() && instructions.isNotBlank()) { Text("Save") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+}
+
 // ---- composer with voice typing ----
 
 @Composable
-private fun Composer(vm: ChatViewModel, dictation: Dictation, text: String, setText: (String) -> Unit, onSettings: () -> Unit) {
+private fun Composer(
+    vm: ChatViewModel, dictation: Dictation, text: String, setText: (String) -> Unit, onSettings: () -> Unit,
+    imageMode: Boolean, setImageMode: (Boolean) -> Unit,
+) {
+    var menu by remember { mutableStateOf(false) }
     val ctx = LocalContext.current
     val haptic = LocalHapticFeedback.current
     val ready = vm.engineState is EngineState.Ready
@@ -757,7 +952,8 @@ private fun Composer(vm: ChatViewModel, dictation: Dictation, text: String, setT
     fun send() {
         if (dictation.listening) dictation.cancel()
         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-        vm.send(shown); setText("")
+        if (imageMode) vm.createImage(shown) else vm.send(shown)
+        setText("")
     }
     Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(start = 10.dp, end = 10.dp, bottom = 6.dp)) {
         dictation.error?.let { err ->
@@ -784,7 +980,8 @@ private fun Composer(vm: ChatViewModel, dictation: Dictation, text: String, setT
                         Box {
                             if (shown.isEmpty()) Text(
                                 if (dictation.listening) (if (dictation.lang == VoiceLang.TAMIL) "கேட்கிறேன்… பேசுங்கள்" else "Listening… speak now")
-                                else "Message ${vm.activeModel?.name ?: "Careva+ AI"}",
+                                else if (imageMode) "Describe the image to create"
+                                else "Message ${vm.currentAgent?.name ?: vm.activeModel?.name ?: "Careva+ AI"}",
                                 color = Muted, style = MaterialTheme.typography.bodyLarge,
                             )
                             inner()
@@ -793,7 +990,23 @@ private fun Composer(vm: ChatViewModel, dictation: Dictation, text: String, setT
                 )
                 Spacer(Modifier.height(10.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Pill(Icons.Outlined.Tune, vm.effort.label, onClick = onSettings)
+                    Box {
+                        Surface(onClick = { menu = true }, shape = CircleShape, color = Color.Transparent, modifier = Modifier.size(32.dp).border(1.dp, Line, CircleShape)) {
+                            Box(contentAlignment = Alignment.Center) { Icon(Icons.Rounded.Add, "More", tint = Ink, modifier = Modifier.size(18.dp)) }
+                        }
+                        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, containerColor = Color.White) {
+                            DropdownMenuItem(text = { Text(if (imageMode) "Back to chat" else "Create image") },
+                                leadingIcon = { Icon(if (imageMode) Icons.Outlined.ChatBubbleOutline else Icons.Outlined.Image, null) },
+                                onClick = { setImageMode(!imageMode); menu = false })
+                            DropdownMenuItem(text = { Text("Agents") }, leadingIcon = { Icon(Icons.Outlined.Groups, null) },
+                                onClick = { vm.screen = Screen.AGENTS; menu = false })
+                            DropdownMenuItem(text = { Text("Model and effort") }, leadingIcon = { Icon(Icons.Outlined.Tune, null) },
+                                onClick = { onSettings(); menu = false })
+                        }
+                    }
+                    Spacer(Modifier.width(6.dp))
+                    if (imageMode) Pill(Icons.Outlined.Image, "Image ✕") { setImageMode(false) }
+                    else Pill(Icons.Outlined.Tune, vm.effort.label, onClick = onSettings)
                     Spacer(Modifier.width(6.dp))
                     Pill(Icons.Outlined.Translate, dictation.lang.label) {
                         dictation.chooseLang(if (dictation.lang == VoiceLang.ENGLISH) VoiceLang.TAMIL else VoiceLang.ENGLISH)
@@ -873,7 +1086,8 @@ private fun ModelButton(vm: ChatViewModel, onClick: () -> Unit) {
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(m?.name ?: "Careva+ AI", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium)
-            Text("${vm.effort.label} effort", color = Muted, style = MaterialTheme.typography.labelSmall)
+            Text((vm.currentAgent?.let { "${it.emoji} ${it.name} · " } ?: "") + "${vm.effort.label} effort",
+                color = Muted, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Icon(Icons.Rounded.KeyboardArrowDown, "Change model", tint = Muted)
     }

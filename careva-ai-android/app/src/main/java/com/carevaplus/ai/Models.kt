@@ -122,7 +122,7 @@ enum class Effort(val label: String, val blurb: String) {
     LOW("Low", "Fastest replies, no thinking"),
     MEDIUM("Medium", "Thinks briefly before answering"),
     HIGH("High", "Thinks carefully; best for most hard questions"),
-    ULTRA("Ultra", "Deepest thinking and self-checking; slowest");
+    ULTRA("Ultra", "A team of agents works on it: Solver and Checker, then a Lead writes the answer. Slowest, best for hard tasks");
 
     data class Plan(val thinking: Boolean, val thinkingBudget: Int, val maxOutput: Int, val temperature: Double, val instruction: String?)
 

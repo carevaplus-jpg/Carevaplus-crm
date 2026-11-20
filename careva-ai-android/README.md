@@ -55,6 +55,15 @@ How it works: the app sends the chat to the Supabase Edge Function `careva-ai-ch
 
 Limits: free tiers allow a limited number of messages per minute and per day, shared by everyone using the app. Messages to cloud models are processed by the AI service, so don't send patient-identifying details.
 
+## Agents, images and Ultra (3.0)
+
+![Careva+ AI 3.0 screens](docs/careva-ai-3.0-screens.png)
+
+- **Agents:** your own assistants with their own job and instructions (menu → Agents, or **+** → Agents). Five ready-made ones (Care Writer, Shift Planner, Tamil Translator, Health Explainer, Code Helper) or make your own. Start a chat with an agent and every reply follows its instructions. Agents sync across phones (table `ai_agents`, owner-only).
+- **Create image:** **+** → Create image, describe the picture, send. Made by a free image model (Pollinations, no key), about 5–10 seconds; tap to view full screen, save to Pictures/Careva+ or share. Free images carry a small pollinations.ai mark.
+- **Ultra = a team of agents:** with Ultra effort, a Solver and a Checker agent work on the question at the same time, then a Lead agent writes the final answer from both. The thinking line shows which agent is working; tap it to read their drafts. About 15 seconds.
+- **Video generation** is not included: no free service generates video without a paid account.
+
 ## Voice typing and the chat screen
 
 ![Careva+ AI 2.5 screens](docs/careva-ai-2.5-screens.png)
@@ -80,7 +89,7 @@ These are the strongest free models that fit on a phone, and they are much small
 
 ## Install
 
-1. Copy `release/careva-ai-2.5.0.apk` to an Android phone (Android 8.0 or newer, 64-bit).
+1. Copy `release/careva-ai-3.0.0.apk` to an Android phone (Android 8.0 or newer, 64-bit).
 2. Open it and allow "Install unknown apps" when asked. Installing over an older version keeps your chats and models.
 3. Open **Careva+ AI** and sign in with your email (the first screen). Nothing to download.
 4. Pick a cloud model from the title bar. Phone models from older versions can still be used or deleted on the Models screen; new downloads are no longer offered.

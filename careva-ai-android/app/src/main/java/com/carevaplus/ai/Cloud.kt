@@ -142,8 +142,10 @@ class Cloud(ctx: Context) {
      * Streams a reply from a cloud model. Calls [onThought] and [onText] as pieces arrive and returns the name of
      * the model that answered. Blocking: call off the main thread. [stopChat] ends it early.
      */
-    fun chat(model: String, effort: Effort, messages: List<Pair<String, String>>, onThought: (String) -> Unit, onText: (String) -> Unit): String {
+    fun chat(model: String, effort: Effort, messages: List<Pair<String, String>>, onThought: (String) -> Unit, onText: (String) -> Unit,
+             onStep: (String) -> Unit = {}): String {
         val body = JSONObject().put("model", model).put("effort", effort.name)
+            .apply { if (effort == Effort.ULTRA) put("mode", "team") } // a team of agents works on it
             .put("messages", JSONArray().apply { messages.forEach { (r, c) -> put(JSONObject().put("role", r).put("content", c)) } })
         val c = URL(CloudConfig.URL + "/functions/v1/careva-ai-chat").openConnection() as HttpURLConnection
         chatConnection = c; stopped = false
@@ -166,6 +168,7 @@ class Cloud(ctx: Context) {
                     val o = try { JSONObject(line) } catch (_: Exception) { continue }
                     o.optString("r").takeIf { it.isNotEmpty() }?.let(onThought)
                     o.optString("t").takeIf { it.isNotEmpty() }?.let(onText)
+                    o.optString("step").takeIf { it.isNotEmpty() }?.let(onStep)
                     if (o.has("error")) throw CloudError(o.getString("error"))
                     if (o.optBoolean("done")) used = o.optString("model", model)
                 }
@@ -180,15 +183,38 @@ class Cloud(ctx: Context) {
 
     fun stopChat() { stopped = true; try { chatConnection?.disconnect() } catch (_: Exception) {} }
 
+    // ---- custom agents ----
+
+    /** This account's custom agents in the cloud, each with whether it was deleted. */
+    fun pullAgents(): List<Pair<Agent, Boolean>> {
+        val arr = JSONArray(call("GET", "/rest/v1/ai_agents?select=id,name,emoji,instructions,updated,deleted", token = token()))
+        return (0 until arr.length()).map { i ->
+            val o = arr.getJSONObject(i)
+            Agent(o.getString("id"), o.getString("name"), o.optString("emoji", "🤖"), o.optString("instructions"), o.getLong("updated")) to o.optBoolean("deleted")
+        }
+    }
+
+    fun pushAgents(agents: List<Agent>, deleted: Map<String, Long>) {
+        if (agents.isEmpty() && deleted.isEmpty()) return
+        val uid = session?.userId ?: throw CloudError("Not signed in.")
+        val rows = JSONArray()
+        agents.forEach { rows.put(JSONObject().put("id", it.id).put("user_id", uid).put("name", it.name).put("emoji", it.emoji)
+            .put("instructions", it.instructions).put("updated", it.updated).put("deleted", false)) }
+        deleted.forEach { (id, at) -> rows.put(JSONObject().put("id", id).put("user_id", uid).put("name", "").put("emoji", "")
+            .put("instructions", "").put("updated", at).put("deleted", true)) }
+        call("POST", "/rest/v1/ai_agents?on_conflict=id", rows.toString(), token(), mapOf("Prefer" to "resolution=merge-duplicates,return=minimal"))
+    }
+
     // ---- chats ----
 
     /** All of this account's chats in the cloud, including deleted ones (as tombstones). */
     fun pull(): List<RemoteChat> {
-        val arr = JSONArray(call("GET", "/rest/v1/ai_chats?select=id,title,messages,updated,deleted&order=updated.desc", token = token()))
+        val arr = JSONArray(call("GET", "/rest/v1/ai_chats?select=id,title,messages,updated,deleted,agent&order=updated.desc", token = token()))
         return (0 until arr.length()).map { i ->
             val o = arr.getJSONObject(i)
             RemoteChat(
-                Chat(o.getString("id"), o.optString("title", "Chat"), ChatJson.messages(o.optJSONArray("messages") ?: JSONArray()), o.getLong("updated")),
+                Chat(o.getString("id"), o.optString("title", "Chat"), ChatJson.messages(o.optJSONArray("messages") ?: JSONArray()), o.getLong("updated"),
+                    agentId = o.optString("agent").takeIf { it.isNotEmpty() && it != "null" }),
                 o.optBoolean("deleted"),
             )
         }
@@ -201,10 +227,12 @@ class Cloud(ctx: Context) {
         val rows = JSONArray()
         chats.forEach { c ->
             rows.put(JSONObject().put("id", c.id).put("user_id", uid).put("title", c.title)
-                .put("messages", ChatJson.messages(c.messages)).put("updated", c.updated).put("deleted", false))
+                .put("messages", ChatJson.messages(c.messages)).put("updated", c.updated).put("deleted", false)
+                .put("agent", c.agentId ?: JSONObject.NULL))
         }
         deleted.forEach { (id, at) ->
-            rows.put(JSONObject().put("id", id).put("user_id", uid).put("title", "").put("messages", JSONArray()).put("updated", at).put("deleted", true))
+            rows.put(JSONObject().put("id", id).put("user_id", uid).put("title", "").put("messages", JSONArray()).put("updated", at).put("deleted", true)
+                .put("agent", JSONObject.NULL))
         }
         call("POST", "/rest/v1/ai_chats?on_conflict=id", rows.toString(), token(),
             mapOf("Prefer" to "resolution=merge-duplicates,return=minimal"))
