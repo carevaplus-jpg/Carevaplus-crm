@@ -38,7 +38,7 @@ import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class MainActivity extends Activity implements TextToSpeech.OnInitListener, ModelDownloads.Watcher {
+public class MainActivity extends Activity implements TextToSpeech.OnInitListener, ModelDownloads.Watcher, SyncManager.Watcher {
 
     private static final int REQ_VOICE = 42;
     private static final int MAX_HISTORY = 20;
@@ -104,13 +104,35 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
     protected void onResume() {
         super.onResume();
         ModelDownloads.watch(this);
+        SyncManager.watch(this);
         onChange();
+        if (SyncManager.signedIn(prefs)) SyncManager.syncNow(prefs, null);   // fetch changes made on another phone
     }
 
     @Override
     protected void onPause() {
         ModelDownloads.unwatch(this);
+        SyncManager.unwatch(this);
+        SyncManager.markDirty(prefs);
         super.onPause();
+    }
+
+    /** A sync finished: if another phone changed the chat, show the new version. */
+    @Override
+    public void onSyncChange() {
+        refreshChip(null);
+        if (busy) return;
+        List<ChatStore.Msg> stored = ChatStore.load(prefs);
+        boolean same = stored.size() == msgs.size()
+                && (stored.isEmpty() || stored.get(stored.size() - 1).time == msgs.get(msgs.size() - 1).time);
+        if (same) return;
+        msgs.clear();
+        msgs.addAll(stored);
+        chat.removeAllViews();
+        welcome = null;
+        if (msgs.isEmpty()) showWelcome();
+        else for (ChatStore.Msg m : msgs) addView(m);
+        scrollToBottom();
     }
 
     @Override
@@ -299,15 +321,17 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
         if (ModelDownloads.running) {
             setChip("⬇ " + ModelDownloads.status, Ui.ACCENT);
         } else if (override != null) {
-            setChip("● " + override + "  ▾", Ui.OK);
+            setChip(cloudMark() + "● " + override + "  ▾", Ui.OK);
         } else if (!BrainFactory.isReady(this, id)) {
-            setChip("● " + p.name + " · tap to set up  ▾", Ui.WARN);
+            setChip(cloudMark() + "● " + p.name + " · tap to set up  ▾", Ui.WARN);
         } else {
             String model = prefs.getString(BrainFactory.modelPref(id), "");
             String label = p.name + (model.isEmpty() ? "" : " · " + OpenAICompatBrain.shortName(model));
-            setChip("● " + label + "  ▾", Ui.MUTED);
+            setChip(cloudMark() + "● " + label + "  ▾", Ui.MUTED);
         }
     }
+
+    private String cloudMark() { return SyncManager.signedIn(prefs) ? "☁ " : ""; }
 
     private void setChip(String text, int color) {
         chip.setText(text);
@@ -379,6 +403,7 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
         ChatStore.Msg m = new ChatStore.Msg(role, text, System.currentTimeMillis());
         msgs.add(m);
         ChatStore.save(prefs, msgs);
+        SyncManager.markDirty(prefs);
         addView(m);
         scrollToBottom();
     }
@@ -611,6 +636,12 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
         }
         String text = input.getText().toString().trim();
         if (text.isEmpty()) return;
+        BrainCommands.Command cmd = BrainCommands.parse(text);
+        if (cmd != null) {
+            input.setText("");
+            text = runCommand(text, cmd);
+            if (text.isEmpty()) return;          // nothing more to send
+        }
         if (!BrainFactory.isReady(this, BrainFactory.chosen(prefs))) {
             Toast.makeText(this, "Set up Jarvis's brain first", Toast.LENGTH_SHORT).show();
             startActivity(new Intent(this, SettingsActivity.class));
@@ -619,6 +650,39 @@ public class MainActivity extends Activity implements TextToSpeech.OnInitListene
         input.setText("");
         addMessage("user", text);
         ask();
+    }
+
+    /**
+     * Carries out "use the heavy model", "switch to Groq", "go offline", "which brain are you using?" …
+     * Returns the text still to send to the (new) brain, or "" if there is none.
+     */
+    private String runCommand(String original, BrainCommands.Command cmd) {
+        addMessage("user", original);
+        String id = BrainFactory.chosen(prefs);
+        if (BrainCommands.Kind.STATUS.equals(cmd.kind)) {
+            String model = prefs.getString(BrainFactory.modelPref(id), "");
+            addMessage("note", "I'm using " + Providers.byId(id).name
+                    + (model.isEmpty() ? " (Auto model)" : " · " + OpenAICompatBrain.shortName(model))
+                    + (BrainFactory.isReady(this, id) ? "." : " — it still needs setting up in ⚙ Settings."));
+            return "";
+        }
+        String target = cmd.providerId != null ? cmd.providerId : id;
+        SharedPreferences.Editor e = prefs.edit().putString(BrainFactory.K_BRAIN, target);
+        if (cmd.model != null) e.putString(BrainFactory.modelPref(target), cmd.model);
+        e.apply();
+        refreshChip(null);
+        if (!BrainFactory.isReady(this, target)) {
+            Providers.Provider p = Providers.byId(target);
+            addMessage("error", "Switched to " + cmd.label + ", but " + p.name + " isn't set up yet. "
+                    + (p.needsKey() ? "Add its free key in Settings." : "Finish setting it up in Settings."));
+            return "";
+        }
+        addMessage("note", "Switched to " + cmd.label + ".");
+        if (!cmd.remainder.isEmpty()) {
+            addMessage("user", cmd.remainder);
+            ask();
+        }
+        return "";
     }
 
     private void retry() {

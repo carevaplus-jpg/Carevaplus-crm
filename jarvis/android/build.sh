@@ -16,14 +16,14 @@ rm -rf "$OUT" && mkdir -p "$OUT/res" "$OUT/gen" "$OUT/classes"
 echo "1/5 Compiling resources"
 "$BT/aapt2" compile --dir res -o "$OUT/res/res.zip"
 "$BT/aapt2" link -o "$OUT/base.apk" -I "$JAR" --manifest AndroidManifest.xml \
-    --java "$OUT/gen" --min-sdk-version 24 --target-sdk-version 34 "$OUT/res/res.zip"
+    --java "$OUT/gen" --min-sdk-version 26 --target-sdk-version 34 "$OUT/res/res.zip"
 
 echo "2/5 Compiling Java"
 javac --release 11 -encoding UTF-8 -classpath "$JAR" -d "$OUT/classes" \
     $(find src "$OUT/gen" -name '*.java') -Xlint:-options
 
 echo "3/5 Converting to Android bytecode"
-"$BT/d8" --release --min-api 24 --lib "$JAR" --output "$OUT" $(find "$OUT/classes" -name '*.class')
+"$BT/d8" --release --min-api 26 --lib "$JAR" --output "$OUT" $(find "$OUT/classes" -name '*.class')
 
 echo "4/5 Packaging"
 cp "$OUT/base.apk" "$OUT/unsigned.apk"

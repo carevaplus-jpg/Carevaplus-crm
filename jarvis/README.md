@@ -113,7 +113,40 @@ Use Claude when quality matters most.
 - The conversation is kept when you close the app. Tap **＋** to start a new one.
 - Fill in **About you** in Settings (name, how to address you, city, services and prices). Every brain uses it.
 
-**Install:** on your Android phone (Android 7.0 or newer), download [`android/Jarvis-Careva.apk`](android/Jarvis-Careva.apk) and open it.
+**Cloud account (optional):** sign in once to back up everything to the cloud and restore it on any phone.
+
+1. Open ⚙ Settings → **Cloud account**.
+2. Enter your email and a password (8+ characters), then tap **Create account**.
+3. Open the confirmation link in the email you receive, then tap **Sign in**.
+4. On a new phone, install the app and sign in with the same email and password. Your brains, API keys, "About you" and chats come back.
+
+How it works:
+
+- **Encrypted before upload:** everything is encrypted on the phone with a key made from your password (AES-256-GCM).
+  The cloud only stores scrambled data: not your keys, not your chats.
+- **Where it's stored:** the Careva+ Supabase project, in a separate `jarvis_sync` table.
+  Each account can read only its own row, and a Jarvis account has no access to CRM patient data.
+- **After a password reset:** the old cloud copy can't be unlocked. The app offers to replace it with this phone's data.
+- **Signing out:** your data stays on the phone.
+
+**Switch brains by talking to Jarvis.** Type or say commands like these:
+
+| You say | Jarvis switches to |
+|---|---|
+| "use the heavy model", "use NVIDIA" | NVIDIA (Kimi K3.1 Pro by default) |
+| "use the fast model", "use Groq" | Groq (fastest) |
+| "use Kimi" / "use Mistral" / "use Nemotron" / "use GLM" | That NVIDIA model |
+| "use GPT-OSS" / "use Llama" | That Groq model |
+| "use Gemini", "use OpenRouter", "use Gemma" | That brain |
+| "use Claude" / "use Sonnet" / "use Haiku" / "use the best model" | Claude (paid) |
+| "go offline", "use the phone model" | On this phone |
+| "use my computer" | Your OpenJarvis computer |
+| "which brain are you using?" | Jarvis tells you |
+
+Add a task after the command and Jarvis does it with the new brain.
+For example: "Jarvis, use Kimi and plan tomorrow's shifts for 3 nurses".
+
+**Install:** on your Android phone (Android 8.0 or newer), download [`android/Jarvis-Careva.apk`](android/Jarvis-Careva.apk) and open it.
 If Android asks, allow your browser to **install unknown apps**.
 If you installed an older Jarvis app before, this one installs over it.
 

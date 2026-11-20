@@ -36,7 +36,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /** Full-screen settings: choose and set up Jarvis's brain, backups, profile and voice. */
-public class SettingsActivity extends Activity implements ModelDownloads.Watcher {
+public class SettingsActivity extends Activity implements ModelDownloads.Watcher, SyncManager.Watcher {
 
     private final ExecutorService bg = Executors.newCachedThreadPool();
     private final Handler ui = new Handler(Looper.getMainLooper());
@@ -47,6 +47,7 @@ public class SettingsActivity extends Activity implements ModelDownloads.Watcher
     private SharedPreferences prefs;
     private TextView localStatus;
     private Button localButton;
+    private LinearLayout cloudBox;
 
     private int dp(float v) { return Ui.dp(this, v); }
 
@@ -84,6 +85,12 @@ public class SettingsActivity extends Activity implements ModelDownloads.Watcher
         sv.addView(box);
         root.addView(sv, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
+        box.addView(section("CLOUD ACCOUNT"));
+        cloudBox = new LinearLayout(this);
+        cloudBox.setOrientation(LinearLayout.VERTICAL);
+        box.addView(cloudBox);
+        buildCloud();
+
         box.addView(section("JARVIS'S BRAIN"));
         box.addView(hint("Choose where Jarvis thinks. Free brains need a free key — tap “Get free key”, sign up, "
                 + "copy the key and paste it here. It takes about a minute."));
@@ -119,8 +126,131 @@ public class SettingsActivity extends Activity implements ModelDownloads.Watcher
         refreshSelection();
     }
 
-    @Override protected void onResume() { super.onResume(); ModelDownloads.watch(this); onChange(); }
-    @Override protected void onPause() { ModelDownloads.unwatch(this); super.onPause(); }
+    @Override protected void onResume() {
+        super.onResume();
+        ModelDownloads.watch(this);
+        SyncManager.watch(this);
+        onChange();
+    }
+
+    @Override protected void onPause() {
+        ModelDownloads.unwatch(this);
+        SyncManager.unwatch(this);
+        SyncManager.markDirty(prefs);   // upload any changed settings (encrypted) if signed in
+        super.onPause();
+    }
+
+    @Override public void onSyncChange() { buildCloud(); }
+
+    // ------------------------------------------------------------------ cloud account
+
+    private boolean cloudBusy;
+
+    /** Sign-in form when signed out; account status and actions when signed in. */
+    private void buildCloud() {
+        if (cloudBox == null || cloudBusy) return;
+        cloudBox.removeAllViews();
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(14), dp(12), dp(14), dp(12));
+        card.setBackground(Ui.card(this, Ui.CARD, Ui.CARD_STROKE, 16));
+        cloudBox.addView(card);
+
+        if (SyncManager.signedIn(prefs)) {
+            CloudSync.Session s = SyncManager.session(prefs);
+            TextView who = small("☁  Signed in as " + s.email);
+            who.setTypeface(Typeface.DEFAULT_BOLD);
+            card.addView(who);
+            long last = prefs.getLong(SyncManager.K_LAST_SYNC, 0);
+            String err = SyncManager.status(prefs);
+            TextView st = small(!err.isEmpty() ? "⚠ " + err
+                    : last == 0 ? "Not synced yet."
+                    : "Synced " + android.text.format.DateUtils.getRelativeTimeSpanString(last) + ". Brains, keys, "
+                      + "“About you” and chats are backed up, encrypted with your password.");
+            st.setTextColor(err.isEmpty() ? Ui.MUTED : Ui.WARN);
+            card.addView(st);
+            LinearLayout row = new LinearLayout(this);
+            Button sync = actionButton("Sync now");
+            Button out = actionButton("Sign out");
+            row.addView(sync);
+            row.addView(out);
+            card.addView(row);
+            TextView result = small("");
+            card.addView(result);
+            sync.setOnClickListener(v -> {
+                result.setText("Syncing…");
+                result.setTextColor(Ui.MUTED);
+                SyncManager.markDirty(prefs);
+                SyncManager.syncNow(prefs, (ok, msg) -> { result.setText((ok ? "✓ " : "✗ ") + msg); result.setTextColor(ok ? Ui.OK : Ui.ERROR); });
+            });
+            out.setOnClickListener(v -> new AlertDialog.Builder(this)
+                    .setMessage("Sign out of the Jarvis cloud? Your settings and chats stay on this phone; the encrypted cloud copy stays in your account.")
+                    .setPositiveButton("Sign out", (d, w) -> SyncManager.signOut(prefs))
+                    .setNegativeButton("Cancel", null)
+                    .show());
+            return;
+        }
+
+        card.addView(small("Sign in to back up Jarvis — chosen brains, API keys, “About you” and chats — and get them "
+                + "back on any phone. Everything is encrypted on this phone with your password before upload."));
+        EditText email = input("Email", prefs.getString("cloud_last_email", ""), false);
+        email.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);
+        card.addView(email);
+        EditText pass = input("Password (8+ characters)", "", true);
+        card.addView(pass);
+        LinearLayout row = new LinearLayout(this);
+        Button in = actionButton("Sign in");
+        Button create = actionButton("Create account");
+        row.addView(in);
+        row.addView(create);
+        card.addView(row);
+        TextView forgot = small("Forgot password?");
+        forgot.setTextColor(Ui.ACCENT);
+        card.addView(forgot);
+        TextView result = small("");
+        card.addView(result);
+
+        View.OnClickListener go = v -> {
+            boolean isCreate = v == create;
+            String e = email.getText().toString().trim();
+            String pw = pass.getText().toString();
+            prefs.edit().putString("cloud_last_email", e).apply();
+            cloudBusy = true;
+            in.setEnabled(false);
+            create.setEnabled(false);
+            result.setText(isCreate ? "Creating your account…" : "Signing in…");
+            result.setTextColor(Ui.MUTED);
+            SyncManager.signIn(prefs, e, pw, isCreate, (ok, msg) -> {
+                cloudBusy = false;
+                in.setEnabled(true);
+                create.setEnabled(true);
+                result.setText((ok ? "✓ " : "✗ ") + msg);
+                result.setTextColor(ok ? Ui.OK : Ui.ERROR);
+                if (ok && SyncManager.signedIn(prefs)) {
+                    toast(msg);
+                    recreate();    // show restored settings
+                } else if (!ok && msg.contains("can't be unlocked")) {
+                    new AlertDialog.Builder(this)
+                            .setTitle("Cloud copy is locked")
+                            .setMessage(msg + "\n\nReplace the cloud copy with this phone's settings and chats?")
+                            .setPositiveButton("Replace cloud copy", (d, w) -> SyncManager.replaceCloudCopy(prefs, e, pw, (ok2, m2) -> {
+                                result.setText((ok2 ? "✓ " : "✗ ") + m2);
+                                result.setTextColor(ok2 ? Ui.OK : Ui.ERROR);
+                                if (ok2) recreate();
+                            }))
+                            .setNegativeButton("Cancel", null)
+                            .show();
+                }
+            });
+        };
+        in.setOnClickListener(go);
+        create.setOnClickListener(go);
+        forgot.setOnClickListener(v -> {
+            String e = email.getText().toString().trim();
+            result.setText("Sending…");
+            SyncManager.resetPassword(e, (ok, msg) -> { result.setText((ok ? "✓ " : "✗ ") + msg); result.setTextColor(ok ? Ui.OK : Ui.ERROR); });
+        });
+    }
     @Override protected void onDestroy() { bg.shutdownNow(); super.onDestroy(); }
 
     // ------------------------------------------------------------------ provider cards
