@@ -60,9 +60,10 @@ Limits: free tiers allow a limited number of messages per minute and per day, sh
 ![Careva+ AI 3.0 screens](docs/careva-ai-3.0-screens.png)
 
 - **Agents:** your own assistants with their own job and instructions (menu → Agents, or **+** → Agents). Five ready-made ones (Care Writer, Shift Planner, Tamil Translator, Health Explainer, Code Helper) or make your own. Start a chat with an agent and every reply follows its instructions. Agents sync across phones (table `ai_agents`, owner-only).
-- **Create image:** **+** → Create image, describe the picture, send. Made by a free image model (Pollinations, no key), about 5–10 seconds; tap to view full screen, save to Pictures/Careva+ or share. Free images carry a small pollinations.ai mark.
+- **Create image:** **+** → Create image, describe the picture, send. **Best** uses the strongest model the account can pay for, in this order: OpenAI GPT Image 2 (the image model used by ChatGPT), FLUX.2 Pro, FLUX 1.1 Pro, Microsoft MAI Image 2.7. **Fast** uses FLUX 1.1 Pro, MAI Image 2.7, then Z-Image Turbo. Without a key or credit it uses a free model, which adds a small pollinations.ai mark. Tap a picture to view it full screen, save it to Pictures/Careva+ or share it.
+- **Create video:** **+** → Create video, describe the scene, send. **Pro** = Google Veo 3.1 with sound; **Standard** = Wan 2.2. About 1–3 minutes; the video plays in the chat and can be saved to Movies/Careva+ or shared. Video always needs paid credit (roughly $0.05 for 5 s with Wan, $0.50 with Veo).
+- **Setup for top images and video:** create a Pollinations account and a secret key at enter.pollinations.ai/keys, add credit there if you want GPT Image 2 or video, then in Supabase → Edge Functions → Secrets add `POLLINATIONS_API_KEY`. Creations are stored in the public Supabase Storage bucket `ai-media` under random names (function `careva-ai-media`).
 - **Ultra = a team of agents:** with Ultra effort, a Solver and a Checker agent work on the question at the same time, then a Lead agent writes the final answer from both. The thinking line shows which agent is working; tap it to read their drafts. About 15 seconds.
-- **Video generation** is not included: no free service generates video without a paid account.
 
 ## Voice typing and the chat screen
 

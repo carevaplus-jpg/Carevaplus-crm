@@ -56,6 +56,45 @@ object ImageCache {
         return uri
     }
 
+    /** Downloads a generated video into the cache (once) and returns the file, or null. Blocking. */
+    fun videoFile(ctx: Context, url: String): File? {
+        val name = MessageDigest.getInstance("SHA-1").digest(url.toByteArray()).joinToString("") { "%02x".format(it) }
+        val f = File(File(ctx.cacheDir, "videos").apply { mkdirs() }, "$name.mp4")
+        if (f.exists() && f.length() > 0) return f
+        return try {
+            val c = URL(url).openConnection() as HttpURLConnection
+            c.connectTimeout = 20_000; c.readTimeout = 120_000
+            try {
+                if (c.responseCode != 200) return null
+                val tmp = File(f.parentFile, f.name + ".part")
+                c.inputStream.use { i -> tmp.outputStream().use { i.copyTo(it) } }
+                if (tmp.renameTo(f)) f else null
+            } finally { c.disconnect() }
+        } catch (_: Exception) { null }
+    }
+
+    /** Saves a video to the phone's Movies/Careva+ folder (Android 10+). Blocking. */
+    fun saveVideo(ctx: Context, url: String): Uri? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
+        val f = videoFile(ctx, url) ?: return null
+        val values = ContentValues().apply {
+            put(MediaStore.Video.Media.DISPLAY_NAME, "careva-${System.currentTimeMillis()}.mp4")
+            put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
+            put(MediaStore.Video.Media.RELATIVE_PATH, "Movies/Careva+")
+        }
+        val uri = ctx.contentResolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values) ?: return null
+        ctx.contentResolver.openOutputStream(uri)?.use { out -> f.inputStream().use { it.copyTo(out) } }
+        return uri
+    }
+
+    /** Opens the share sheet for a video (saved first; older phones share the link). Blocking: call off the main thread. */
+    fun shareVideo(ctx: Context, url: String) {
+        val uri = saveVideo(ctx, url)
+        val send = if (uri != null) Intent(Intent.ACTION_SEND).setType("video/mp4").putExtra(Intent.EXTRA_STREAM, uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        else Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, url)
+        ctx.startActivity(Intent.createChooser(send, "Share video").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
+
     /** Opens the share sheet for the picture (saved to the gallery first; older phones share the link instead). */
     fun share(ctx: Context, url: String) {
         val uri = saveToGallery(ctx, url)

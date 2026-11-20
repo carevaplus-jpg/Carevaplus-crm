@@ -91,8 +91,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
     /** The agent the next new chat will use. */
     var pendingAgentId by mutableStateOf<String?>(null); private set
     val currentAgent: Agent? get() = agents.firstOrNull { it.id == (current?.agentId ?: pendingAgentId.takeIf { current == null }) }
-    /** Image replies are being made. */
-    var makingImage by mutableStateOf(false); private set
+
     private var replyJob: Job? = null
 
     val activeModel get() = Catalog.byId(activeModelId)
@@ -250,22 +249,75 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         withContext(Dispatchers.IO) { cloud.pushAgents(upload, uploadDeleted) }
     }
 
-    /** Makes a picture from [prompt] with a free image model and adds it to the chat. */
-    fun createImage(prompt: String) {
-        val p = prompt.trim()
-        if (p.isEmpty() || busy || makingImage) return
+    /** Adds the request and a placeholder reply to the chat; returns the chat id and the placeholder's tag. */
+    private fun startMedia(prompt: String, video: Boolean): Pair<String, String> {
         val base = current ?: Chat(agentId = pendingAgentId)
-        val now = System.currentTimeMillis()
-        val seed = (now % 1_000_000).toInt()
-        val url = "https://image.pollinations.ai/prompt/" + java.net.URLEncoder.encode(p, "UTF-8").replace("+", "%20") +
-            "?width=1024&height=1024&seed=$seed&nologo=true&enhance=true"
+        val tag = "pending:${System.currentTimeMillis()}"
         put(base.copy(
-            title = if (base.messages.isEmpty()) p.lineSequence().first().take(48) else base.title,
-            messages = base.messages + Msg("user", p) +
-                Msg("assistant", "", model = "Careva Image", stats = "Image · 1024 × 1024 · free model", image = url),
-            updated = now,
+            title = if (base.messages.isEmpty()) prompt.lineSequence().first().take(48) else base.title,
+            messages = base.messages + Msg("user", prompt) +
+                if (video) Msg("assistant", "", model = "Careva Video", video = tag) else Msg("assistant", "", model = "Careva Image", image = tag),
+            updated = System.currentTimeMillis(),
         ))
+        store.save(chats)
+        return base.id to tag
+    }
+
+    /** Replaces the placeholder tagged [tag] in chat [chatId]. */
+    private fun finishMedia(chatId: String, tag: String, done: (Msg) -> Msg) {
+        val chat = chats.firstOrNull { it.id == chatId } ?: return
+        val i = chat.messages.indexOfFirst { it.image == tag || it.video == tag }
+        if (i < 0) return
+        val msgs = chat.messages.toMutableList(); msgs[i] = done(msgs[i])
+        val i2 = chats.indexOfFirst { it.id == chatId }
+        chats[i2] = chat.copy(messages = msgs, updated = System.currentTimeMillis())
         store.save(chats); syncNow()
+    }
+
+    /** Makes a picture from [prompt]: [best] uses the top model the account can use (GPT Image, FLUX), else a fast one. */
+    fun createImage(prompt: String, best: Boolean = true) {
+        val p = prompt.trim()
+        if (p.isEmpty() || busy) return
+        val (chatId, tag) = startMedia(p, video = false)
+        val started = System.currentTimeMillis()
+        viewModelScope.launch {
+            try {
+                val m = withContext(Dispatchers.IO) { cloud.createImage(p, best) }
+                val secs = (System.currentTimeMillis() - started) / 1000
+                finishMedia(chatId, tag) { it.copy(image = m.url, model = m.model, stats = "Image · ${m.model} · ${secs}s") }
+            } catch (e: Exception) {
+                finishMedia(chatId, tag) { it.copy(image = "", text = "Sorry, I couldn't create that image: ${e.message ?: "unknown error"}") }
+            }
+        }
+    }
+
+    /** Makes a short video from [prompt]: [pro] uses Veo 3.1 with sound, otherwise Wan 2.2. Takes about 1–3 minutes. */
+    fun createVideo(prompt: String, pro: Boolean) {
+        val p = prompt.trim()
+        if (p.isEmpty() || busy) return
+        val (chatId, tag) = startMedia(p, video = true)
+        val started = System.currentTimeMillis()
+        viewModelScope.launch {
+            try {
+                val (job, model) = withContext(Dispatchers.IO) { cloud.startVideo(p, pro) }
+                finishMedia(chatId, tag) { it.copy(model = model) }
+                var result: Cloud.VideoState = Cloud.VideoState.Running
+                while (result is Cloud.VideoState.Running && System.currentTimeMillis() - started < 10 * 60_000) {
+                    delay(5_000)
+                    result = try { withContext(Dispatchers.IO) { cloud.videoStatus(job) } } catch (e: CloudError) {
+                        if (e.message?.contains("connection") == true) Cloud.VideoState.Running else throw e
+                    }
+                }
+                val secs = (System.currentTimeMillis() - started) / 1000
+                when (val r = result) {
+                    is Cloud.VideoState.Done -> finishMedia(chatId, tag) { it.copy(video = r.url, model = r.model.ifEmpty { model }, stats = "Video · ${r.model.ifEmpty { model }} · ${secs}s") }
+                    is Cloud.VideoState.Failed -> finishMedia(chatId, tag) { it.copy(video = "", text = "Sorry, the video couldn't be made: ${r.error}") }
+                    Cloud.VideoState.Running -> finishMedia(chatId, tag) { it.copy(video = "", text = "Sorry, the video took too long. Please try again.") }
+                }
+            } catch (e: Exception) {
+                finishMedia(chatId, tag) { it.copy(video = "", text = "Sorry, I couldn't create that video: ${e.message ?: "unknown error"}") }
+            }
+        }
     }
 
     fun open(id: String) { if (!busy) { currentId = id; screen = Screen.CHAT } }

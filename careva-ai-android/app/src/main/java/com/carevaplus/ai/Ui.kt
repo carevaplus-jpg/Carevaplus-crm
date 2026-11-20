@@ -369,7 +369,8 @@ private fun ChatScreen(vm: ChatViewModel) {
     val dictation = remember { Dictation(ctx.applicationContext) }
     DisposableEffect(Unit) { onDispose { dictation.cancel() } }
     var draft by rememberSaveable { mutableStateOf("") }
-    var imageMode by rememberSaveable { mutableStateOf(false) }
+    var mode by rememberSaveable { mutableStateOf(Mode.CHAT) }
+    var highQuality by rememberSaveable { mutableStateOf(true) }
     ModalNavigationDrawer(drawerState = drawer, drawerContent = { ChatDrawer(vm) { scope.launch { drawer.close() } } }) {
         Scaffold(
             containerColor = Paper,
@@ -400,8 +401,9 @@ private fun ChatScreen(vm: ChatViewModel) {
                 Box(Modifier.weight(1f)) {
                     if (empty) Welcome(vm, Modifier.fillMaxSize()) else Messages(vm, messages, Modifier.fillMaxSize())
                 }
-                if (empty && !imageMode) Suggestions(vm) { draft = it }
-                Composer(vm, dictation, draft, { draft = it }, onSettings = { picker = true }, imageMode = imageMode, setImageMode = { imageMode = it })
+                if (empty && mode == Mode.CHAT) Suggestions(vm) { draft = it }
+                Composer(vm, dictation, draft, { draft = it }, onSettings = { picker = true }, mode = mode, setMode = { mode = it },
+                    highQuality = highQuality, setHighQuality = { highQuality = it })
             }
         }
     }
@@ -723,12 +725,14 @@ private fun AssistantMessage(m: Msg, live: Live?, canRetry: Boolean, onRetry: ()
     var open by remember { mutableStateOf(false) }
     var details by remember { mutableStateOf(false) }
     var copied by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     LaunchedEffect(copied) { if (copied) { delay(1500); copied = false } }
     Column(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 12.dp)) {
         val showHeader = m.thought.isNotBlank() || (live != null && live.phase != Phase.WRITING)
         if (showHeader) ThinkingHeader(m, live, open) { open = !open }
         AnimatedVisibility(open && m.thought.isNotBlank()) { ThoughtPanel(m, live) }
         if (m.image.isNotEmpty()) GeneratedImage(m.image)
+        if (m.video.isNotEmpty()) GeneratedVideo(m.video, m.model)
         if (m.text.isNotEmpty()) SelectionContainer {
             Text(markdown(m.text), color = Ink, style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 25.sp), modifier = Modifier.padding(top = 2.dp))
         }
@@ -738,12 +742,16 @@ private fun AssistantMessage(m: Msg, live: Live?, canRetry: Boolean, onRetry: ()
                     clipboard.setText(AnnotatedString(m.text)); copied = true
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 }
-                if (m.image.isNotEmpty()) SmallAction(Icons.Outlined.Share, "Share image") { ImageCache.share(ctx, m.image) }
+                if (m.video.isNotEmpty() && !m.video.startsWith("pending:")) SmallAction(Icons.Outlined.Share, "Share video") {
+                    scope.launch(Dispatchers.IO) { ImageCache.shareVideo(ctx, m.video) }
+                }
+                else if (m.image.isNotEmpty() && !m.image.startsWith("pending:")) SmallAction(Icons.Outlined.Share, "Share image") { ImageCache.share(ctx, m.image) }
+                else if (m.image.isNotEmpty() || m.video.isNotEmpty()) {}
                 else SmallAction(Icons.Outlined.Share, "Share") {
                     val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, m.text)
                     ctx.startActivity(Intent.createChooser(send, "Share reply").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                 }
-                if (canRetry && m.image.isEmpty()) SmallAction(Icons.Outlined.Refresh, "Retry", onRetry)
+                if (canRetry && m.image.isEmpty() && m.video.isEmpty()) SmallAction(Icons.Outlined.Refresh, "Retry", onRetry)
                 if (m.stats.isNotEmpty() || m.model.isNotEmpty()) SmallAction(Icons.Outlined.Info, "Details") { details = !details }
             }
             AnimatedVisibility(details) {
@@ -766,6 +774,7 @@ private fun GeneratedImage(url: String) {
     val ctx = LocalContext.current
     var attempt by remember { mutableIntStateOf(0) }
     var full by remember { mutableStateOf(false) }
+    if (url.startsWith("pending:")) { MediaPending(url, "Creating image", "Usually 5–30 seconds", square = true); return }
     val bitmap by produceState<android.graphics.Bitmap?>(null, url, attempt) {
         value = withContext(Dispatchers.IO) { ImageCache.load(ctx.applicationContext, url) }
         if (value == null) value = null
@@ -813,6 +822,89 @@ private fun Pulsing(text: String) {
     val t = rememberInfiniteTransition(label = "pulse")
     val a by t.animateFloat(0.35f, 1f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "a")
     Text(text, color = Muted, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.alpha(a))
+}
+
+/** What the composer sends: a chat message, or a request to create an image or a video. */
+enum class Mode { CHAT, IMAGE, VIDEO }
+
+/** A placeholder while an image or video is being made, with the time so far. */
+@Composable
+private fun MediaPending(tag: String, label: String, hint: String, square: Boolean) {
+    val started = tag.removePrefix("pending:").toLongOrNull() ?: System.currentTimeMillis()
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) { while (true) { delay(1000); now = System.currentTimeMillis() } }
+    val secs = (now - started) / 1000
+    val stale = secs > 15 * 60 // the app was closed while it was being made
+    val shape = RoundedCornerShape(18.dp)
+    Box(
+        Modifier.padding(vertical = 4.dp).fillMaxWidth(0.86f).aspectRatio(if (square) 1f else 16f / 9f).clip(shape).background(Soft).border(1.dp, Line, shape),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(16.dp)) {
+            if (stale) {
+                Icon(Icons.Outlined.BrokenImage, null, tint = Muted)
+                Text("This didn't finish. Please try again.", color = Muted, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center)
+            } else {
+                CircularProgressIndicator(Modifier.size(26.dp), strokeWidth = 2.5.dp, color = Green)
+                Spacer(Modifier.height(10.dp))
+                Pulsing("$label… ${secs}s")
+                Text(hint, color = Muted, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center)
+            }
+        }
+    }
+}
+
+/** Plays a generated video inside the chat, with save and share. */
+@Composable
+private fun GeneratedVideo(url: String, model: String) {
+    if (url.startsWith("pending:")) {
+        MediaPending(url, "Creating video", if (model.contains("Veo")) "About 1–3 minutes · ${model}" else "About 1–2 minutes", square = false)
+        return
+    }
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var ratio by remember(url) { mutableFloatStateOf(16f / 9f) }
+    var playing by remember(url) { mutableStateOf(false) }
+    var saving by remember { mutableStateOf(false) }
+    val shape = RoundedCornerShape(18.dp)
+    Column(Modifier.padding(vertical = 4.dp).fillMaxWidth(0.92f)) {
+        Box(Modifier.fillMaxWidth().aspectRatio(ratio).clip(shape).background(Color.Black), contentAlignment = Alignment.Center) {
+            androidx.compose.ui.viewinterop.AndroidView(
+                factory = { c ->
+                    android.widget.VideoView(c).apply {
+                        setVideoURI(android.net.Uri.parse(url))
+                        setOnPreparedListener { mp ->
+                            mp.isLooping = true
+                            if (mp.videoHeight > 0) ratio = mp.videoWidth.toFloat() / mp.videoHeight
+                            seekTo(1) // show the first frame
+                        }
+                        setOnCompletionListener { playing = false }
+                    }
+                },
+                update = { v -> if (playing && !v.isPlaying) v.start() else if (!playing && v.isPlaying) v.pause() },
+                modifier = Modifier.fillMaxSize().clickable { playing = !playing },
+            )
+            if (!playing) Surface(onClick = { playing = true }, shape = CircleShape, color = Color.White.copy(alpha = 0.9f), modifier = Modifier.size(56.dp)) {
+                Box(contentAlignment = Alignment.Center) { Icon(Icons.Rounded.PlayArrow, "Play video", tint = Ink, modifier = Modifier.size(32.dp)) }
+            }
+        }
+        Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilledTonalButton(onClick = {
+                saving = true
+                scope.launch {
+                    val ok = withContext(Dispatchers.IO) { ImageCache.saveVideo(ctx, url) != null }
+                    saving = false
+                    android.widget.Toast.makeText(ctx, if (ok) "Saved to Movies/Careva+" else "Use Share to save on this phone", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }, enabled = !saving, colors = ButtonDefaults.filledTonalButtonColors(containerColor = Soft, contentColor = Navy)) {
+                Icon(Icons.Outlined.Download, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(if (saving) "Saving…" else "Save")
+            }
+            FilledTonalButton(onClick = { scope.launch(Dispatchers.IO) { ImageCache.shareVideo(ctx, url) } },
+                colors = ButtonDefaults.filledTonalButtonColors(containerColor = Soft, contentColor = Navy)) {
+                Icon(Icons.Outlined.Share, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Share")
+            }
+        }
+    }
 }
 
 // ---- agents ----
@@ -921,7 +1013,7 @@ private fun AgentEditor(a: Agent, isNew: Boolean, onSave: (Agent) -> Unit, onDel
 @Composable
 private fun Composer(
     vm: ChatViewModel, dictation: Dictation, text: String, setText: (String) -> Unit, onSettings: () -> Unit,
-    imageMode: Boolean, setImageMode: (Boolean) -> Unit,
+    mode: Mode, setMode: (Mode) -> Unit, highQuality: Boolean, setHighQuality: (Boolean) -> Unit,
 ) {
     var menu by remember { mutableStateOf(false) }
     val ctx = LocalContext.current
@@ -952,7 +1044,11 @@ private fun Composer(
     fun send() {
         if (dictation.listening) dictation.cancel()
         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-        if (imageMode) vm.createImage(shown) else vm.send(shown)
+        when (mode) {
+            Mode.IMAGE -> vm.createImage(shown, best = highQuality)
+            Mode.VIDEO -> vm.createVideo(shown, pro = highQuality)
+            Mode.CHAT -> vm.send(shown)
+        }
         setText("")
     }
     Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(start = 10.dp, end = 10.dp, bottom = 6.dp)) {
@@ -980,7 +1076,8 @@ private fun Composer(
                         Box {
                             if (shown.isEmpty()) Text(
                                 if (dictation.listening) (if (dictation.lang == VoiceLang.TAMIL) "கேட்கிறேன்… பேசுங்கள்" else "Listening… speak now")
-                                else if (imageMode) "Describe the image to create"
+                                else if (mode == Mode.IMAGE) "Describe the image to create"
+                                else if (mode == Mode.VIDEO) "Describe the video scene to create"
                                 else "Message ${vm.currentAgent?.name ?: vm.activeModel?.name ?: "Careva+ AI"}",
                                 color = Muted, style = MaterialTheme.typography.bodyLarge,
                             )
@@ -995,9 +1092,12 @@ private fun Composer(
                             Box(contentAlignment = Alignment.Center) { Icon(Icons.Rounded.Add, "More", tint = Ink, modifier = Modifier.size(18.dp)) }
                         }
                         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, containerColor = Color.White) {
-                            DropdownMenuItem(text = { Text(if (imageMode) "Back to chat" else "Create image") },
-                                leadingIcon = { Icon(if (imageMode) Icons.Outlined.ChatBubbleOutline else Icons.Outlined.Image, null) },
-                                onClick = { setImageMode(!imageMode); menu = false })
+                            if (mode != Mode.CHAT) DropdownMenuItem(text = { Text("Back to chat") }, leadingIcon = { Icon(Icons.Outlined.ChatBubbleOutline, null) },
+                                onClick = { setMode(Mode.CHAT); menu = false })
+                            if (mode != Mode.IMAGE) DropdownMenuItem(text = { Text("Create image") }, leadingIcon = { Icon(Icons.Outlined.Image, null) },
+                                onClick = { setMode(Mode.IMAGE); menu = false })
+                            if (mode != Mode.VIDEO) DropdownMenuItem(text = { Text("Create video") }, leadingIcon = { Icon(Icons.Outlined.Movie, null) },
+                                onClick = { setMode(Mode.VIDEO); menu = false })
                             DropdownMenuItem(text = { Text("Agents") }, leadingIcon = { Icon(Icons.Outlined.Groups, null) },
                                 onClick = { vm.screen = Screen.AGENTS; menu = false })
                             DropdownMenuItem(text = { Text("Model and effort") }, leadingIcon = { Icon(Icons.Outlined.Tune, null) },
@@ -1005,10 +1105,21 @@ private fun Composer(
                         }
                     }
                     Spacer(Modifier.width(6.dp))
-                    if (imageMode) Pill(Icons.Outlined.Image, "Image ✕") { setImageMode(false) }
-                    else Pill(Icons.Outlined.Tune, vm.effort.label, onClick = onSettings)
+                    when (mode) {
+                        Mode.IMAGE -> {
+                            Pill(Icons.Outlined.Image, "Image ✕") { setMode(Mode.CHAT) }
+                            Spacer(Modifier.width(6.dp))
+                            Pill(Icons.Outlined.AutoAwesome, if (highQuality) "Best" else "Fast") { setHighQuality(!highQuality) }
+                        }
+                        Mode.VIDEO -> {
+                            Pill(Icons.Outlined.Movie, "Video ✕") { setMode(Mode.CHAT) }
+                            Spacer(Modifier.width(6.dp))
+                            Pill(Icons.Outlined.AutoAwesome, if (highQuality) "Pro" else "Standard") { setHighQuality(!highQuality) }
+                        }
+                        Mode.CHAT -> Pill(Icons.Outlined.Tune, vm.effort.label, onClick = onSettings)
+                    }
                     Spacer(Modifier.width(6.dp))
-                    Pill(Icons.Outlined.Translate, dictation.lang.label) {
+                    if (mode == Mode.CHAT || dictation.listening) Pill(Icons.Outlined.Translate, dictation.lang.label) {
                         dictation.chooseLang(if (dictation.lang == VoiceLang.ENGLISH) VoiceLang.TAMIL else VoiceLang.ENGLISH)
                     }
                     Spacer(Modifier.weight(1f))

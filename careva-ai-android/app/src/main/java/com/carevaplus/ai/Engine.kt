@@ -157,7 +157,7 @@ class AiEngine(private val ctx: Context) {
                     chatTemplate = model.chatTemplate,
                     channels = if (model.chatTemplate != null) listOf(Channel("thought", "<think>", "</think>")) else null,
                     systemInstruction = Contents.of(system),
-                    initialMessages = Prompt.seed(history.filter { it.image.isEmpty() }, model),
+                    initialMessages = Prompt.seed(history.filter { it.image.isEmpty() && it.video.isEmpty() }, model),
                     samplerConfig = SamplerConfig(40, 0.95, plan.temperature, 0),
                     maxOutputToken = plan.maxOutput,
                     thinkingConfig = ThinkingConfig(plan.thinking, plan.thinkingBudget),

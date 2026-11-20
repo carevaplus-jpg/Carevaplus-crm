@@ -16,8 +16,10 @@ data class Msg(
     val seconds: Int = 0,
     /** For example "142 words · 16 words/s · GPU". */
     val stats: String = "",
-    /** A generated picture (its web address), for image replies. */
+    /** A generated picture (its web address), for image replies; "pending:<start time>" while it is being made. */
     val image: String = "",
+    /** A generated video (its web address), for video replies; "pending:<start time>" while it is being made. */
+    val video: String = "",
 ) {
     val isUser get() = role == "user"
 }
@@ -55,13 +57,13 @@ object AgentTemplates {
 object ChatJson {
     fun messages(ms: JSONArray): List<Msg> = (0 until ms.length()).map { j ->
         val m = ms.getJSONObject(j)
-        Msg(m.getString("role"), m.getString("text"), m.optString("thought"), m.optString("model"), m.optString("effort"), m.optInt("seconds"), m.optString("stats"), m.optString("image"))
+        Msg(m.getString("role"), m.getString("text"), m.optString("thought"), m.optString("model"), m.optString("effort"), m.optInt("seconds"), m.optString("stats"), m.optString("image"), m.optString("video"))
     }
 
     fun messages(ms: List<Msg>) = JSONArray().apply {
         ms.forEach { m ->
             put(JSONObject().put("role", m.role).put("text", m.text).put("thought", m.thought)
-                .put("model", m.model).put("effort", m.effort).put("seconds", m.seconds).put("stats", m.stats).put("image", m.image))
+                .put("model", m.model).put("effort", m.effort).put("seconds", m.seconds).put("stats", m.stats).put("image", m.image).put("video", m.video))
         }
     }
 }
@@ -157,7 +159,7 @@ object Prompt {
         val kept = ArrayList<Msg>()
         for (m in history.asReversed()) { budget -= m.text.length; if (budget < 0) break; kept.add(m) }
         if (kept.isNotEmpty() && !kept.last().isUser) kept.removeAt(kept.lastIndex)
-        return listOf("system" to system(cloud = true, agent = agent)) + kept.asReversed().filter { it.image.isEmpty() }.map { (if (it.isUser) "user" else "assistant") to it.text } + ("user" to userText)
+        return listOf("system" to system(cloud = true, agent = agent)) + kept.asReversed().filter { it.image.isEmpty() && it.video.isEmpty() }.map { (if (it.isUser) "user" else "assistant") to it.text } + ("user" to userText)
     }
 
     private val special = Regex("<\\|(im_end|im_start|endoftext)\\|>|<end_of_turn>|<start_of_turn>(model|user)?")

@@ -183,6 +183,58 @@ class Cloud(ctx: Context) {
 
     fun stopChat() { stopped = true; try { chatConnection?.disconnect() } catch (_: Exception) {} }
 
+    // ---- image and video creation (Supabase function careva-ai-media) ----
+
+    data class Media(val url: String, val model: String)
+    sealed interface VideoState {
+        data object Running : VideoState
+        data class Done(val url: String, val model: String) : VideoState
+        data class Failed(val error: String) : VideoState
+    }
+
+    /** Calls careva-ai-media; its errors come back as {"error": "..."} and are shown to the user as they are. */
+    private fun media(method: String, query: String = "", body: JSONObject? = null): JSONObject {
+        val c = URL(CloudConfig.URL + "/functions/v1/careva-ai-media" + query).openConnection() as HttpURLConnection
+        try {
+            c.requestMethod = method
+            c.connectTimeout = 15_000; c.readTimeout = 150_000
+            c.setRequestProperty("apikey", CloudConfig.KEY)
+            c.setRequestProperty("Authorization", "Bearer ${token()}")
+            if (body != null) {
+                c.doOutput = true; c.setRequestProperty("Content-Type", "application/json")
+                c.outputStream.use { it.write(body.toString().toByteArray()) }
+            }
+            val code = c.responseCode
+            val text = (if (code < 400) c.inputStream else c.errorStream)?.bufferedReader()?.use { it.readText() }.orEmpty()
+            val o = try { JSONObject(text) } catch (_: Exception) { JSONObject() }
+            if (code >= 400) throw CloudError(o.optString("error").ifEmpty { "Couldn't reach the image and video service ($code). Please try again." })
+            return o
+        } catch (e: CloudError) { throw e
+        } catch (e: IOException) { throw CloudError("No connection to the Careva+ cloud. Check your internet and try again.")
+        } finally { c.disconnect() }
+    }
+
+    /** Makes an image; [best] uses the strongest model the account can pay for (falls back to free ones). Blocking. */
+    fun createImage(prompt: String, best: Boolean): Media {
+        val o = media("POST", body = JSONObject().put("kind", "image").put("prompt", prompt).put("quality", if (best) "best" else "fast"))
+        return Media(o.getString("url"), o.optString("model", "Image model"))
+    }
+
+    /** Starts making a video; returns the job to pass to [videoStatus] and the model's name. Blocking. */
+    fun startVideo(prompt: String, pro: Boolean): Pair<String, String> {
+        val o = media("POST", body = JSONObject().put("kind", "video").put("prompt", prompt).put("quality", if (pro) "pro" else "standard").put("duration", 5))
+        return o.getString("job") to o.optString("model", "Video model")
+    }
+
+    fun videoStatus(job: String): VideoState {
+        val o = media("GET", query = "?job=" + java.net.URLEncoder.encode(job, "UTF-8"))
+        return when (o.optString("status")) {
+            "done" -> VideoState.Done(o.getString("url"), o.optString("model"))
+            "failed" -> VideoState.Failed(o.optString("error", "The video couldn't be made. Please try again."))
+            else -> VideoState.Running
+        }
+    }
+
     // ---- custom agents ----
 
     /** This account's custom agents in the cloud, each with whether it was deleted. */
