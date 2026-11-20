@@ -47,9 +47,11 @@ Four cloud models run on the Careva+ cloud instead of the phone, so they need **
 | Careva Cloud Code | Qwen3 Coder, Kimi K2, … | Code |
 | Careva Cloud Fast | GPT-OSS 20B, Llama 3.3 70B, … | Quick answers |
 
-How it works: the app sends the chat to the Supabase Edge Function `careva-ai-chat` (`supabase/functions/careva-ai-chat`). It checks the user is signed in, then asks a free AI service that hosts these open models (Groq, Cerebras or OpenRouter) and streams the answer and its thinking back. The AI service's key is stored only as a Supabase secret; it is never in the app. If one service is busy or over its free limit, the function tries the next.
+How it works: the app sends the chat to the Supabase Edge Function `careva-ai-chat` (`supabase/functions/careva-ai-chat`). It checks the user is signed in, then asks a free AI service that hosts open models and streams the answer and its thinking back. If one service is busy, the function tries the next.
 
-**To switch cloud models on** (once): create a free account at console.groq.com, create an API key, then in Supabase open Edge Functions → Secrets and add `GROQ_API_KEY` with that key. Optional backups: `CEREBRAS_API_KEY` (cloud.cerebras.ai) and `OPENROUTER_API_KEY` (openrouter.ai).
+**Works with no setup:** with no keys, every cloud model uses Pollinations' free, no-key service (GPT-OSS 20B).
+
+**Optional, for bigger and faster models:** create a free account at console.groq.com, create an API key, then in Supabase open Edge Functions → Secrets and add `GROQ_API_KEY`. The cloud models then use GPT-OSS 120B, Qwen3 32B and others first. More backups: `CEREBRAS_API_KEY` (cloud.cerebras.ai) and `OPENROUTER_API_KEY` (openrouter.ai). Keys are stored only as Supabase secrets, never in the app.
 
 Limits: free tiers allow a limited number of messages per minute and per day, shared by everyone using the app. Messages to cloud models are processed by the AI service, so don't send patient-identifying details.
 
@@ -69,10 +71,10 @@ These are the strongest free models that fit on a phone, and they are much small
 
 ## Install
 
-1. Copy `release/careva-ai-2.3.0.apk` to an Android phone (Android 8.0 or newer, 64-bit).
+1. Copy `release/careva-ai-2.4.0.apk` to an Android phone (Android 8.0 or newer, 64-bit).
 2. Open it and allow "Install unknown apps" when asked. Installing over an older version keeps your chats and models.
-3. Open **Careva+ AI**, download **Careva Plus** first, then add others as needed.
-4. Optional: turn on **Use GPU** on the Models screen for faster replies on many phones.
+3. Open **Careva+ AI** and sign in with your email (the first screen). Nothing to download.
+4. Pick a cloud model from the title bar. Phone models from older versions can still be used or deleted on the Models screen; new downloads are no longer offered.
 
 This build is signed with a development key. To publish on the Play Store, create your own upload key and add `keystore.properties` (see `app/build.gradle.kts`).
 

@@ -1,24 +1,30 @@
 // Careva+ AI cloud models.
 //
 // Runs large open AI models for signed-in Careva+ AI users, so phones need no download, storage or memory.
-// The models run on free AI services (Groq, Cerebras or OpenRouter); their keys stay here as Supabase
-// secrets and never reach the phone. Only signed-in users can call this: each request's login token is checked with Supabase Auth.
+// The models run on free AI services. Pollinations needs no key and always works (GPT-OSS 20B); add a free
+// Groq, Cerebras or OpenRouter key for bigger, faster models. Keys stay here as Supabase secrets and never
+// reach the phone. Only signed-in users can call this: each request's login token is checked with Supabase Auth.
 //
 //   GET  -> the cloud models and whether each is available right now
 //   POST {model, effort, messages:[{role, content}]} -> a stream of lines, each one JSON:
 //        {"r": "..."} reasoning text, {"t": "..."} answer text, {"done": true, "model": "...", "provider": "..."}
 //        or {"error": "..."}
 //
-// Secrets (Supabase dashboard -> Edge Functions -> Secrets), at least one:
+// Optional secrets (Supabase dashboard -> Edge Functions -> Secrets), for bigger models:
 //   GROQ_API_KEY, CEREBRAS_API_KEY, OPENROUTER_API_KEY
 
-type Provider = { id: string; name: string; base: string; key?: string };
+type Provider = { id: string; name: string; base: string; key?: string; keyless?: boolean; chatPath?: string };
 
 const PROVIDERS: Provider[] = [
   { id: "groq", name: "Groq", base: "https://api.groq.com/openai/v1", key: Deno.env.get("GROQ_API_KEY") },
   { id: "cerebras", name: "Cerebras", base: "https://api.cerebras.ai/v1", key: Deno.env.get("CEREBRAS_API_KEY") },
   { id: "openrouter", name: "OpenRouter", base: "https://openrouter.ai/api/v1", key: Deno.env.get("OPENROUTER_API_KEY") },
+  // No key needed; used for every cloud model when no keyed service can answer.
+  { id: "pollinations", name: "Pollinations", base: "https://text.pollinations.ai", keyless: true, chatPath: "/openai" },
 ];
+
+const usable = (p: Provider) => !!p.key || !!p.keyless;
+const authHeaders = (p: Provider): Record<string, string> => (p.key ? { Authorization: `Bearer ${p.key}` } : {});
 
 // Each cloud model is a preference list: the first model id (by pattern) that a configured service offers is
 // used, so the app keeps working when services rename or add models. OpenRouter is limited to its free models.
@@ -46,36 +52,56 @@ const EFFORT_REASONING: Record<string, string> = { LOW: "low", MEDIUM: "medium",
 
 // ---- which models each service offers (cached for 10 minutes) ----
 
-const modelCache = new Map<string, { at: number; ids: string[] }>();
+type Model = { id: string; names: string[] }; // names: the id plus any aliases, matched against the patterns
+const modelCache = new Map<string, { at: number; list: Model[] }>();
 
-async function modelsOf(p: Provider): Promise<string[]> {
-  if (!p.key) return [];
+async function modelsOf(p: Provider): Promise<Model[]> {
+  if (!usable(p)) return [];
   const c = modelCache.get(p.id);
-  if (c && Date.now() - c.at < 600_000) return c.ids;
+  if (c && Date.now() - c.at < 600_000) return c.list;
   try {
-    const r = await fetch(`${p.base}/models`, { headers: { Authorization: `Bearer ${p.key}` } });
+    const r = await fetch(`${p.base}/models`, { headers: authHeaders(p) });
     if (!r.ok) throw new Error(String(r.status));
     const j = await r.json();
-    let ids: string[] = (j.data ?? []).map((m: { id: string }) => m.id);
-    if (p.id === "openrouter") ids = ids.filter((id) => id.endsWith(":free"));
-    modelCache.set(p.id, { at: Date.now(), ids });
-    return ids;
+    let list: Model[];
+    if (Array.isArray(j)) { // Pollinations: [{name, aliases, tier}], only the free (anonymous) ones
+      list = j.filter((m: { tier?: string }) => !m.tier || m.tier === "anonymous")
+        .map((m: { name: string; aliases?: string[] }) => ({ id: m.name, names: [m.name, ...(m.aliases ?? [])] }));
+    } else {
+      list = (j.data ?? []).map((m: { id: string }) => ({ id: m.id, names: [m.id.replace(/:free$/, "")] }));
+      if (p.id === "openrouter") list = list.filter((m) => m.id.endsWith(":free"));
+    }
+    modelCache.set(p.id, { at: Date.now(), list });
+    return list;
   } catch {
-    return c?.ids ?? [];
+    if (p.keyless && !c) return [{ id: "openai", names: ["openai", "gpt-oss-20b"] }]; // its long-standing default
+    return c?.list ?? [];
   }
 }
 
 /** Every (service, model) that can serve a tier, best first. */
-async function candidates(tier: string): Promise<{ p: Provider; model: string }[]> {
+type Candidate = { p: Provider; model: string; label: string }; // label: a readable name, e.g. gpt-oss-20b
+
+async function candidates(tier: string): Promise<Candidate[]> {
   const t = TIERS[tier];
   if (!t) return [];
-  const out: { p: Provider; model: string }[] = [];
+  const out: Candidate[] = [];
+  const add = (p: Provider, m: Model) => {
+    const named = m.names.filter((n) => /gpt-oss|qwen|llama|kimi|deepseek/i.test(n)).sort((x, y) => y.length - x.length);
+    const label = named[0] ?? m.id; // the most specific name, e.g. gpt-oss-20b rather than gpt-oss
+    if (!out.some((o) => o.p.id === p.id && o.model === m.id)) out.push({ p, model: m.id, label: label.replace(/^.*\//, "") });
+  };
   for (const re of t.prefer) {
     for (const p of PROVIDERS) {
-      const ids = await modelsOf(p);
-      const id = ids.find((m) => re.test(m.replace(/:free$/, "")));
-      if (id && !out.some((o) => o.p.id === p.id && o.model === id)) out.push({ p, model: id });
+      const m = (await modelsOf(p)).find((m) => m.names.some((n) => re.test(n)));
+      if (m) add(p, m);
     }
+  }
+  // Last resort for every cloud model: the best no-key model, so the app always answers.
+  for (const p of PROVIDERS.filter((p) => p.keyless)) {
+    const list = await modelsOf(p);
+    const m = list.find((m) => m.names.some((n) => /gpt-oss|openai/i.test(n))) ?? list[0];
+    if (m) add(p, m);
   }
   return out;
 }
@@ -121,9 +147,9 @@ Deno.serve(async (req) => {
     const models = [];
     for (const [id, t] of Object.entries(TIERS)) {
       const c = (await candidates(id))[0];
-      models.push({ id, name: t.name, available: !!c, model: c?.model ?? null, provider: c?.p.name ?? null });
+      models.push({ id, name: t.name, available: !!c, model: c?.label ?? null, provider: c?.p.name ?? null });
     }
-    return json({ configured: PROVIDERS.some((p) => p.key), models });
+    return json({ configured: true, keyed: PROVIDERS.some((p) => p.key), models });
   }
 
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -137,27 +163,27 @@ Deno.serve(async (req) => {
     .slice(-60);
   if (!messages.some((m) => m.role === "user")) return json({ error: "No message" }, 400);
 
-  if (!PROVIDERS.some((p) => p.key))
-    return json({ error: "Cloud models aren't switched on yet: the Careva+ owner needs to add a free AI service key in Supabase." }, 503);
   const list = await candidates(tier);
   if (list.length === 0) return json({ error: "This cloud model isn't available right now. Try another cloud model." }, 503);
 
   // Try each service/model in turn until one starts answering (for example when one is busy or over its free limit).
   let upstream: Response | null = null;
-  let used: { p: Provider; model: string } | null = null;
+  let used: Candidate | null = null;
   let lastError = "";
-  outer: for (const c of list.slice(0, 4)) {
+  // At most three keyed attempts, and always the no-key service last.
+  const tries = [...list.filter((c) => !c.p.keyless).slice(0, 3), ...list.filter((c) => c.p.keyless).slice(0, 1)];
+  outer: for (const c of tries) {
     const base: Record<string, unknown> = { model: c.model, messages, stream: true, max_tokens: EFFORT_TOKENS[effort] ?? 4096 };
     const extra: Record<string, unknown> = {};
-    if (/gpt-oss/.test(c.model)) extra.reasoning_effort = EFFORT_REASONING[effort] ?? "medium";
+    if (/gpt-oss/.test(c.label)) extra.reasoning_effort = EFFORT_REASONING[effort] ?? "medium";
     if (c.p.id === "groq" && /qwen/i.test(c.model)) {
       extra.reasoning_format = "parsed";
       if (effort === "LOW") extra.reasoning_effort = "none";
     }
     for (const attempt of [{ ...base, ...extra }, { model: c.model, messages, stream: true }]) {
-      const r = await fetch(`${c.p.base}/chat/completions`, {
+      const r = await fetch(`${c.p.base}${c.p.chatPath ?? "/chat/completions"}`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${c.p.key}`, "Content-Type": "application/json" },
+        headers: { ...authHeaders(c.p), "Content-Type": "application/json" },
         body: JSON.stringify(attempt),
       });
       if (r.ok && r.body) { upstream = r; used = c; break outer; }
@@ -168,7 +194,7 @@ Deno.serve(async (req) => {
   if (!upstream || !used) {
     console.error("all cloud models failed", lastError);
     return json({ error: /429/.test(lastError)
-      ? "The free cloud limit was reached for now. Please wait a minute and try again, or use a phone model."
+      ? "The free cloud service is busy right now. Please wait a minute and try again."
       : "The cloud model didn't respond. Please try again." }, 502);
   }
 
@@ -222,7 +248,7 @@ Deno.serve(async (req) => {
           }
         }
         if (pending) send(inThink ? { r: pending } : { t: pending });
-        send({ done: true, model: used!.model, provider: used!.p.name });
+        send({ done: true, model: used!.label, provider: used!.p.name });
       } catch (e) {
         send({ error: "The connection to the cloud model was interrupted." });
         console.error(e);

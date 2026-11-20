@@ -92,7 +92,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         Catalog.models.filter { downloader.downloadId(it) >= 0 && it.id !in installed }.forEach { watch(it) }
         val start = activeModel?.takeIf { usable(it) } ?: Catalog.models.firstOrNull { it.id in installed }
             ?: Catalog.cloud.first().takeIf { account != null }
-        if (start != null) selectModel(start.id) else screen = Screen.MODELS
+        if (start != null) selectModel(start.id) else screen = Screen.ACCOUNT // sign in first; nothing to download
         // keep chats up to date with the user's other phones while the app is open
         viewModelScope.launch { while (isActive) { if (account != null) syncNow(); delay(45_000) } }
     }

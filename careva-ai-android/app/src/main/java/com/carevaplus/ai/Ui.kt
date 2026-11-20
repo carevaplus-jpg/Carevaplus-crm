@@ -114,30 +114,22 @@ private fun ModelsScreen(vm: ChatViewModel) {
                 Column(Modifier.padding(bottom = 4.dp)) {
                     if (!canGoBack) {
                         Image(painterResource(R.drawable.careva_logo), "Careva+", Modifier.fillMaxWidth(0.7f).padding(vertical = 8.dp))
-                        Text("Sign in to use cloud models straight away (nothing to download), or download a phone model that works offline. No API key and no cost per message.", color = Muted)
+                        Text("Sign in to start. Nothing to download: the AI runs in the Careva+ cloud. No API key and no cost per message.", color = Muted)
                         Spacer(Modifier.height(8.dp))
                     }
-                    Text("Each model is a free, open model. Bigger models are smarter but need more memory and are slower. You can install several and switch any time.", color = Muted, style = MaterialTheme.typography.bodyMedium)
+                    Text("All models run in the Careva+ cloud, so they use no storage or memory on your phone. Pick one for the kind of task; you can switch any time.", color = Muted, style = MaterialTheme.typography.bodyMedium)
                 }
             }
-            item { SectionTitle("Cloud models", "Run on the Careva+ cloud: no download, no phone storage, no phone memory. Bigger and smarter than phone models. Needs internet and your Careva+ account.") }
             items(Catalog.cloud, key = { it.id }) { m -> CloudCard(vm, m) }
-            item { SectionTitle("Phone models", "Downloaded once and run on this phone, even without internet. Chats with them never leave the phone.") }
-            items(Catalog.models, key = { it.id }) { m -> ModelCard(vm, m) }
-            item {
-                Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth().border(1.dp, Line, RoundedCornerShape(18.dp))) {
-                    Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text("Use GPU", fontWeight = FontWeight.SemiBold)
-                            Text("Faster on many phones. Turn off if replies fail or the app closes.", color = Muted, style = MaterialTheme.typography.bodySmall)
-                        }
-                        Switch(checked = vm.useGpu, onCheckedChange = vm::toggleGpu)
-                    }
-                }
+            // Models downloaded by an earlier version stay usable and can be deleted to free space; nothing new is offered for download.
+            val onPhone = Catalog.models.filter { it.id in vm.installed || vm.downloads.containsKey(it.id) }
+            if (onPhone.isNotEmpty()) {
+                item { SectionTitle("Downloaded to this phone", "From an earlier version. Delete them to free up storage.") }
+                items(onPhone, key = { it.id }) { m -> ModelCard(vm, m) }
             }
             item {
                 Text(
-                    "Honest note: these are the strongest free models that fit on a phone. They are much smaller than cloud AI such as Claude or ChatGPT, so they make more mistakes. Check important facts, and don't rely on them for medical decisions.",
+                    "Honest note: these are free, open AI models. They can make mistakes, so check important facts, and don't rely on them for medical decisions. Don't type patient names or private medical details.",
                     color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(4.dp, 8.dp, 4.dp, 24.dp),
                 )
             }
@@ -296,8 +288,8 @@ private fun SignInForm(vm: ChatViewModel) {
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     var show by remember { mutableStateOf(false) }
-    Text("Use your chats on every phone", fontWeight = FontWeight.Bold, color = Navy, style = MaterialTheme.typography.titleLarge)
-    Text("Sign in with your email to keep your chats in the Careva+ cloud and continue them on any phone. The app also works without an account.", color = Muted, style = MaterialTheme.typography.bodyMedium)
+    Text("Welcome to Careva+ AI", fontWeight = FontWeight.Bold, color = Navy, style = MaterialTheme.typography.titleLarge)
+    Text("Sign in with your email to start. The AI runs in the Careva+ cloud, so there's nothing to download, and your chats follow you to any phone where you sign in.", color = Muted, style = MaterialTheme.typography.bodyMedium)
     Spacer(Modifier.height(18.dp))
     OutlinedTextField(
         value = email, onValueChange = { email = it }, label = { Text("Email") }, singleLine = true,
@@ -371,7 +363,7 @@ private fun ChatScreen(vm: ChatViewModel) {
                         label = {
                             Column {
                                 Text(vm.account ?: "Sign in to sync", maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
-                                Text(if (vm.account != null) "Chats synced across your phones" else "Use your chats on every phone", color = Muted, style = MaterialTheme.typography.bodySmall)
+                                Text(if (vm.account != null) "Chats synced across your phones" else "Needed to use the AI", color = Muted, style = MaterialTheme.typography.bodySmall)
                             }
                         },
                         selected = false, onClick = { vm.screen = Screen.ACCOUNT; scope.launch { drawer.close() } },
@@ -454,8 +446,8 @@ private fun ModelSheet(vm: ChatViewModel, onClose: () -> Unit) {
                 }
             }
             TextButton(onClick = { onClose(); vm.screen = Screen.MODELS }) {
-                Icon(Icons.Outlined.Add, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp))
-                Text(if (vm.account == null) "Cloud models and more" else if (installed.size < Catalog.models.size) "Get more models" else "Manage models")
+                Icon(Icons.Outlined.Info, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp))
+                Text("About the models")
             }
             HorizontalDivider(color = Line, modifier = Modifier.padding(vertical = 12.dp))
             Text("Effort", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
@@ -647,7 +639,8 @@ private fun Composer(vm: ChatViewModel) {
             }
         }
         Text(
-            "Runs privately on your phone. It can make mistakes; check important information.",
+            if (vm.activeModel?.cloud == false) "Runs privately on your phone. It can make mistakes; check important information."
+            else "Runs in the Careva+ cloud. It can make mistakes; check important information.",
             color = Muted, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
         )
