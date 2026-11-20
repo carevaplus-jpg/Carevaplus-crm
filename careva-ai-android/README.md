@@ -55,6 +55,15 @@ How it works: the app sends the chat to the Supabase Edge Function `careva-ai-ch
 
 Limits: free tiers allow a limited number of messages per minute and per day, shared by everyone using the app. Messages to cloud models are processed by the AI service, so don't send patient-identifying details.
 
+## Voice typing and the chat screen
+
+![Careva+ AI 2.5 screens](docs/careva-ai-2.5-screens.png)
+
+- **Mic button:** tap the mic in the message box and speak in English or Tamil (switch with the language chip). Words appear live; tap the mic again to stop, check the text, then send. Uses the phone's speech recognizer (the Google app on most phones); the microphone is used only while the mic is on.
+- **Thinking stays folded:** while the AI works you see one line ("Thinking… 4s"); tap the arrow to open the summary and the full reasoning.
+- **Each reply:** copy, share, retry (last reply) and details (model, effort, speed).
+- **Chats menu:** search, grouped by Today / Yesterday / Previous 7 days; press and hold a chat to rename or delete it.
+
 ## Account and sync across phones
 
 Open the menu and tap **Sign in to sync**. Create an account with your email and a password, open the confirmation link that arrives by email, then sign in. Sign in with the same email on another phone and your chats appear there too; new messages and deleted chats sync within about a minute (or tap **Sync now**).
@@ -71,7 +80,7 @@ These are the strongest free models that fit on a phone, and they are much small
 
 ## Install
 
-1. Copy `release/careva-ai-2.4.0.apk` to an Android phone (Android 8.0 or newer, 64-bit).
+1. Copy `release/careva-ai-2.5.0.apk` to an Android phone (Android 8.0 or newer, 64-bit).
 2. Open it and allow "Install unknown apps" when asked. Installing over an older version keeps your chats and models.
 3. Open **Careva+ AI** and sign in with your email (the first screen). Nothing to download.
 4. Pick a cloud model from the title bar. Phone models from older versions can still be used or deleted on the Models screen; new downloads are no longer offered.

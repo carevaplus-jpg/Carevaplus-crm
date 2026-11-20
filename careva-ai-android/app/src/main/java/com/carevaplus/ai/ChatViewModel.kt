@@ -49,7 +49,9 @@ private fun wordCount(s: String) = s.trim().split(Regex("\\s+")).count { it.isNo
 
 class ChatViewModel(app: Application) : AndroidViewModel(app) {
     private val downloader = ModelDownloader(app)
-    private val engine = AiEngine(app)
+    // The on-device engine loads a native library; create it only when a phone model is used.
+    private val engineHolder = lazy { AiEngine(app) }
+    private val engine by engineHolder
     private val store = ChatStore(app)
     private val prefs = app.getSharedPreferences("settings", Context.MODE_PRIVATE)
     private val cloud = Cloud(app)
@@ -120,7 +122,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
     fun deleteModel(m: AiModel) {
         if (busy) return
-        if (engine.loaded?.id == m.id) { engine.unload(); engineState = EngineState.NoModel }
+        if (engineHolder.isInitialized() && engine.loaded?.id == m.id) { engine.unload(); engineState = EngineState.NoModel }
         downloader.delete(m)
         refreshInstalled()
         if (activeModelId == m.id) {
@@ -171,7 +173,8 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun load(m: AiModel) {
         if (m.cloud) { // nothing to load on the phone; free the memory a phone model was using
-            engine.unload(); engineState = EngineState.Ready(m, gpu = false); return
+            if (engineHolder.isInitialized()) engine.unload()
+            engineState = EngineState.Ready(m, gpu = false); return
         }
         engineState = EngineState.Loading(m, needsPreparing(getApplication(), m))
         viewModelScope.launch {
@@ -262,6 +265,24 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             }.joinToString(" · ")
             finish(chat.id, ready.model, effortUsed, thinkSecs, stats, error)
         }
+    }
+
+    /** Asks again: removes the last reply and sends the last message once more. */
+    fun retry() {
+        if (busy) return
+        val c = current ?: return
+        val lastUser = c.messages.indexOfLast { it.isUser }
+        if (lastUser < 0) return
+        val text = c.messages[lastUser].text
+        put(c.copy(messages = c.messages.take(lastUser), updated = System.currentTimeMillis()))
+        send(text)
+    }
+
+    fun rename(id: String, title: String) {
+        val i = chats.indexOfFirst { it.id == id }
+        if (i < 0 || title.isBlank()) return
+        chats[i] = chats[i].copy(title = title.trim().take(80), updated = System.currentTimeMillis())
+        store.save(chats); syncNow()
     }
 
     fun stop() { if (activeModel?.cloud == true) cloud.stopChat() else engine.stop() }
@@ -370,5 +391,5 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    override fun onCleared() { engine.stop(); engine.unload() }
+    override fun onCleared() { if (engineHolder.isInitialized()) { engine.stop(); engine.unload() } }
 }

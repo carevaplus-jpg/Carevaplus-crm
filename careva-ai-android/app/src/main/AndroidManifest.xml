@@ -2,6 +2,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Downloads the on-device models and, when signed in, syncs chats with the Careva+ cloud. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Voice typing: only while the mic button is on. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <queries>
+        <intent><action android:name="android.speech.RecognitionService" /></intent>
+        <intent><action android:name="android.speech.action.RECOGNIZE_SPEECH" /></intent>
+    </queries>
 
     <application
         android:allowBackup="false"

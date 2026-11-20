@@ -1,6 +1,29 @@
 package com.carevaplus.ai
 
+import android.Manifest
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.speech.RecognizerIntent
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.core.content.ContextCompat
+import java.util.Calendar
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -25,10 +48,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.*
-import androidx.compose.material.icons.rounded.ArrowUpward
-import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.Stop
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -41,6 +61,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.ParagraphStyle
+import androidx.compose.ui.text.style.TextIndent
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -62,12 +84,12 @@ import kotlinx.coroutines.launch
 
 private val Navy = Color(0xFF0E2A4F)
 private val Green = Color(0xFF4E9A1E)
-private val Paper = Color(0xFFFAF8F4)
-private val Ink = Color(0xFF1C1B19)
-private val Muted = Color(0xFF6E6A63)
-private val Line = Color(0xFFE6E1D8)
-private val UserBubble = Color(0xFFEFEBE3)
-private val Soft = Color(0xFFF3F0EA)
+private val Paper = Color(0xFFFAF9F5)
+private val Ink = Color(0xFF1F1E1D)
+private val Muted = Color(0xFF6F6D66)
+private val Line = Color(0xFFE8E6DC)
+private val UserBubble = Color(0xFFF0EEE6)
+private val Soft = Color(0xFFF2F0E8)
 
 private val Colors = lightColorScheme(
     primary = Navy, onPrimary = Color.White, secondary = Green,
@@ -327,79 +349,519 @@ private fun ago(t: Long): String {
 
 // ---------- chat ----------
 
+private val Serif = FontFamily.Serif
+private val Danger = Color(0xFFB3261E)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ChatScreen(vm: ChatViewModel) {
     val drawer = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     var picker by remember { mutableStateOf(false) }
-    ModalNavigationDrawer(
-        drawerState = drawer,
-        drawerContent = {
-            ModalDrawerSheet(drawerContainerColor = Soft, modifier = Modifier.width(300.dp)) {
-                Column(Modifier.fillMaxHeight().padding(12.dp)) {
-                    Image(painterResource(R.drawable.careva_logo), "Careva+", Modifier.height(44.dp).padding(start = 8.dp, top = 8.dp))
-                    Spacer(Modifier.height(16.dp))
-                    NavigationDrawerItem(icon = { Icon(Icons.Outlined.EditNote, null) }, label = { Text("New chat", fontWeight = FontWeight.SemiBold) },
-                        selected = false, onClick = { vm.newChat(); scope.launch { drawer.close() } })
-                    NavigationDrawerItem(icon = { Icon(Icons.Outlined.Memory, null) }, label = { Text("Models") },
-                        selected = false, onClick = { vm.screen = Screen.MODELS; scope.launch { drawer.close() } })
-                    Spacer(Modifier.height(8.dp))
-                    Text("Recents", color = Muted, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 4.dp))
-                    LazyColumn(Modifier.weight(1f)) {
-                        items(vm.chats, key = { it.id }) { c ->
-                            NavigationDrawerItem(
-                                label = { Text(c.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                                selected = c.id == vm.currentId,
-                                onClick = { vm.open(c.id); scope.launch { drawer.close() } },
-                                badge = { IconButton(onClick = { vm.delete(c.id) }, modifier = Modifier.size(32.dp)) { Icon(Icons.Outlined.DeleteOutline, "Delete", tint = Muted, modifier = Modifier.size(18.dp)) } },
-                                colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = Line, unselectedContainerColor = Color.Transparent),
-                            )
-                        }
-                    }
-                    HorizontalDivider(color = Line, modifier = Modifier.padding(vertical = 6.dp))
-                    NavigationDrawerItem(
-                        icon = { Icon(if (vm.account != null) Icons.Outlined.CloudDone else Icons.Outlined.AccountCircle, null) },
-                        label = {
-                            Column {
-                                Text(vm.account ?: "Sign in to sync", maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
-                                Text(if (vm.account != null) "Chats synced across your phones" else "Needed to use the AI", color = Muted, style = MaterialTheme.typography.bodySmall)
-                            }
-                        },
-                        selected = false, onClick = { vm.screen = Screen.ACCOUNT; scope.launch { drawer.close() } },
-                    )
-                }
-            }
-        },
-    ) {
+    val ctx = LocalContext.current
+    val dictation = remember { Dictation(ctx.applicationContext) }
+    DisposableEffect(Unit) { onDispose { dictation.cancel() } }
+    var draft by rememberSaveable { mutableStateOf("") }
+    ModalNavigationDrawer(drawerState = drawer, drawerContent = { ChatDrawer(vm) { scope.launch { drawer.close() } } }) {
         Scaffold(
             containerColor = Paper,
             topBar = {
                 CenterAlignedTopAppBar(
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Paper),
-                    navigationIcon = { IconButton(onClick = { scope.launch { drawer.open() } }) { Icon(Icons.Outlined.Menu, "Chats") } },
+                    navigationIcon = { IconButton(onClick = { scope.launch { drawer.open() } }) { Icon(Icons.Outlined.Menu, "Chats", tint = Ink) } },
                     title = { ModelButton(vm) { picker = true } },
-                    actions = { IconButton(onClick = vm::newChat, enabled = !vm.busy) { Icon(Icons.Outlined.EditNote, "New chat") } },
+                    actions = {
+                        IconButton(onClick = { vm.newChat(); draft = "" }, enabled = !vm.busy) { Icon(Icons.Outlined.EditNote, "New chat", tint = Ink) }
+                    },
                 )
             },
         ) { pad ->
             Column(Modifier.fillMaxSize().padding(pad).imePadding()) {
                 when (val s = vm.engineState) {
                     is EngineState.Loading -> StatusBar(
-                        if (s.firstTime) "Preparing ${s.model.name} for first use. This happens only once and can take 1–3 minutes; later starts take seconds."
+                        if (s.firstTime) "Preparing ${s.model.name} for first use. This happens only once and can take 1–3 minutes."
                         else "Starting ${s.model.name}…", progress = true)
                     is EngineState.Failed -> StatusBar(s.message, progress = false, action = "Models") { vm.screen = Screen.MODELS }
-                    EngineState.NoModel -> StatusBar("No model selected.", progress = false, action = "Choose") { vm.screen = Screen.MODELS }
+                    EngineState.NoModel ->
+                        if (vm.account == null) StatusBar("Sign in to start chatting.", progress = false, action = "Sign in") { vm.screen = Screen.ACCOUNT }
+                        else StatusBar("Choose a model to start.", progress = false, action = "Choose") { picker = true }
                     is EngineState.Ready -> {}
                 }
                 val messages = vm.current?.messages.orEmpty()
-                if (messages.isEmpty() && vm.streaming == null) Welcome(vm, Modifier.weight(1f))
-                else Messages(messages, vm.streaming, vm.streamingThought, Live(vm.phase, vm.startedAt, vm.wordsPerSecond), Modifier.weight(1f))
-                Composer(vm)
+                val empty = messages.isEmpty() && vm.streaming == null
+                Box(Modifier.weight(1f)) {
+                    if (empty) Welcome(Modifier.fillMaxSize()) else Messages(vm, messages, Modifier.fillMaxSize())
+                }
+                if (empty) Suggestions { draft = it }
+                Composer(vm, dictation, draft, { draft = it }, onSettings = { picker = true })
             }
         }
     }
     if (picker) ModelSheet(vm) { picker = false }
+}
+
+// ---- drawer ----
+
+private fun startOfToday() = Calendar.getInstance().apply {
+    set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+}.timeInMillis
+
+private val dayGroups = listOf("Today", "Yesterday", "Previous 7 days", "Previous 30 days", "Older")
+
+private fun dayGroup(t: Long): String {
+    val today = startOfToday(); val day = 86_400_000L
+    return when {
+        t >= today -> "Today"
+        t >= today - day -> "Yesterday"
+        t >= today - 6 * day -> "Previous 7 days"
+        t >= today - 29 * day -> "Previous 30 days"
+        else -> "Older"
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun ChatDrawer(vm: ChatViewModel, close: () -> Unit) {
+    var query by remember { mutableStateOf("") }
+    var menuFor by remember { mutableStateOf<String?>(null) }
+    var renaming by remember { mutableStateOf<Chat?>(null) }
+    val haptic = LocalHapticFeedback.current
+    ModalDrawerSheet(drawerContainerColor = Paper, modifier = Modifier.width(310.dp)) {
+        Column(Modifier.fillMaxHeight().padding(horizontal = 12.dp)) {
+            Row(Modifier.fillMaxWidth().padding(start = 6.dp, top = 16.dp, bottom = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Image(painterResource(R.drawable.careva_mark), null, Modifier.size(28.dp))
+                Spacer(Modifier.width(10.dp))
+                Text("Careva+ AI", fontFamily = Serif, fontSize = 22.sp, color = Ink)
+            }
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Soft).padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Outlined.Search, null, tint = Muted, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                BasicTextField(
+                    value = query, onValueChange = { query = it }, singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = Ink), cursorBrush = SolidColor(Navy),
+                    modifier = Modifier.weight(1f),
+                    decorationBox = { inner -> Box { if (query.isEmpty()) Text("Search chats", color = Muted, style = MaterialTheme.typography.bodyMedium); inner() } },
+                )
+                if (query.isNotEmpty()) Icon(Icons.Outlined.Close, "Clear", tint = Muted, modifier = Modifier.size(18.dp).clickable { query = "" })
+            }
+            Spacer(Modifier.height(8.dp))
+            DrawerRow(Icons.Outlined.EditNote, "New chat", strong = true) { vm.newChat(); close() }
+            DrawerRow(Icons.Outlined.AutoAwesome, "Models") { vm.screen = Screen.MODELS; close() }
+            val shown = vm.chats.filter { c ->
+                query.isBlank() || c.title.contains(query, true) || c.messages.any { it.text.contains(query, true) }
+            }
+            val groups = shown.groupBy { dayGroup(it.updated) }
+            LazyColumn(Modifier.weight(1f)) {
+                if (shown.isEmpty()) item {
+                    Text(if (query.isBlank()) "Your chats will appear here." else "No chats match “$query”.",
+                        color = Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(12.dp))
+                }
+                dayGroups.forEach { g ->
+                    val list = groups[g] ?: return@forEach
+                    item(key = "h-$g") {
+                        Text(g, color = Muted, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(start = 12.dp, top = 16.dp, bottom = 4.dp))
+                    }
+                    items(list, key = { it.id }) { c ->
+                        val sel = c.id == vm.currentId
+                        Box {
+                            Text(
+                                c.title, maxLines = 1, overflow = TextOverflow.Ellipsis, color = Ink,
+                                style = MaterialTheme.typography.bodyLarge, fontWeight = if (sel) FontWeight.Medium else FontWeight.Normal,
+                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                                    .background(if (sel) Line else Color.Transparent)
+                                    .combinedClickable(
+                                        onClick = { vm.open(c.id); close() },
+                                        onLongClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); menuFor = c.id },
+                                    )
+                                    .padding(horizontal = 12.dp, vertical = 11.dp),
+                            )
+                            DropdownMenu(expanded = menuFor == c.id, onDismissRequest = { menuFor = null }, containerColor = Color.White) {
+                                DropdownMenuItem(text = { Text("Rename") }, leadingIcon = { Icon(Icons.Outlined.Edit, null) },
+                                    onClick = { renaming = c; menuFor = null })
+                                DropdownMenuItem(text = { Text("Delete", color = Danger) }, leadingIcon = { Icon(Icons.Outlined.DeleteOutline, null, tint = Danger) },
+                                    onClick = { vm.delete(c.id); menuFor = null })
+                            }
+                        }
+                    }
+                }
+                if (shown.isNotEmpty()) item {
+                    Text("Tip: press and hold a chat to rename or delete it.", color = Muted, style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(12.dp, 16.dp))
+                }
+            }
+            HorizontalDivider(color = Line)
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = 8.dp).clip(RoundedCornerShape(12.dp))
+                    .clickable { vm.screen = Screen.ACCOUNT; close() }.padding(horizontal = 8.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(Modifier.size(34.dp).background(Navy, CircleShape), contentAlignment = Alignment.Center) {
+                    Text(vm.account?.firstOrNull()?.uppercase() ?: "?", color = Color.White, fontWeight = FontWeight.SemiBold)
+                }
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(vm.account ?: "Sign in", maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Medium, color = Ink)
+                    Text(if (vm.account != null) "Chats synced across your phones" else "Needed to use the AI", color = Muted, style = MaterialTheme.typography.bodySmall)
+                }
+                Icon(Icons.Outlined.Settings, "Account", tint = Muted)
+            }
+            Spacer(Modifier.navigationBarsPadding())
+        }
+    }
+    renaming?.let { c -> RenameDialog(c.title, onDone = { vm.rename(c.id, it); renaming = null }, onDismiss = { renaming = null }) }
+}
+
+@Composable
+private fun DrawerRow(icon: ImageVector, label: String, strong: Boolean = false, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 11.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, null, tint = Ink, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(12.dp))
+        Text(label, color = Ink, fontWeight = if (strong) FontWeight.SemiBold else FontWeight.Normal, style = MaterialTheme.typography.bodyLarge)
+    }
+}
+
+@Composable
+private fun RenameDialog(current: String, onDone: (String) -> Unit, onDismiss: () -> Unit) {
+    var t by remember { mutableStateOf(current) }
+    AlertDialog(
+        onDismissRequest = onDismiss, containerColor = Paper,
+        title = { Text("Rename chat") },
+        text = { OutlinedTextField(t, { t = it }, singleLine = true, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) },
+        confirmButton = { TextButton(onClick = { onDone(t) }, enabled = t.isNotBlank()) { Text("Save") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+}
+
+// ---- empty chat ----
+
+@Composable
+private fun Welcome(modifier: Modifier) {
+    val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+    val greet = when (hour) { in 5..11 -> "Good morning"; in 12..16 -> "Good afternoon"; else -> "Good evening" }
+    Column(modifier.padding(horizontal = 28.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+        Image(painterResource(R.drawable.careva_mark), null, Modifier.size(52.dp))
+        Spacer(Modifier.height(18.dp))
+        Text(greet, fontFamily = Serif, fontSize = 32.sp, lineHeight = 38.sp, color = Ink, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(6.dp))
+        Text("How can I help you today?", color = Muted, style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
+        Text("English அல்லது தமிழில் கேளுங்கள் · or tap the mic and speak", color = Muted,
+            style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 4.dp))
+    }
+}
+
+private data class Idea(val icon: ImageVector, val label: String, val prompt: String)
+
+@Composable
+private fun Suggestions(onPick: (String) -> Unit) {
+    val ideas = listOf(
+        Idea(Icons.Outlined.EditNote, "Write a message", "Write a polite message to a patient's family confirming tomorrow's nurse visit at 10 am."),
+        Idea(Icons.Outlined.Translate, "தமிழில் எழுது", "தமிழில் ஒரு நன்றி செய்தி எழுதுங்கள்: "),
+        Idea(Icons.Outlined.CalendarMonth, "Plan a schedule", "Plan a weekly visit schedule for 3 nurses and 12 patients, with each patient seen twice a week."),
+        Idea(Icons.Outlined.Lightbulb, "Explain simply", "Explain in simple words: "),
+        Idea(Icons.Outlined.Code, "Help with code", "Write a Python function that checks if an Indian mobile number is valid."),
+    )
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.padding(bottom = 8.dp),
+    ) {
+        items(ideas) { idea ->
+            Row(
+                Modifier.clip(RoundedCornerShape(50)).background(Color.White).border(1.dp, Line, RoundedCornerShape(50))
+                    .clickable { onPick(idea.prompt) }.padding(horizontal = 14.dp, vertical = 9.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(idea.icon, null, tint = Muted, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(idea.label, color = Ink, style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+    }
+}
+
+// ---- messages ----
+
+/** Live progress of the reply being written. */
+private data class Live(val phase: Phase, val startedAt: Long, val wordsPerSecond: Double)
+
+@Composable
+private fun Messages(vm: ChatViewModel, messages: List<Msg>, modifier: Modifier) {
+    val streaming = vm.streaming
+    val thought = vm.streamingThought
+    val live = Live(vm.phase, vm.startedAt, vm.wordsPerSecond)
+    val list = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    val count = messages.size + if (streaming != null) 1 else 0
+    // Follow the reply while the user is at the bottom; stop following when they scroll up to read.
+    var follow by remember { mutableStateOf(true) }
+    LaunchedEffect(list) { snapshotFlow { list.isScrollInProgress }.collect { if (!it) follow = !list.canScrollForward } }
+    LaunchedEffect(count) { if (count > 0) { list.scrollToItem(count - 1, Int.MAX_VALUE / 2); follow = true } }
+    LaunchedEffect((streaming?.length ?: 0) / 40, live.phase) { if (follow && count > 0) list.scrollToItem(count - 1, Int.MAX_VALUE / 2) }
+    Box(modifier) {
+        LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp)) {
+            itemsIndexed(messages) { i, m ->
+                if (m.isUser) UserMessage(m.text)
+                else AssistantMessage(m, live = null, canRetry = i == messages.lastIndex && streaming == null && !vm.busy, onRetry = vm::retry)
+            }
+            if (streaming != null) item {
+                AssistantMessage(Msg("assistant", Prompt.clean(streaming), thought), live = live, canRetry = false, onRetry = {})
+            }
+        }
+        AnimatedVisibility(!follow && count > 0, enter = fadeIn(), exit = fadeOut(), modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 10.dp)) {
+            Surface(
+                onClick = { scope.launch { list.scrollToItem(count - 1, Int.MAX_VALUE / 2); follow = true } },
+                shape = CircleShape, color = Color.White, shadowElevation = 3.dp,
+                modifier = Modifier.size(38.dp).border(1.dp, Line, CircleShape),
+            ) { Box(contentAlignment = Alignment.Center) { Icon(Icons.Rounded.KeyboardArrowDown, "Scroll to the latest message", tint = Ink) } }
+        }
+    }
+}
+
+@Composable
+private fun UserMessage(text: String) {
+    Row(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 8.dp), horizontalArrangement = Arrangement.End) {
+        Surface(shape = RoundedCornerShape(20.dp), color = UserBubble, modifier = Modifier.padding(start = 48.dp)) {
+            SelectionContainer { Text(text, Modifier.padding(horizontal = 16.dp, vertical = 11.dp), color = Ink, style = MaterialTheme.typography.bodyLarge) }
+        }
+    }
+}
+
+/**
+ * The collapsed "thinking" line above a reply. Tapping it opens the summary and the full reasoning;
+ * by default only the one-line status is shown.
+ */
+@Composable
+private fun ThinkingHeader(m: Msg, live: Live?, open: Boolean, toggle: () -> Unit) {
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    if (live != null) LaunchedEffect(Unit) { while (true) { delay(250); now = System.currentTimeMillis() } }
+    val secs = live?.let { ((now - it.startedAt) / 1000).coerceAtLeast(0) }
+    val active = live != null && live.phase != Phase.WRITING
+    val canOpen = m.thought.isNotBlank()
+    val label = when {
+        live == null -> if (m.seconds > 0) "Thought for ${m.seconds}s" else "Thought process"
+        live.phase == Phase.READING -> "Reading your message"
+        live.phase == Phase.THINKING -> "Thinking"
+        else -> "Thought process"
+    }
+    val pulse = rememberInfiniteTransition(label = "think")
+    val a by pulse.animateFloat(0.45f, 1f, infiniteRepeatable(tween(800), RepeatMode.Reverse), label = "a")
+    val turn by animateFloatAsState(if (open) 180f else 0f, label = "chevron")
+    Row(
+        Modifier.clip(RoundedCornerShape(10.dp)).clickable(enabled = canOpen, onClick = toggle).padding(vertical = 6.dp, horizontal = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Outlined.AutoAwesome, null, tint = if (active) Green else Muted, modifier = Modifier.size(16.dp).alpha(if (active) a else 1f))
+        Spacer(Modifier.width(8.dp))
+        Text(label + if (active) "…" else "", color = Muted, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.alpha(if (active) a else 1f))
+        if (active && secs != null) Text("  ${secs}s", color = Muted, style = MaterialTheme.typography.labelMedium)
+        if (canOpen) Icon(Icons.Rounded.KeyboardArrowDown, if (open) "Hide thinking" else "Show thinking", tint = Muted, modifier = Modifier.size(20.dp).rotate(turn))
+    }
+}
+
+@Composable
+private fun ThoughtPanel(m: Msg, live: Live?) {
+    val summary = thoughtSummary(m.thought)
+    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).padding(start = 8.dp, top = 2.dp, bottom = 10.dp)) {
+        Box(Modifier.width(2.dp).fillMaxHeight().background(Line))
+        Column(Modifier.padding(start = 12.dp)) {
+            if (summary.isNotEmpty()) {
+                Text("Summary", color = Ink, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelLarge)
+                Text(summary, color = Muted, fontStyle = FontStyle.Italic, style = MaterialTheme.typography.bodyMedium)
+                Spacer(Modifier.height(8.dp))
+            }
+            Text(
+                m.thought.trim().let { if (live != null && it.length > 2500) "…" + it.takeLast(2500) else it },
+                color = Muted, style = MaterialTheme.typography.bodySmall.copy(lineHeight = 19.sp),
+                modifier = Modifier.heightIn(max = 340.dp).verticalScroll(rememberScrollState()),
+            )
+        }
+    }
+}
+
+@Composable
+private fun AssistantMessage(m: Msg, live: Live?, canRetry: Boolean, onRetry: () -> Unit) {
+    val clipboard = LocalClipboardManager.current
+    val haptic = LocalHapticFeedback.current
+    val ctx = LocalContext.current
+    var open by remember { mutableStateOf(false) }
+    var details by remember { mutableStateOf(false) }
+    var copied by remember { mutableStateOf(false) }
+    LaunchedEffect(copied) { if (copied) { delay(1500); copied = false } }
+    Column(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 12.dp)) {
+        val showHeader = m.thought.isNotBlank() || (live != null && live.phase != Phase.WRITING)
+        if (showHeader) ThinkingHeader(m, live, open) { open = !open }
+        AnimatedVisibility(open && m.thought.isNotBlank()) { ThoughtPanel(m, live) }
+        if (m.text.isNotEmpty()) SelectionContainer {
+            Text(markdown(m.text), color = Ink, style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 25.sp), modifier = Modifier.padding(top = 2.dp))
+        }
+        if (live == null) {
+            Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                SmallAction(if (copied) Icons.Outlined.Check else Icons.Outlined.ContentCopy, if (copied) "Copied" else "Copy") {
+                    clipboard.setText(AnnotatedString(m.text)); copied = true
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                }
+                SmallAction(Icons.Outlined.Share, "Share") {
+                    val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, m.text)
+                    ctx.startActivity(Intent.createChooser(send, "Share reply").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                }
+                if (canRetry) SmallAction(Icons.Outlined.Refresh, "Retry", onRetry)
+                if (m.stats.isNotEmpty() || m.model.isNotEmpty()) SmallAction(Icons.Outlined.Info, "Details") { details = !details }
+            }
+            AnimatedVisibility(details) {
+                Text(listOf("${m.model} · ${m.effort} effort".trim(' ', '·'), m.stats).filter { it.isNotBlank() }.joinToString("\n"),
+                    color = Muted, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(start = 8.dp, top = 2.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun SmallAction(icon: ImageVector, label: String, onClick: () -> Unit) {
+    IconButton(onClick = onClick, modifier = Modifier.size(36.dp)) { Icon(icon, label, tint = Muted, modifier = Modifier.size(18.dp)) }
+}
+
+// ---- composer with voice typing ----
+
+@Composable
+private fun Composer(vm: ChatViewModel, dictation: Dictation, text: String, setText: (String) -> Unit, onSettings: () -> Unit) {
+    val ctx = LocalContext.current
+    val haptic = LocalHapticFeedback.current
+    val ready = vm.engineState is EngineState.Ready
+    var base by remember { mutableStateOf("") } // what was typed before dictation started
+    fun join(a: String, b: String) = listOf(a.trimEnd(), b.trim()).filter { it.isNotBlank() }.joinToString(" ")
+    fun startVoice() { base = text; dictation.start { heard -> setText(join(base, heard)) } }
+    val systemVoice = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
+        r.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()?.let { setText(join(text, it)) }
+    }
+    val askMic = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+        if (ok) startVoice() else dictation.error = "Allow the microphone to talk instead of typing."
+    }
+    fun mic() {
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        when {
+            dictation.listening -> dictation.stop()
+            !dictation.inAppAvailable() -> try { systemVoice.launch(dictation.systemIntent()) } catch (_: ActivityNotFoundException) {
+                dictation.error = "This phone has no voice typing. Install the Google app to talk instead of typing."
+            }
+            ContextCompat.checkSelfPermission(ctx, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED -> startVoice()
+            else -> askMic.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+    val shown = if (dictation.listening) join(base, dictation.partial) else text
+    val canSend = shown.isNotBlank() && ready && !vm.busy
+    fun send() {
+        if (dictation.listening) dictation.cancel()
+        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        vm.send(shown); setText("")
+    }
+    Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(start = 10.dp, end = 10.dp, bottom = 6.dp)) {
+        dictation.error?.let { err ->
+            Row(
+                Modifier.fillMaxWidth().padding(bottom = 6.dp).clip(RoundedCornerShape(12.dp)).background(Soft).padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Outlined.MicOff, null, tint = Muted, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(err, color = Ink, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                IconButton(onClick = { dictation.error = null }, modifier = Modifier.size(32.dp)) { Icon(Icons.Outlined.Close, "Dismiss", tint = Muted, modifier = Modifier.size(16.dp)) }
+            }
+        }
+        Surface(
+            shape = RoundedCornerShape(24.dp), color = Color.White, shadowElevation = 2.dp,
+            modifier = Modifier.fillMaxWidth().border(1.dp, if (dictation.listening) Green else Line, RoundedCornerShape(24.dp)),
+        ) {
+            Column(Modifier.padding(start = 16.dp, end = 8.dp, top = 14.dp, bottom = 8.dp)) {
+                BasicTextField(
+                    value = shown, onValueChange = { if (!dictation.listening) setText(it) }, readOnly = dictation.listening,
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = Ink), cursorBrush = SolidColor(Navy), maxLines = 8,
+                    modifier = Modifier.fillMaxWidth().padding(end = 8.dp),
+                    decorationBox = { inner ->
+                        Box {
+                            if (shown.isEmpty()) Text(
+                                if (dictation.listening) (if (dictation.lang == VoiceLang.TAMIL) "கேட்கிறேன்… பேசுங்கள்" else "Listening… speak now")
+                                else "Message ${vm.activeModel?.name ?: "Careva+ AI"}",
+                                color = Muted, style = MaterialTheme.typography.bodyLarge,
+                            )
+                            inner()
+                        }
+                    },
+                )
+                Spacer(Modifier.height(10.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Pill(Icons.Outlined.Tune, vm.effort.label, onClick = onSettings)
+                    Spacer(Modifier.width(6.dp))
+                    Pill(Icons.Outlined.Translate, dictation.lang.label) {
+                        dictation.chooseLang(if (dictation.lang == VoiceLang.ENGLISH) VoiceLang.TAMIL else VoiceLang.ENGLISH)
+                    }
+                    Spacer(Modifier.weight(1f))
+                    if (dictation.listening) { Waveform(dictation.level); Spacer(Modifier.width(6.dp)) }
+                    MicButton(dictation.listening, dictation.level, ::mic)
+                    Spacer(Modifier.width(6.dp))
+                    val stop = vm.busy
+                    FilledIconButton(
+                        onClick = { if (stop) vm.stop() else if (canSend) send() },
+                        enabled = stop || canSend,
+                        colors = IconButtonDefaults.filledIconButtonColors(containerColor = if (stop) Ink else Navy, disabledContainerColor = Line),
+                        modifier = Modifier.size(38.dp),
+                    ) { Icon(if (stop) Icons.Rounded.Stop else Icons.Rounded.ArrowUpward, if (stop) "Stop" else "Send", tint = Color.White, modifier = Modifier.size(20.dp)) }
+                }
+            }
+        }
+        Text(
+            "Careva+ AI can make mistakes. Please check important information.",
+            color = Muted, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+        )
+    }
+}
+
+@Composable
+private fun Pill(icon: ImageVector, label: String, onClick: () -> Unit) {
+    Row(
+        Modifier.clip(RoundedCornerShape(50)).border(1.dp, Line, RoundedCornerShape(50)).clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, null, tint = Muted, modifier = Modifier.size(14.dp))
+        Spacer(Modifier.width(5.dp))
+        Text(label, color = Ink, style = MaterialTheme.typography.labelMedium)
+    }
+}
+
+@Composable
+private fun MicButton(listening: Boolean, level: Float, onClick: () -> Unit) {
+    val ring by animateFloatAsState(if (listening) 1f + level * 0.45f else 1f, tween(120), label = "ring")
+    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(38.dp)) {
+        if (listening) Box(Modifier.size(38.dp).scale(ring).background(Green.copy(alpha = 0.18f), CircleShape))
+        Surface(
+            onClick = onClick, shape = CircleShape, color = if (listening) Green else Color.Transparent,
+            modifier = Modifier.size(38.dp),
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(if (listening) Icons.Rounded.Mic else Icons.Outlined.Mic, if (listening) "Stop listening" else "Speak instead of typing",
+                    tint = if (listening) Color.White else Ink, modifier = Modifier.size(21.dp))
+            }
+        }
+    }
+}
+
+/** Five bars that move with the voice. */
+@Composable
+private fun Waveform(level: Float) {
+    val shape = listOf(0.45f, 0.8f, 1f, 0.7f, 0.5f)
+    val t = rememberInfiniteTransition(label = "wave")
+    val wobble by t.animateFloat(0.75f, 1f, infiniteRepeatable(tween(260), RepeatMode.Reverse), label = "w")
+    Row(horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.CenterVertically, modifier = Modifier.height(24.dp)) {
+        shape.forEachIndexed { i, s ->
+            val h by animateFloatAsState(4f + 20f * s * (0.15f + level) * (if (i % 2 == 0) wobble else 1.75f - wobble), tween(110), label = "bar$i")
+            Box(Modifier.width(3.dp).height(h.coerceIn(4f, 24f).dp).background(Green, RoundedCornerShape(2.dp)))
+        }
+    }
 }
 
 @Composable
@@ -478,175 +940,6 @@ private fun StatusBar(text: String, progress: Boolean, action: String? = null, o
     }
 }
 
-@Composable
-private fun Welcome(vm: ChatViewModel, modifier: Modifier) {
-    val ideas = listOf(
-        "Write a polite follow-up message to a patient's family",
-        "தமிழில் ஒரு நன்றி செய்தி எழுதுங்கள்",
-        "A nurse visits 3 patients a day, 6 days a week. How many visits in 4 weeks?",
-        "Write a Python function that checks if a phone number is valid",
-    )
-    Column(modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp), verticalArrangement = Arrangement.Center) {
-        Spacer(Modifier.height(40.dp))
-        Image(painterResource(R.drawable.careva_mark), null, Modifier.size(64.dp))
-        Spacer(Modifier.height(16.dp))
-        Text("How can I help you today?", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold, color = Ink)
-        Text("வணக்கம்! English அல்லது தமிழில் கேளுங்கள்.", color = Muted, style = MaterialTheme.typography.bodyLarge)
-        Spacer(Modifier.height(24.dp))
-        ideas.forEach { idea ->
-            Surface(
-                onClick = { vm.send(idea) }, enabled = vm.engineState is EngineState.Ready, shape = RoundedCornerShape(16.dp), color = Color.White,
-                modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp).border(1.dp, Line, RoundedCornerShape(16.dp)),
-            ) { Text(idea, Modifier.padding(16.dp), color = Ink) }
-        }
-        Spacer(Modifier.height(24.dp))
-    }
-}
-
-/** Live progress of the reply being written. */
-private data class Live(val phase: Phase, val startedAt: Long, val wordsPerSecond: Double)
-
-@Composable
-private fun Messages(messages: List<Msg>, streaming: String?, thought: String, live: Live, modifier: Modifier) {
-    val list = rememberLazyListState()
-    val count = messages.size + if (streaming != null) 1 else 0
-    // Follow the reply as it grows, without re-scrolling on every word.
-    LaunchedEffect(count, (streaming?.length ?: 0) / 60, thought.length / 120, live.phase) {
-        if (count > 0) list.scrollToItem(count - 1, Int.MAX_VALUE / 2)
-    }
-    LazyColumn(modifier.fillMaxWidth(), state = list, contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp)) {
-        items(messages) { m -> if (m.isUser) UserMessage(m.text) else AssistantMessage(m, live = null) }
-        if (streaming != null) item { AssistantMessage(Msg("assistant", Prompt.clean(streaming), thought), live = live) }
-    }
-}
-
-@Composable
-private fun UserMessage(text: String) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.End) {
-        Surface(shape = RoundedCornerShape(20.dp, 20.dp, 6.dp, 20.dp), color = UserBubble, modifier = Modifier.widthIn(max = 320.dp)) {
-            SelectionContainer { Text(text, Modifier.padding(horizontal = 16.dp, vertical = 11.dp), color = Ink, style = MaterialTheme.typography.bodyLarge) }
-        }
-    }
-}
-
-/** What the AI is doing right now: phase, a one-line summary of its current thought, a timer and the writing speed. */
-@Composable
-private fun ActivityLine(live: Live, thought: String) {
-    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    LaunchedEffect(Unit) { while (true) { delay(250); now = System.currentTimeMillis() } }
-    val secs = ((now - live.startedAt) / 1000).coerceAtLeast(0)
-    val pulse = rememberInfiniteTransition(label = "dot")
-    val a by pulse.animateFloat(0.25f, 1f, infiniteRepeatable(tween(650), RepeatMode.Reverse), label = "a")
-    Row(
-        Modifier.fillMaxWidth().padding(bottom = 6.dp).background(Soft, RoundedCornerShape(12.dp)).padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(Modifier.size(8.dp).alpha(a).background(Green, CircleShape))
-        Spacer(Modifier.width(10.dp))
-        Column(Modifier.weight(1f)) {
-            Text(live.phase.label + "…", color = Ink, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
-            if (live.phase == Phase.THINKING) {
-                val summary = thoughtSummary(thought)
-                if (summary.isNotEmpty()) Text(summary, color = Muted, fontStyle = FontStyle.Italic, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            }
-        }
-        Spacer(Modifier.width(8.dp))
-        Text(
-            "${secs}s" + if (live.phase == Phase.WRITING && live.wordsPerSecond > 0) " · %.0f words/s".format(live.wordsPerSecond) else "",
-            color = Muted, style = MaterialTheme.typography.labelSmall,
-        )
-    }
-}
-
-@Composable
-private fun AssistantMessage(m: Msg, live: Live?) {
-    val clipboard = LocalClipboardManager.current
-    var showThought by remember { mutableStateOf(false) }
-    Row(Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
-        Image(painterResource(R.drawable.careva_mark), null, Modifier.size(28.dp).padding(top = 2.dp))
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            if (live != null) ActivityLine(live, m.thought)
-            if (m.thought.isNotBlank()) {
-                Row(
-                    Modifier.clip(RoundedCornerShape(10.dp)).clickable { showThought = !showThought }.padding(vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(Icons.Outlined.Psychology, null, tint = Muted, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        when { live != null -> if (showThought) "Hide thinking" else "Show thinking"; m.seconds > 0 -> "Thought for ${m.seconds}s"; else -> "Thoughts" },
-                        color = Muted, style = MaterialTheme.typography.bodyMedium,
-                    )
-                    Icon(Icons.Rounded.KeyboardArrowDown, null, tint = Muted, modifier = Modifier.size(18.dp))
-                }
-                AnimatedVisibility(showThought) {
-                    Text(
-                        m.thought.trim().let { if (live != null) it.takeLast(1500) else it },
-                        color = Muted, style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp),
-                        modifier = Modifier.padding(start = 8.dp, top = 4.dp, bottom = 8.dp).background(Soft, RoundedCornerShape(10.dp)).padding(10.dp),
-                    )
-                }
-            }
-            if (m.text.isNotEmpty()) SelectionContainer {
-                Text(markdown(m.text + if (live != null) " ▍" else ""), color = Ink, style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 24.sp))
-            }
-            if (live == null) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { clipboard.setText(AnnotatedString(m.text)) }, modifier = Modifier.size(36.dp)) {
-                        Icon(Icons.Outlined.ContentCopy, "Copy", tint = Muted, modifier = Modifier.size(18.dp))
-                    }
-                    if (m.model.isNotEmpty()) Text("${m.model} · ${m.effort}", color = Muted, style = MaterialTheme.typography.labelSmall)
-                }
-                if (m.stats.isNotEmpty()) Text(m.stats, color = Muted, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(start = 10.dp))
-            }
-        }
-    }
-}
-
-@Composable
-private fun Pulsing(text: String) {
-    val t = rememberInfiniteTransition(label = "pulse")
-    val a by t.animateFloat(0.3f, 1f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "a")
-    Text(text, color = Muted, modifier = Modifier.alpha(a))
-}
-
-@Composable
-private fun Composer(vm: ChatViewModel) {
-    var text by remember { mutableStateOf("") }
-    val ready = vm.engineState is EngineState.Ready
-    Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(start = 12.dp, end = 12.dp, bottom = 8.dp)) {
-        Surface(shape = RoundedCornerShape(26.dp), color = Color.White, modifier = Modifier.fillMaxWidth().border(1.dp, Line, RoundedCornerShape(26.dp))) {
-            Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.padding(start = 6.dp, end = 8.dp, top = 4.dp, bottom = 6.dp)) {
-                TextField(
-                    value = text, onValueChange = { text = it },
-                    placeholder = { Text("Message ${vm.activeModel?.name ?: "Careva+ AI"}", color = Muted) },
-                    modifier = Modifier.weight(1f), maxLines = 6,
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent,
-                        focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent, cursorColor = Navy,
-                    ),
-                )
-                val canSend = text.isNotBlank() && ready
-                FilledIconButton(
-                    onClick = { if (vm.busy) vm.stop() else if (canSend) { vm.send(text); text = "" } },
-                    enabled = vm.busy || canSend,
-                    colors = IconButtonDefaults.filledIconButtonColors(containerColor = Navy, disabledContainerColor = Line),
-                    modifier = Modifier.size(40.dp).padding(bottom = 2.dp),
-                ) {
-                    Icon(if (vm.busy) Icons.Rounded.Stop else Icons.Rounded.ArrowUpward, if (vm.busy) "Stop" else "Send", tint = Color.White)
-                }
-            }
-        }
-        Text(
-            if (vm.activeModel?.cloud == false) "Runs privately on your phone. It can make mistakes; check important information."
-            else "Runs in the Careva+ cloud. It can make mistakes; check important information.",
-            color = Muted, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
-        )
-    }
-}
-
 // ---------- light markdown: headings, bullets, **bold**, *italic*, `code`, ``` blocks ```
 
 private val CodeBg = Color(0xFFEFEBE3)
@@ -667,18 +960,42 @@ private fun AnnotatedString.Builder.inline(s: String) {
     append(s.substring(last))
 }
 
+private val bulletLine = Regex("^(\\s*)[-*•]\\s+")
+private val numberLine = Regex("^(\\s*)(\\d{1,3})[.)]\\s+")
+private val headingLine = Regex("^#{1,6}\\s+")
+
+/**
+ * Markdown for chat replies. List items are their own paragraphs with a hanging indent, so wrapped lines
+ * line up under the text rather than under the bullet.
+ */
 fun markdown(text: String): AnnotatedString = buildAnnotatedString {
     var inCode = false
     val lines = text.split("\n")
-    lines.forEachIndexed { i, line ->
-        if (line.trimStart().startsWith("```")) { inCode = !inCode; return@forEachIndexed }
+    var newlineOwed = false // a plain line ended and the next one needs a line break
+    fun para(indentSp: Float, block: AnnotatedString.Builder.() -> Unit) {
+        if (newlineOwed) { newlineOwed = false } // the paragraph itself starts on a new line
+        withStyle(ParagraphStyle(textIndent = TextIndent(firstLine = 0.sp, restLine = indentSp.sp))) { block() }
+    }
+    for (line in lines) {
+        if (line.trimStart().startsWith("```")) { inCode = !inCode; continue }
+        val bullet = if (!inCode) bulletLine.find(line) else null
+        val number = if (!inCode && bullet == null) numberLine.find(line) else null
         when {
-            inCode -> withStyle(SpanStyle(fontFamily = FontFamily.Monospace, background = CodeBg, fontSize = 14.sp)) { append(line) }
-            Regex("^#{1,6}\\s+").containsMatchIn(line) ->
-                withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontSize = 18.sp)) { inline(line.replace(Regex("^#{1,6}\\s+"), "")) }
-            Regex("^\\s*[-*•]\\s+").containsMatchIn(line) -> { append("  •  "); inline(line.replace(Regex("^\\s*[-*•]\\s+"), "")) }
-            else -> inline(line)
+            bullet != null -> {
+                val nest = bullet.groupValues[1].length / 2
+                para(18f + nest * 14f) { append("   ".repeat(nest) + "•  "); inline(line.substring(bullet.range.last + 1)) }
+            }
+            number != null -> para(24f) { append(number.groupValues[2] + ".  "); inline(line.substring(number.range.last + 1)) }
+            else -> {
+                if (newlineOwed) append("\n")
+                when {
+                    inCode -> withStyle(SpanStyle(fontFamily = FontFamily.Monospace, background = CodeBg, fontSize = 14.sp)) { append(line) }
+                    headingLine.containsMatchIn(line) ->
+                        withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontSize = 18.sp)) { inline(line.replace(headingLine, "")) }
+                    else -> inline(line)
+                }
+                newlineOwed = true
+            }
         }
-        if (i < lines.lastIndex) append("\n")
     }
 }
