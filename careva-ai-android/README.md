@@ -90,7 +90,7 @@ These are the strongest free models that fit on a phone, and they are much small
 
 ## Install
 
-1. Copy `release/careva-ai-3.0.0.apk` to an Android phone (Android 8.0 or newer, 64-bit).
+1. Copy `release/careva-ai-3.1.0.apk` to an Android phone (Android 8.0 or newer, 64-bit).
 2. Open it and allow "Install unknown apps" when asked. Installing over an older version keeps your chats and models.
 3. Open **Careva+ AI** and sign in with your email (the first screen). Nothing to download.
 4. Pick a cloud model from the title bar. Phone models from older versions can still be used or deleted on the Models screen; new downloads are no longer offered.
