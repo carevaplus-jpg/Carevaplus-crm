@@ -1,6 +1,6 @@
 # Careva+ AI (Android)
 
-A private AI chat assistant that runs **entirely on the phone**: no API key and no cost per message. Sign in with your email (optional) to use the same chats on all your phones. Choose from six free open models and four effort levels.
+A private AI chat assistant that runs **entirely on the phone**: no API key and no cost per message. Sign in with your email to use **cloud models** (nothing to download, no phone storage or memory) and to have the same chats on all your phones. Choose from six free open models and four effort levels.
 
 ## Models
 
@@ -36,6 +36,23 @@ The model's reasoning appears in a collapsible **Thinking** section above each a
 - For reference, Careva Plus on a 4-core server CPU wrote about 17 words per second, with the first word after under half a second (once prepared).
 - While it works, a status line shows **what the AI is doing**: Reading your message → Thinking (with a one-line summary of its current reasoning) → Writing, plus a timer and words per second. Tap **Show thinking** for the full reasoning. Each finished reply shows its words, speed, time and whether it ran on GPU or CPU.
 
+## Cloud models
+
+Four cloud models run on the Careva+ cloud instead of the phone, so they need **no download, no storage and no phone memory**, only internet and a Careva+ account:
+
+| In the app | Runs (first one available) | Best for |
+|---|---|---|
+| Careva Cloud Max | GPT-OSS 120B, Kimi K2, Qwen3 235B, … | Hardest questions, long documents |
+| Careva Cloud Think | Qwen3 32B, DeepSeek R1, … | Maths, logic, planning |
+| Careva Cloud Code | Qwen3 Coder, Kimi K2, … | Code |
+| Careva Cloud Fast | GPT-OSS 20B, Llama 3.3 70B, … | Quick answers |
+
+How it works: the app sends the chat to the Supabase Edge Function `careva-ai-chat` (`supabase/functions/careva-ai-chat`). It checks the user is signed in, then asks a free AI service that hosts these open models (Groq, Cerebras or OpenRouter) and streams the answer and its thinking back. The AI service's key is stored only as a Supabase secret; it is never in the app. If one service is busy or over its free limit, the function tries the next.
+
+**To switch cloud models on** (once): create a free account at console.groq.com, create an API key, then in Supabase open Edge Functions → Secrets and add `GROQ_API_KEY` with that key. Optional backups: `CEREBRAS_API_KEY` (cloud.cerebras.ai) and `OPENROUTER_API_KEY` (openrouter.ai).
+
+Limits: free tiers allow a limited number of messages per minute and per day, shared by everyone using the app. Messages to cloud models are processed by the AI service, so don't send patient-identifying details.
+
 ## Account and sync across phones
 
 Open the menu and tap **Sign in to sync**. Create an account with your email and a password, open the confirmation link that arrives by email, then sign in. Sign in with the same email on another phone and your chats appear there too; new messages and deleted chats sync within about a minute (or tap **Sync now**).
@@ -52,7 +69,7 @@ These are the strongest free models that fit on a phone, and they are much small
 
 ## Install
 
-1. Copy `release/careva-ai-2.2.0.apk` to an Android phone (Android 8.0 or newer, 64-bit).
+1. Copy `release/careva-ai-2.3.0.apk` to an Android phone (Android 8.0 or newer, 64-bit).
 2. Open it and allow "Install unknown apps" when asked. Installing over an older version keeps your chats and models.
 3. Open **Careva+ AI**, download **Careva Plus** first, then add others as needed.
 4. Optional: turn on **Use GPU** on the Models screen for faster replies on many phones.
@@ -75,6 +92,7 @@ echo "sdk.dir=/path/to/android/sdk" > local.properties
 | `Models.kt` | The model catalogue, effort levels and what each effort changes |
 | `Engine.kt` | Model downloads (Android DownloadManager) and the LiteRT-LM engine: loading, streaming replies and thinking, stop |
 | `Chats.kt` | Conversation storage (private JSON, plus deleted-chat records for sync) and the system prompt |
-| `Cloud.kt` | Email sign-in (Supabase Auth), chat upload and download, and the merge rule (newest version wins; later deletes win) |
+| `Cloud.kt` | Email sign-in (Supabase Auth), cloud-model streaming, chat upload and download, and the merge rule (newest version wins; later deletes win) |
+| `supabase/functions/careva-ai-chat` | The cloud-model server: sign-in check, model choice with fallback, streaming |
 | `ChatViewModel.kt` | App state: models, downloads, effort, sending, stopping, saving, account and sync |
 | `Ui.kt` | Jetpack Compose interface: chat, model and effort picker, Models and Account screens, Thinking sections |

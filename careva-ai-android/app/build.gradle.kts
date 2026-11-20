@@ -20,8 +20,8 @@ android {
         applicationId = "com.carevaplus.ai"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
-        versionName = "2.2.0"
+        versionCode = 5
+        versionName = "2.3.0"
         ndk { abiFilters += listOf("arm64-v8a") }
     }
 

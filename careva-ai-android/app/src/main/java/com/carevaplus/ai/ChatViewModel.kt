@@ -90,11 +90,15 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         chats.addAll(store.load())
         refreshInstalled()
         Catalog.models.filter { downloader.downloadId(it) >= 0 && it.id !in installed }.forEach { watch(it) }
-        val start = activeModel?.takeIf { it.id in installed } ?: Catalog.models.firstOrNull { it.id in installed }
-        if (start != null) selectModel(start.id) else if (installed.isEmpty()) screen = Screen.MODELS
+        val start = activeModel?.takeIf { usable(it) } ?: Catalog.models.firstOrNull { it.id in installed }
+            ?: Catalog.cloud.first().takeIf { account != null }
+        if (start != null) selectModel(start.id) else screen = Screen.MODELS
         // keep chats up to date with the user's other phones while the app is open
         viewModelScope.launch { while (isActive) { if (account != null) syncNow(); delay(45_000) } }
     }
+
+    /** A phone model that is downloaded, or a cloud model while signed in. */
+    fun usable(m: AiModel) = if (m.cloud) account != null else m.id in installed
 
     private fun refreshInstalled() {
         installed.clear()
@@ -121,7 +125,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         refreshInstalled()
         if (activeModelId == m.id) {
             activeModelId = null; prefs.edit().remove("model").apply()
-            Catalog.models.firstOrNull { it.id in installed }?.let { selectModel(it.id) }
+            (Catalog.models.firstOrNull { it.id in installed } ?: Catalog.cloud.first().takeIf { account != null })?.let { selectModel(it.id) }
         }
     }
 
@@ -151,7 +155,7 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
     fun selectModel(id: String) {
         val m = Catalog.byId(id) ?: return
-        if (busy || m.id !in installed) return
+        if (busy || !usable(m)) return
         if (activeModelId != id) effort = m.defaultEffort
         activeModelId = id
         prefs.edit().putString("model", id).putString("effort", effort.name).apply()
@@ -162,10 +166,13 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
 
     fun toggleGpu(on: Boolean) {
         useGpu = on; prefs.edit().putBoolean("gpu", on).apply()
-        activeModel?.let { if (it.id in installed && !busy) load(it) }
+        activeModel?.let { if (!it.cloud && it.id in installed && !busy) load(it) }
     }
 
     private fun load(m: AiModel) {
+        if (m.cloud) { // nothing to load on the phone; free the memory a phone model was using
+            engine.unload(); engineState = EngineState.Ready(m, gpu = false); return
+        }
         engineState = EngineState.Loading(m, needsPreparing(getApplication(), m))
         viewModelScope.launch {
             engineState = try {
@@ -232,11 +239,14 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
         replyJob = viewModelScope.launch {
             val ticker = launch { while (isActive) { delay(80); flush() } }
             var error: Throwable? = null
+            var servedBy: String? = null
             try {
-                withContext(Dispatchers.Default) {
-                    engine.reply(chat.id, history, input, effortUsed,
-                        onThought = { t -> synchronized(lock) { if (firstThought == 0L) firstThought = System.currentTimeMillis(); thought.append(t) } },
-                        onText = { t -> synchronized(lock) { if (firstText == 0L) firstText = System.currentTimeMillis(); text.append(t) } })
+                val onThought = { t: String -> synchronized(lock) { if (firstThought == 0L) firstThought = System.currentTimeMillis(); thought.append(t) }; Unit }
+                val onText = { t: String -> synchronized(lock) { if (firstText == 0L) firstText = System.currentTimeMillis(); text.append(t) }; Unit }
+                if (ready.model.cloud) withContext(Dispatchers.IO) {
+                    servedBy = cloud.chat(ready.model.id, effortUsed, Prompt.cloudMessages(history, input), onThought, onText)
+                } else withContext(Dispatchers.Default) {
+                    engine.reply(chat.id, history, input, effortUsed, onThought, onText)
                 }
             } catch (t: Throwable) { error = t }
             ticker.cancel(); flush()
@@ -248,13 +258,13 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
                 add("$words words")
                 if (speed > 0) add("%.0f words/s".format(speed))
                 add("${(end - started) / 1000}s")
-                add(if (engine.loadedOnGpu) "GPU" else "CPU")
+                add(if (ready.model.cloud) "Cloud" + (servedBy?.let { " · ${it.substringAfterLast('/')}" } ?: "") else if (engine.loadedOnGpu) "GPU" else "CPU")
             }.joinToString(" · ")
             finish(chat.id, ready.model, effortUsed, thinkSecs, stats, error)
         }
     }
 
-    fun stop() = engine.stop()
+    fun stop() { if (activeModel?.cloud == true) cloud.stopChat() else engine.stop() }
 
     private fun finish(chatId: String, model: AiModel, effortUsed: Effort, seconds: Int, stats: String, err: Throwable?) {
         var reply = Prompt.clean(streaming ?: "")
@@ -297,7 +307,10 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             try {
                 authInfo = withContext(Dispatchers.IO) { action() }
                 account = cloud.session?.email
-                if (account != null) { screen = Screen.CHAT; syncNow() }
+                if (account != null) {
+                    screen = Screen.CHAT; syncNow()
+                    if (engineState !is EngineState.Ready) selectModel(Catalog.cloud.first().id) // no phone model needed
+                }
             } catch (e: Exception) {
                 authError = e.message ?: "Something went wrong. Please try again."
             }
@@ -318,6 +331,10 @@ class ChatViewModel(app: Application) : AndroidViewModel(app) {
             }
             withContext(Dispatchers.IO) { cloud.signOut() }
             account = null; sync = SyncStatus()
+            if (activeModel?.cloud == true) {
+                engineState = EngineState.NoModel
+                Catalog.models.firstOrNull { it.id in installed }?.let { selectModel(it.id) }
+            }
             chats.clear(); currentId = null; deleted.clear(); store.clear()
             engine.closeConversation()
             screen = Screen.CHAT

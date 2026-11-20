@@ -90,7 +90,7 @@ class ChatStore(ctx: Context) {
 }
 
 object Prompt {
-    fun system() = """You are Careva+ AI, a friendly and professional assistant made by Careva+, a home health care service. You run privately on the user's phone.
+    fun system(cloud: Boolean = false) = """You are Careva+ AI, a friendly and professional assistant made by Careva+, a home health care service. ${if (cloud) "You run on the Careva+ cloud." else "You run privately on the user's phone."}
 - Answer clearly and concisely. Use short paragraphs, bullet points or code blocks when helpful.
 - Reply in the same language the user writes in (English or Tamil).
 - If you are not sure about something, say so instead of guessing.
@@ -107,6 +107,15 @@ object Prompt {
         }
         if (kept.isNotEmpty() && !kept.last().isUser) kept.removeAt(kept.lastIndex) // start with a user turn
         return kept.asReversed().map { if (it.isUser) LmMessage.user(it.text) else LmMessage.model(it.text) }
+    }
+
+    /** The chat for a cloud model: system prompt plus the newest turns that fit in about [chars] characters. */
+    fun cloudMessages(history: List<Msg>, userText: String, chars: Int = 60_000): List<Pair<String, String>> {
+        var budget = chars - userText.length
+        val kept = ArrayList<Msg>()
+        for (m in history.asReversed()) { budget -= m.text.length; if (budget < 0) break; kept.add(m) }
+        if (kept.isNotEmpty() && !kept.last().isUser) kept.removeAt(kept.lastIndex)
+        return listOf("system" to system(cloud = true)) + kept.asReversed().map { (if (it.isUser) "user" else "assistant") to it.text } + ("user" to userText)
     }
 
     private val special = Regex("<\\|(im_end|im_start|endoftext)\\|>|<end_of_turn>|<start_of_turn>(model|user)?")

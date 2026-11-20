@@ -22,6 +22,8 @@ data class AiModel(
     val recommended: Boolean = false,
     /** Replacement chat template, for model packages whose built-in one doesn't handle system messages. */
     val chatTemplate: String? = null,
+    /** Runs on the Careva+ cloud instead of the phone: no download, storage or phone memory needed. */
+    val cloud: Boolean = false,
 ) {
     val url get() = "https://huggingface.co/$repo/resolve/main/$file"
     val sizeLabel get() = "%.1f GB".format(sizeBytes / 1e9)
@@ -88,7 +90,20 @@ object Catalog {
         ),
     )
 
-    fun byId(id: String?) = models.firstOrNull { it.id == id }
+    /** Large open models that run on the Careva+ cloud (Supabase function `careva-ai-chat`) for signed-in users. */
+    val cloud = listOf(
+        cloudModel("cloud-max", "Careva Cloud Max", "Strongest model, runs in the cloud", "Hard questions, long documents, careful writing", "GPT-OSS 120B or similar", recommended = true),
+        cloudModel("cloud-think", "Careva Cloud Think", "Deep reasoning in the cloud", "Maths, logic, planning, step-by-step problems", "Qwen3 32B or similar"),
+        cloudModel("cloud-code", "Careva Cloud Code", "Coding specialist in the cloud", "Writing and fixing code, technical work", "Qwen3 Coder, Kimi K2 or similar"),
+        cloudModel("cloud-fast", "Careva Cloud Fast", "Very fast replies", "Quick everyday answers", "GPT-OSS 20B or similar", effort = Effort.LOW),
+    )
+
+    private fun cloudModel(id: String, name: String, tagline: String, bestFor: String, base: String, recommended: Boolean = false, effort: Effort = Effort.MEDIUM) =
+        AiModel(id = id, name = name, tagline = tagline, bestFor = bestFor, baseModel = base, license = "Open model",
+            repo = "", file = "", sizeBytes = 0, minRamGb = 0, contextTokens = 32768, supportsThinking = true,
+            defaultEffort = effort, recommended = recommended, cloud = true)
+
+    fun byId(id: String?) = models.firstOrNull { it.id == id } ?: cloud.firstOrNull { it.id == id }
 }
 
 /** Qwen chat format; used for Qwen3 8B, whose packaged template fails on system messages. Tested with LiteRT-LM 0.19.1. */

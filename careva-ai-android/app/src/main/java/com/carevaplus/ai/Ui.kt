@@ -97,7 +97,7 @@ private fun gb(bytes: Long) = if (bytes >= 1_000_000_000) "%.2f GB".format(bytes
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ModelsScreen(vm: ChatViewModel) {
-    val canGoBack = vm.installed.isNotEmpty()
+    val canGoBack = vm.installed.isNotEmpty() || vm.account != null
     BackHandler(enabled = canGoBack) { vm.screen = Screen.CHAT }
     Scaffold(
         containerColor = Paper,
@@ -114,12 +114,15 @@ private fun ModelsScreen(vm: ChatViewModel) {
                 Column(Modifier.padding(bottom = 4.dp)) {
                     if (!canGoBack) {
                         Image(painterResource(R.drawable.careva_logo), "Careva+", Modifier.fillMaxWidth(0.7f).padding(vertical = 8.dp))
-                        Text("Download a model to start. Models run entirely on your phone: no API key and no cost per message. Chats stay on the phone unless you sign in to sync them between your phones.", color = Muted)
+                        Text("Sign in to use cloud models straight away (nothing to download), or download a phone model that works offline. No API key and no cost per message.", color = Muted)
                         Spacer(Modifier.height(8.dp))
                     }
                     Text("Each model is a free, open model. Bigger models are smarter but need more memory and are slower. You can install several and switch any time.", color = Muted, style = MaterialTheme.typography.bodyMedium)
                 }
             }
+            item { SectionTitle("Cloud models", "Run on the Careva+ cloud: no download, no phone storage, no phone memory. Bigger and smarter than phone models. Needs internet and your Careva+ account.") }
+            items(Catalog.cloud, key = { it.id }) { m -> CloudCard(vm, m) }
+            item { SectionTitle("Phone models", "Downloaded once and run on this phone, even without internet. Chats with them never leave the phone.") }
             items(Catalog.models, key = { it.id }) { m -> ModelCard(vm, m) }
             item {
                 Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth().border(1.dp, Line, RoundedCornerShape(18.dp))) {
@@ -184,6 +187,44 @@ private fun ModelCard(vm: ChatViewModel, m: AiModel) {
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun SectionTitle(title: String, text: String) {
+    Column(Modifier.padding(top = 8.dp, bottom = 2.dp)) {
+        Text(title, fontWeight = FontWeight.Bold, color = Navy, style = MaterialTheme.typography.titleMedium)
+        Text(text, color = Muted, style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+@Composable
+private fun CloudCard(vm: ChatViewModel, m: AiModel) {
+    val active = vm.activeModelId == m.id && vm.account != null
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(18.dp),
+        modifier = Modifier.fillMaxWidth().border(if (active) 2.dp else 1.dp, if (active) Green else Line, RoundedCornerShape(18.dp)),
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.Cloud, null, tint = Navy, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(6.dp))
+                Text(m.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, color = Navy)
+                if (m.recommended) Badge("Recommended")
+                Spacer(Modifier.weight(1f))
+                if (active) Icon(Icons.Rounded.CheckCircle, "In use", tint = Green)
+            }
+            Text(m.tagline, color = Ink, style = MaterialTheme.typography.bodyMedium)
+            Spacer(Modifier.height(6.dp))
+            Text("Best for: ${m.bestFor}", color = Muted, style = MaterialTheme.typography.bodySmall)
+            Text("${m.baseModel} · no download · 0 GB on your phone", color = Muted, style = MaterialTheme.typography.bodySmall)
+            Spacer(Modifier.height(12.dp))
+            if (vm.account != null)
+                Button(onClick = { vm.selectModel(m.id); vm.screen = Screen.CHAT }, enabled = !vm.busy, shape = RoundedCornerShape(12.dp)) { Text(if (active) "Open chat" else "Use this model") }
+            else
+                OutlinedButton(onClick = { vm.screen = Screen.ACCOUNT }, shape = RoundedCornerShape(12.dp)) {
+                    Icon(Icons.Outlined.AccountCircle, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Sign in to use")
+                }
         }
     }
 }
@@ -392,7 +433,8 @@ private fun ModelSheet(vm: ChatViewModel, onClose: () -> Unit) {
             Text("Model", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(8.dp))
             val installed = Catalog.models.filter { it.id in vm.installed }
-            installed.forEach { m ->
+            val choices = (if (vm.account != null) Catalog.cloud else emptyList()) + installed
+            choices.forEach { m ->
                 val sel = vm.activeModelId == m.id
                 Row(
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(if (sel) Color.White else Color.Transparent)
@@ -401,7 +443,11 @@ private fun ModelSheet(vm: ChatViewModel, onClose: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
-                        Text(m.name, fontWeight = FontWeight.SemiBold)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(m.name, fontWeight = FontWeight.SemiBold)
+                            Spacer(Modifier.width(6.dp))
+                            Icon(if (m.cloud) Icons.Outlined.Cloud else Icons.Outlined.PhoneAndroid, if (m.cloud) "Cloud" else "On this phone", tint = Muted, modifier = Modifier.size(14.dp))
+                        }
                         Text(m.bestFor, color = Muted, style = MaterialTheme.typography.bodySmall)
                     }
                     RadioButton(selected = sel, onClick = { vm.selectModel(m.id) })
@@ -409,7 +455,7 @@ private fun ModelSheet(vm: ChatViewModel, onClose: () -> Unit) {
             }
             TextButton(onClick = { onClose(); vm.screen = Screen.MODELS }) {
                 Icon(Icons.Outlined.Add, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp))
-                Text(if (installed.size < Catalog.models.size) "Get more models" else "Manage models")
+                Text(if (vm.account == null) "Cloud models and more" else if (installed.size < Catalog.models.size) "Get more models" else "Manage models")
             }
             HorizontalDivider(color = Line, modifier = Modifier.padding(vertical = 12.dp))
             Text("Effort", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)

@@ -133,6 +133,53 @@ class Cloud(ctx: Context) {
         }
     }
 
+    // ---- cloud models ----
+
+    @Volatile private var chatConnection: HttpURLConnection? = null
+    @Volatile private var stopped = false
+
+    /**
+     * Streams a reply from a cloud model. Calls [onThought] and [onText] as pieces arrive and returns the name of
+     * the model that answered. Blocking: call off the main thread. [stopChat] ends it early.
+     */
+    fun chat(model: String, effort: Effort, messages: List<Pair<String, String>>, onThought: (String) -> Unit, onText: (String) -> Unit): String {
+        val body = JSONObject().put("model", model).put("effort", effort.name)
+            .put("messages", JSONArray().apply { messages.forEach { (r, c) -> put(JSONObject().put("role", r).put("content", c)) } })
+        val c = URL(CloudConfig.URL + "/functions/v1/careva-ai-chat").openConnection() as HttpURLConnection
+        chatConnection = c; stopped = false
+        try {
+            c.requestMethod = "POST"; c.doOutput = true
+            c.connectTimeout = 15_000; c.readTimeout = 120_000
+            c.setRequestProperty("apikey", CloudConfig.KEY)
+            c.setRequestProperty("Authorization", "Bearer ${token()}")
+            c.setRequestProperty("Content-Type", "application/json")
+            c.outputStream.use { it.write(body.toString().toByteArray()) }
+            val code = c.responseCode
+            if (code >= 400) {
+                val text = c.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
+                throw CloudError(try { JSONObject(text).optString("error").ifEmpty { null } } catch (_: Exception) { null } ?: "Cloud error ($code). Please try again.")
+            }
+            var used = model
+            c.inputStream.bufferedReader().useLines { lines ->
+                for (line in lines) {
+                    if (line.isBlank()) continue
+                    val o = try { JSONObject(line) } catch (_: Exception) { continue }
+                    o.optString("r").takeIf { it.isNotEmpty() }?.let(onThought)
+                    o.optString("t").takeIf { it.isNotEmpty() }?.let(onText)
+                    if (o.has("error")) throw CloudError(o.getString("error"))
+                    if (o.optBoolean("done")) used = o.optString("model", model)
+                }
+            }
+            return used
+        } catch (e: CloudError) { throw e
+        } catch (e: IOException) {
+            if (stopped) throw kotlinx.coroutines.CancellationException("Stopped")
+            throw CloudError("Lost the connection to the cloud model. Check your internet and try again.")
+        } finally { chatConnection = null; c.disconnect() }
+    }
+
+    fun stopChat() { stopped = true; try { chatConnection?.disconnect() } catch (_: Exception) {} }
+
     // ---- chats ----
 
     /** All of this account's chats in the cloud, including deleted ones (as tombstones). */
