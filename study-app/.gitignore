@@ -49,3 +49,7 @@ supabase/.temp/
 # Generated native projects (Continuous Native Generation)
 /android
 /ios
+
+# Built APK (distributed separately)
+/vidya.apk
+*.apk
