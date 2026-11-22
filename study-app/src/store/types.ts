@@ -1,4 +1,4 @@
-import type { ClassLevel, Stream, Subject } from '@/data/syllabus';
+import type { ClassLevel, Subject } from '@/data/syllabus';
 import type { SrsState } from '@/lib/srs';
 
 /** Every synced record carries these fields (last-write-wins by updatedAt). */
@@ -91,8 +91,6 @@ export interface CustomSubject extends BaseRecord, Omit<Subject, 'id'> {}
 export interface Profile {
   name: string;
   classLevel: ClassLevel;
-  stream?: Stream;
-  extraSubjectIds: string[];
   dailyGoalMin: number;
   examName: string;
   examDate: string; // ISO

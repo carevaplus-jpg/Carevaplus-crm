@@ -16,19 +16,13 @@ function customToSubject(c: CustomSubject): Subject {
   return { ...rest, ...SUBJECT_STYLE.custom, color: c.color || SUBJECT_STYLE.custom.color, custom: true };
 }
 
-/** The student's subjects: NCERT core for class/stream + chosen extras + their custom subjects. */
+/** The student's subjects: NCERT core for their class + their custom subjects. */
 export function useMySubjects(): Subject[] {
   const profile = useStore((s) => s.profile);
   const custom = useStore((s) => s.data.subjects);
   return useMemo(() => {
     if (!profile) return [];
-    const core = SYLLABUS.filter((s) => {
-      if (s.classLevel !== profile.classLevel) return false;
-      if (profile.extraSubjectIds.includes(s.id)) return true;
-      if (profile.classLevel < 11) return true;
-      if (s.key === 'physics' || s.key === 'chemistry') return true;
-      return profile.stream === 'PCB' ? s.key === 'biology' : s.key === 'maths';
-    });
+    const core = SYLLABUS.filter((s) => s.classLevel === profile.classLevel);
     const mine = live(custom)
       .filter((c) => c.classLevel === profile.classLevel)
       .map(customToSubject);

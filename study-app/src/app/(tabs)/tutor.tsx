@@ -57,7 +57,6 @@ export default function Tutor() {
     const reply = await askTutor(history, {
       name: profile.name,
       classLevel: profile.classLevel,
-      stream: profile.stream,
       subject: ctxChapter?.subject.name,
       chapter: ctxChapter?.chapter.title,
       chapterId,

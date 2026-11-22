@@ -8,7 +8,6 @@ import { supabase } from './supabase';
 export interface TutorContext {
   name: string;
   classLevel: number;
-  stream?: string;
   subject?: string;
   chapter?: string;
   chapterId?: string;

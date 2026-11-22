@@ -102,7 +102,6 @@ async function doSync() {
         id: auth.session.user.id,
         display_name: now.profile.name,
         class_level: now.profile.classLevel,
-        stream: now.profile.stream ?? null,
         xp: totalXp(now.data.days),
         streak: streak(now.data.days),
         updated_at: new Date().toISOString(),

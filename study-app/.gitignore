@@ -45,3 +45,7 @@ example
 # Supabase local
 supabase/.temp/
 .env
+
+# Generated native projects (Continuous Native Generation)
+/android
+/ios

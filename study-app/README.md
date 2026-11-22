@@ -1,6 +1,6 @@
 # Vidya: Study like it's an art
 
-An immersive study companion for **CBSE students in Classes 8–12**, built around the **NCERT** syllabus with Science **PCM / PCB** streams for Classes 11–12. Built with React Native and Expo (SDK 58) for iOS and Android, with a web build for previews.
+An immersive study companion for **CBSE students in Classes 8 and 9**, built around the new **NCERT** textbooks. Built with React Native and Expo (SDK 58) for Android and iOS, with a web build for previews.
 
 > विद्या (*vidya*): knowledge.
 
@@ -8,13 +8,13 @@ An immersive study companion for **CBSE students in Classes 8–12**, built arou
 
 | Area | Highlights |
 |---|---|
-| **Onboarding** | 6-step animated flow: name → class → stream (PCM / PCB / PCMB) → daily goal and board-exam countdown → personalised subject summary |
+| **Onboarding** | 5-step animated flow: name → class (8 or 9) → daily goal and exam countdown → personalised subject summary |
 | **Today** | Daily-goal ring, streak, exam countdown, cards due, level/XP bar, "continue learning", today's plan, daily quote |
 | **Learn** | Full NCERT chapter map for each subject, per-chapter status (Not started → Learning → Revising → Mastered), mastery rings, custom subjects (English, SST, Hindi, CS…) |
 | **Chapter hub** | Status stepper, memory-strength meter, and one-tap Focus / Flashcards / Quiz / Ask-tutor, plus notes and cards for that chapter |
 | **Focus mode** | Full-screen breathing orb, Pomodoro / Deep work / Flow presets, long break every 4th round, generated soundscapes (rain, brown noise, ocean, night), keep-awake, background audio, tab bar hidden while focusing |
-| **Flashcards** | Spaced repetition (SM-2 family, Again/Hard/Good/Easy with interval previews), 3D flip, "again" cards come back in the same session, ~100 seeded NCERT formula cards |
-| **Quizzes** | Curated board-style MCQ bank plus questions generated from the student's own flashcards; instant feedback, explanations, mistake review |
+| **Flashcards** | Spaced repetition (SM-2 family, Again/Hard/Good/Easy with interval previews), 3D flip, "again" cards come back in the same session, ~130 seeded Class 8–9 cards |
+| **Quizzes** | Curated exam-style MCQ bank (~90 questions) plus questions generated from the student's own flashcards; instant feedback, explanations, mistake review |
 | **AI Tutor** | Chat with markdown rendering, chapter context, starter prompts. **Demo mode** works offline from the built-in content; **Cloud mode** calls Claude through a secure Supabase Edge Function |
 | **Planner** | Week strip, tasks (Learn / Revise / Practice / Homework / Test), **Smart plan** built from due cards, weakest subject and chapters being revised; extra exam countdowns |
 | **Progress** | XP and 10 level titles, 12 achievements, streaks, 15-week heatmap, 7-day card forecast, time by subject, quiz accuracy |
@@ -27,6 +27,19 @@ An immersive study companion for **CBSE students in Classes 8–12**, built arou
 - Spring physics on every press, with haptics (tick, soft, firm, success).
 - Reanimated layout and entrance animations, and celebration toasts for XP, level-ups and achievements.
 - Tokens live in `src/theme/tokens.ts`, components in `src/ui/`.
+
+## Install the Android app (APK)
+
+Download `vidya.apk` and open it on an Android phone (Android 7.0+). Allow "Install unknown apps" for your browser or file manager when asked.
+
+To build it yourself:
+
+```bash
+npx expo prebuild --platform android
+cd android && ./gradlew assembleRelease   # → android/app/build/outputs/apk/release/app-release.apk
+```
+
+For Play Store releases, use EAS: `npx eas-cli@latest build -p android --profile production` (signs with your own upload key).
 
 ## Run it
 
@@ -56,10 +69,9 @@ The AI key never ships inside the app. The function verifies the student's Supab
 
 ## Syllabus notes
 
-- **Classes 10–12:** rationalised NCERT textbooks.
 - **Class 8:** new NCF-2023 books, *Curiosity* (Science) and *Ganita Prakash* Parts 1–2 (Maths).
 - **Class 9:** new 2026-27 books, *Exploration* (Science) and *Ganita Manjari* (Maths). Part 2 maths chapters are marked **"Verify syllabus"** because only one source listed them. Confirm them on ncert.nic.in.
-- Board-exam dates are tentative defaults. Students can edit them anytime.
+- Exam dates are tentative defaults. Students can edit them anytime.
 
 Edit `src/data/syllabus.ts` to update chapters. Flashcards and quiz questions are in `src/data/content.ts`.
 

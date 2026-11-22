@@ -43,9 +43,9 @@ export default function ExamModal() {
       </View>
       <ScrollView contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + space.xxl }]} keyboardShouldPersistTaps="handled">
         <Section title="Main exam">
-          <Field value={name} onChangeText={setName} placeholder="e.g. CBSE Class 12 Boards" icon="school-outline" />
+          <Field value={name} onChangeText={setName} placeholder="e.g. Class 9 Annual Exam" icon="school-outline" />
           <DateStepper value={date} onChange={setDate} />
-          <T variant="small" color={colors.textFaint}>CBSE publishes the official date sheet a few months ahead. Update this when it&apos;s out.</T>
+          <T variant="small" color={colors.textFaint}>Your school announces the exam timetable. Update this when it&apos;s out.</T>
           <Button label="Save main exam" icon="checkmark" onPress={saveMain} disabled={!mainDirty} />
         </Section>
 

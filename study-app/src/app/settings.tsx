@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Platform, Share, StyleSheet, Switch, View } from 'react-native';
 
-import { CLASS_LEVELS, coreSubjectsFor, optionalSubjectsFor, type ClassLevel, type Stream } from '@/data/syllabus';
+import { CLASS_LEVELS, coreSubjectsFor, type ClassLevel } from '@/data/syllabus';
 import { cloudEnabled, supabase, useSession } from '@/lib/supabase';
 import { syncNow } from '@/lib/sync';
 import { useStore } from '@/store';
@@ -32,19 +32,9 @@ export default function Settings() {
   const [endpoint, setEndpoint] = useState(settings.tutorEndpoint ?? '');
   const [confirmReset, setConfirmReset] = useState(false);
 
-  const senior = profile.classLevel >= 11;
-  const extraOn = profile.extraSubjectIds.length > 0;
-
-  const changeClass = (level: ClassLevel, stream?: Stream) => {
-    const s = level >= 11 ? (stream ?? profile.stream ?? 'PCM') : undefined;
-    updateProfile({ classLevel: level, stream: s, extraSubjectIds: [] });
-    seedCards(coreSubjectsFor(level, s));
-  };
-
-  const toggleExtra = () => {
-    const extra = optionalSubjectsFor(profile.classLevel, profile.stream);
-    updateProfile({ extraSubjectIds: extraOn ? [] : extra.map((x) => x.id) });
-    if (!extraOn) seedCards(extra);
+  const changeClass = (level: ClassLevel) => {
+    updateProfile({ classLevel: level });
+    seedCards(coreSubjectsFor(level));
   };
 
   const exportData = async () => {
@@ -70,17 +60,6 @@ export default function Settings() {
               ))}
             </View>
           </View>
-          {senior && (
-            <View style={{ gap: space.sm }}>
-              <T variant="micro" color={colors.textFaint}>Stream</T>
-              <View style={styles.wrap}>
-                {(['PCM', 'PCB'] as Stream[]).map((s) => (
-                  <Chip key={s} small label={s} selected={profile.stream === s} onPress={() => changeClass(profile.classLevel, s)} />
-                ))}
-                <Chip small icon={extraOn ? 'checkmark-circle' : 'add-circle-outline'} label={profile.stream === 'PCB' ? '+ Maths (PCMB)' : '+ Biology (PCMB)'} selected={extraOn} onPress={toggleExtra} />
-              </View>
-            </View>
-          )}
           <View style={{ gap: space.sm }}>
             <T variant="micro" color={colors.textFaint}>Daily focus goal</T>
             <View style={styles.wrap}>
@@ -190,7 +169,7 @@ export default function Settings() {
 
       <View style={{ alignItems: 'center', gap: 4, paddingVertical: space.lg }}>
         <T variant="bodyStrong" color={colors.textDim}>Vidya {Constants.expoConfig?.version ?? ''}</T>
-        <T variant="small" color={colors.textFaint} center>Syllabus: NCERT rationalised textbooks (Classes 10–12) and new NCF-2023 textbooks (Classes 8–9). Always confirm with your school&apos;s latest CBSE circulars.</T>
+        <T variant="small" color={colors.textFaint} center>Syllabus: new NCERT (NCF-2023) textbooks for Class 8 (Curiosity, Ganita Prakash) and Class 9 (Exploration, Ganita Manjari). Always confirm with your school.</T>
       </View>
     </Screen>
   );

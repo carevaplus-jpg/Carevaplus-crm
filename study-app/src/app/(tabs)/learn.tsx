@@ -23,7 +23,7 @@ export default function Learn() {
   return (
     <Screen tabs>
       <Animated.View entering={FadeInDown.springify()} style={{ gap: space.xs }}>
-        <T variant="micro" color={colors.textDim}>CBSE · NCERT · Class {profile.classLevel}{profile.stream ? ` · ${profile.stream}` : ''}</T>
+        <T variant="micro" color={colors.textDim}>CBSE · NCERT · Class {profile.classLevel}</T>
         <T variant="hero">Learn</T>
       </Animated.View>
 

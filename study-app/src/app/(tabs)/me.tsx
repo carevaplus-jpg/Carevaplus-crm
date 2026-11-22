@@ -52,7 +52,7 @@ export default function Me() {
         </Ring>
         <View style={{ flex: 1, gap: 4 }}>
           <T variant="h1" numberOfLines={1}>{profile.name}</T>
-          <T variant="small" color={colors.textDim}>Class {profile.classLevel}{profile.stream ? ` · ${profile.stream}` : ''} · CBSE</T>
+          <T variant="small" color={colors.textDim}>Class {profile.classLevel} · CBSE · NCERT</T>
           <View style={styles.levelPill}>
             <Icon name="diamond" size={12} color={colors.amber} />
             <T variant="small" color={colors.text}>Lv {stats.level.level} · {stats.level.title} · {stats.xp} XP</T>

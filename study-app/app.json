@@ -3,7 +3,7 @@
     "name": "Vidya",
     "slug": "vidya",
     "version": "1.0.0",
-    "description": "Vidya: an immersive CBSE / NCERT study companion for Classes 8–12.",
+    "description": "Vidya: an immersive CBSE / NCERT study companion for Classes 8 and 9.",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "vidya",

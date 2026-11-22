@@ -3,7 +3,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { SEED_CARDS } from '@/data/content';
-import { coreSubjectsFor, type Subject } from '@/data/syllabus';
+import type { Subject } from '@/data/syllabus';
 import { dayKey } from '@/lib/dates';
 import { uid } from '@/lib/id';
 import { ACHIEVEMENTS, levelInfo, streak, totalXp, XP } from '@/lib/progress';
@@ -279,9 +279,11 @@ export const useStore = create<StoreState>()(
       partialize: (s) => ({ profile: s.profile, settings: s.settings, data: s.data, chat: s.chat, sync: { ...s.sync, status: 'idle' as const } }),
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<StoreState>;
+        const profile = p.profile && ![8, 9].includes(p.profile.classLevel) ? { ...p.profile, classLevel: 9 as const } : p.profile;
         return {
           ...current,
           ...p,
+          profile: profile ?? null,
           settings: { ...DEFAULT_SETTINGS, ...(p.settings ?? {}) },
           data: { ...emptyCollections(), ...(p.data ?? {}) },
         };
@@ -292,8 +294,3 @@ export const useStore = create<StoreState>()(
     },
   ),
 );
-
-/** Default subject set used during onboarding. */
-export function defaultSubjects(level: Profile['classLevel'], stream?: Profile['stream']) {
-  return coreSubjectsFor(level, stream);
-}

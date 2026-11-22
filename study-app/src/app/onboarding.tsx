@@ -5,25 +5,25 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 're
 import Animated, { FadeIn, FadeInDown, FadeInRight, FadeOutLeft } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { CLASS_LEVELS, coreSubjectsFor, optionalSubjectsFor, SUBJECT_STYLE, type ClassLevel, type Stream } from '@/data/syllabus';
+import { CLASS_LEVELS, coreSubjectsFor, type ClassLevel } from '@/data/syllabus';
 import { cloudEnabled } from '@/lib/supabase';
 import { useStore } from '@/store';
 import { colors, fonts, gradients, radius, space } from '@/theme/tokens';
 import { Aurora, Button, Chip, DateStepper, Field, haptic, Icon, Tap, T } from '@/ui';
 
-const STEPS = ['welcome', 'name', 'class', 'stream', 'goal', 'ready'] as const;
+const STEPS = ['welcome', 'name', 'class', 'goal', 'ready'] as const;
 type Step = (typeof STEPS)[number];
 
+const BOOKS: Record<ClassLevel, string> = { 8: 'Curiosity · Ganita Prakash', 9: 'Exploration · Ganita Manjari' };
+
 function defaultExam(level: ClassLevel) {
-  // CBSE board exams usually begin mid-February; school finals around March. Tentative, user-editable.
+  // School annual exams are usually held around early March. Tentative, user-editable.
   const year = new Date().getMonth() >= 3 ? new Date().getFullYear() + 1 : new Date().getFullYear();
-  return level === 10 || level === 12
-    ? { name: `CBSE Class ${level} Boards`, date: new Date(year, 1, 15) }
-    : { name: `Class ${level} Final Exams`, date: new Date(year, 2, 2) };
+  return { name: `Class ${level} Annual Exams`, date: new Date(year, 2, 2) };
 }
 
 const FEATURES = [
-  { icon: 'planet-outline', text: 'Every NCERT chapter, Class 8–12' },
+  { icon: 'planet-outline', text: 'Every NCERT chapter for Class 8 & 9' },
   { icon: 'timer-outline', text: 'Immersive focus sessions' },
   { icon: 'layers-outline', text: 'Flashcards that remember for you' },
   { icon: 'sparkles-outline', text: 'A personal AI tutor' },
@@ -34,24 +34,18 @@ export default function Onboarding() {
   const complete = useStore((s) => s.completeOnboarding);
   const [step, setStep] = useState<Step>('welcome');
   const [name, setName] = useState('');
-  const [level, setLevel] = useState<ClassLevel>(10);
-  const [stream, setStream] = useState<Stream>('PCM');
-  const [extra, setExtra] = useState(false);
-  const [goal, setGoal] = useState(90);
-  const [examDate, setExamDate] = useState(defaultExam(10).date);
+  const [level, setLevel] = useState<ClassLevel>(9);
+  const [goal, setGoal] = useState(60);
+  const [examDate, setExamDate] = useState(defaultExam(9).date);
 
-  const senior = level >= 11;
-  const flow = useMemo(() => STEPS.filter((s) => s !== 'stream' || senior), [senior]);
+  const flow = STEPS;
   const idx = flow.indexOf(step);
   const go = (d: 1 | -1) => {
     haptic.soft();
     setStep(flow[Math.max(0, Math.min(flow.length - 1, idx + d))]);
   };
 
-  const subjects = useMemo(() => {
-    const core = coreSubjectsFor(level, stream);
-    return extra ? [...core, ...optionalSubjectsFor(level, stream)] : core;
-  }, [level, stream, extra]);
+  const subjects = useMemo(() => coreSubjectsFor(level), [level]);
 
   const finish = () => {
     haptic.success();
@@ -60,8 +54,6 @@ export default function Onboarding() {
       {
         name: name.trim() || 'Scholar',
         classLevel: level,
-        stream: senior ? stream : undefined,
-        extraSubjectIds: senior && extra ? optionalSubjectsFor(level, stream).map((s) => s.id) : [],
         dailyGoalMin: goal,
         examName: exam.name,
         examDate: examDate.toISOString(),
@@ -147,7 +139,7 @@ export default function Onboarding() {
                       {on && <LinearGradient colors={[...gradients.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, { borderRadius: radius.lg, opacity: 0.9 }]} />}
                       <T variant="micro" color={on ? 'rgba(255,255,255,0.8)' : colors.textFaint}>Class</T>
                       <T style={{ fontFamily: fonts.display, fontSize: 40, lineHeight: 46, color: colors.text, letterSpacing: -1.5 }}>{l}</T>
-                      <T variant="small" color={on ? 'rgba(255,255,255,0.85)' : colors.textFaint}>{l === 10 || l === 12 ? 'Board year' : l >= 11 ? 'Senior' : 'Foundation'}</T>
+                      <T variant="small" color={on ? 'rgba(255,255,255,0.85)' : colors.textFaint}>{BOOKS[l]}</T>
                     </Tap>
                   );
                 })}
@@ -155,38 +147,11 @@ export default function Onboarding() {
             </>
           )}
 
-          {step === 'stream' && (
-            <>
-              <Heading kicker={`Class ${level}`} title="Pick your stream" />
-              {(['PCM', 'PCB'] as Stream[]).map((s) => {
-                const on = s === stream;
-                const keys = s === 'PCM' ? (['physics', 'chemistry', 'maths'] as const) : (['physics', 'chemistry', 'biology'] as const);
-                return (
-                  <Tap key={s} onPress={() => setStream(s)} style={[styles.streamCard, on && { borderColor: colors.primary, backgroundColor: 'rgba(139,108,255,0.12)' }]} accessibilityState={{ selected: on }}>
-                    <View style={{ flex: 1, gap: 6 }}>
-                      <T variant="h2">{s === 'PCM' ? 'Science · PCM' : 'Science · PCB'}</T>
-                      <T variant="small" color={colors.textDim}>{s === 'PCM' ? 'Physics, Chemistry, Mathematics. JEE track.' : 'Physics, Chemistry, Biology. NEET track.'}</T>
-                      <View style={{ flexDirection: 'row', gap: 6, marginTop: 6 }}>
-                        {keys.map((k) => (
-                          <View key={k} style={[styles.subjDot, { backgroundColor: SUBJECT_STYLE[k].color + '22' }]}>
-                            <Icon name={SUBJECT_STYLE[k].icon} size={16} color={SUBJECT_STYLE[k].color} />
-                          </View>
-                        ))}
-                      </View>
-                    </View>
-                    <Icon name={on ? 'radio-button-on' : 'radio-button-off'} size={24} color={on ? colors.primary : colors.textFaint} />
-                  </Tap>
-                );
-              })}
-              <Chip label={stream === 'PCM' ? 'Also add Biology (PCMB)' : 'Also add Mathematics (PCMB)'} icon={extra ? 'checkmark-circle' : 'add-circle-outline'} selected={extra} onPress={() => setExtra((v) => !v)} />
-            </>
-          )}
-
           {step === 'goal' && (
             <>
               <Heading kicker="Set your rhythm" title="How much will you focus each day?" body="Consistency beats intensity. You can change this anytime." />
               <View style={styles.wrapRow}>
-                {[30, 60, 90, 120, 180].map((m) => (
+                {[30, 45, 60, 90, 120].map((m) => (
                   <Chip key={m} label={m < 60 ? `${m} min` : `${m / 60} hr${m > 60 ? 's' : ''}`} selected={goal === m} onPress={() => setGoal(m)} />
                 ))}
               </View>
@@ -257,9 +222,8 @@ const styles = StyleSheet.create({
   feature: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   featureIcon: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(139,108,255,0.14)' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.md },
-  classTile: { width: '30.5%', minWidth: 96, aspectRatio: 0.9, borderRadius: radius.lg, padding: space.md, justifyContent: 'space-between', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  classTile: { flex: 1, minWidth: 140, aspectRatio: 1, borderRadius: radius.lg, padding: space.md, justifyContent: 'space-between', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   classTileOn: { borderColor: 'transparent', shadowColor: colors.primary, shadowOpacity: 0.6, shadowRadius: 20, shadowOffset: { width: 0, height: 8 } },
-  streamCard: { flexDirection: 'row', alignItems: 'center', gap: space.lg, padding: space.xl, borderRadius: radius.xl, backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.border },
   subjDot: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   wrapRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   summaryRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.md, borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
