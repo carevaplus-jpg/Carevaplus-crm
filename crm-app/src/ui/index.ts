@@ -13,5 +13,6 @@ export * from './KpiCard';
 export * from './Menu';
 export * from './Modal';
 export * from './PageHeader';
+export * from './Switch';
 export * from './Tabs';
 export * from './Toasts';

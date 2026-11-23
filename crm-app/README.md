@@ -1,6 +1,6 @@
 # Careva+ CRM
 
-An executive-grade CRM for Careva+ — contacts, companies, a drag-and-drop sales pipeline, tasks & calendar, products/quotes/invoicing, and reporting. Built with React 19, TypeScript, Tailwind CSS and Supabase, and packaged as an installable Android app with Capacitor.
+An executive-grade CRM for Careva+ — contacts, companies, a drag-and-drop sales pipeline, tasks & calendar, products/quotes/invoicing, and reporting. Built with React 19, TypeScript, Tailwind CSS and Supabase; installable as a full offline-capable **PWA**, and packaged as a native Android app with Capacitor. The interface uses an Apple-style "liquid glass" look — frosted, translucent panels with soft motion throughout.
 
 ## What's inside
 
@@ -12,14 +12,20 @@ An executive-grade CRM for Careva+ — contacts, companies, a drag-and-drop sale
 | **Deals** | Drag-and-drop Kanban pipeline across configurable stages, per-rep filters, deal detail with stage stepper and Won/Lost actions |
 | **Tasks & Calendar** | Calls/emails/meetings/follow-ups/to-dos with priorities, My Tasks/Overdue/Today filters, a month calendar view |
 | **Products, Quotes & Invoices** | Price catalog, a quote builder with line items/discounts/tax, quote → invoice conversion, payment status tracking |
-| **Email** | Every email is logged on the contact's timeline; sending opens a pre-filled draft in the user's own mail client (no account connection required) |
+| **Email, WhatsApp & SMS** | Every message is logged on the contact or company timeline; sending opens a pre-filled draft in the user's own mail app, WhatsApp (via `wa.me`) or texting app — no account connection, API key or business approval required |
 | **Reports** | Won/lost revenue trend, contact funnel, rep performance table |
+| **Notifications** | Opt-in local reminders (Settings → Notifications) that ping this device when one of your tasks comes due |
 | **Settings & Team** | Pipeline stage editor, team roster with roles (Admin / Executive / Sales Rep), role-gated controls |
 | **Command palette** | <kbd>⌘K</kbd> / <kbd>Ctrl K</kbd> instant search across contacts, companies and deals |
+| **Install anywhere** | A fully offline-capable PWA — "Install app" from the browser, or install the Android APK below |
 
 ## Design system
 
-A navy-and-gold "executive" identity — dense data tables, a frosted command bar, and gold accents for premium actions (Won deals, the brand mark) — built with Tailwind v4 tokens in `src/index.css` and a small reusable UI kit in `src/ui/`.
+A navy-and-gold "executive" identity rendered in an Apple-inspired **liquid glass** style: frosted, translucent panels (`.glass-panel`, `.glass-navy`, `.glass-bar` in `src/index.css`) over a soft ambient color wash, specular highlight edges, and light spring-eased motion on drawers, modals, menus, KPI cards and page transitions. Dense data tables stay crisp and opaque for legibility. Built with Tailwind v4 tokens in `src/index.css` and a small reusable UI kit in `src/ui/`. Respects `prefers-reduced-motion`.
+
+## Install as a PWA
+
+The app is a fully offline-capable Progressive Web App (via `vite-plugin-pwa`): the production build precaches the app shell, so after the first load it keeps working with no connection (on top of its local-first demo data store). Open the deployed site in Chrome/Edge/Safari and use "Install app" / "Add to Home Screen" — or accept the in-app install banner that appears automatically once the browser considers the app installable. The service worker auto-updates and prompts to refresh when a new version is deployed. It is skipped entirely inside the native Android shell below, which ships the bundle directly.
 
 ## Run it
 
@@ -59,7 +65,7 @@ The native `android/` project (and its generated icons/splash) is not committed 
 
 ```bash
 npx cap add android
-python3 scripts/generate-icon.py          # writes assets-src/*.png
+python3 scripts/generate-icon.py          # writes assets-src/*.png and public/icons/*.png (PWA + native)
 cp assets-src/icon-1024.png resources/icon.png
 cp assets-src/android-foreground.png resources/icon-foreground.png
 cp assets-src/android-background.png resources/icon-background.png

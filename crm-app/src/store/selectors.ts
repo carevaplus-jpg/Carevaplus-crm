@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useStore } from './index';
-import type { Activity, Company, Contact, Deal, Invoice, PipelineStage, Product, Profile, Quote, Task } from '@/types';
+import type { Activity, Company, Contact, Deal, Invoice, MessageLogEntry, PipelineStage, Product, Profile, Quote, Task } from '@/types';
 
 export const values = <T,>(r: Record<string, T>): T[] => Object.values(r);
 
@@ -102,6 +102,19 @@ export function useActivitiesFor(filter: { contactId?: string; companyId?: strin
         .filter((a) => (filter.dealId ? a.dealId === filter.dealId : true))
         .sort((a, b) => b.at.localeCompare(a.at)),
     [activities, filter.contactId, filter.companyId, filter.dealId],
+  );
+}
+
+export function useMessagesFor(filter: { contactId?: string; companyId?: string; dealId?: string }): MessageLogEntry[] {
+  const messages = useStore((s) => s.data.messageLog);
+  return useMemo(
+    () =>
+      values(messages)
+        .filter((m) => (filter.contactId ? m.contactId === filter.contactId : true))
+        .filter((m) => (filter.companyId ? m.companyId === filter.companyId : true))
+        .filter((m) => (filter.dealId ? m.dealId === filter.dealId : true))
+        .sort((a, b) => b.at.localeCompare(a.at)),
+    [messages, filter.contactId, filter.companyId, filter.dealId],
   );
 }
 

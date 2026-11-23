@@ -73,9 +73,24 @@ export const useStore = create<StoreState>()(
     }),
     {
       name: 'careva-crm-store-v1',
-      version: 1,
+      version: 2,
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({ orgId: s.orgId, currentProfileId: s.currentProfileId, data: s.data }),
+      migrate: (persisted) => {
+        const state = persisted as { data?: Record<string, unknown> } | undefined;
+        const data = state?.data;
+        if (data && !data.messageLog && data.emailLog) {
+          const legacy = data.emailLog as Record<string, Record<string, unknown>>;
+          data.messageLog = Object.fromEntries(
+            Object.entries(legacy).map(([id, e]) => [
+              id,
+              { ...e, channel: 'email', to: e.toAddress, from: e.fromAddress },
+            ]),
+          );
+          delete data.emailLog;
+        }
+        return state;
+      },
     },
   ),
 );

@@ -7,10 +7,11 @@ import type {
   Contact,
   ContactStatus,
   Deal,
-  EmailLogEntry,
   Invoice,
   InvoiceStatus,
   LineItem,
+  MessageChannel,
+  MessageLogEntry,
   Pipeline,
   PipelineStage,
   Product,
@@ -419,26 +420,61 @@ export function buildDemoSeed(): SeedResult {
     };
   }
 
-  // ── Email log ──
-  const emailLog: Record<string, EmailLogEntry> = {};
+  // ── Message log (Email / WhatsApp / SMS) ──
+  const messageLog: Record<string, MessageLogEntry> = {};
   const EMAIL_SUBJECTS = ['Following up on our call', 'Proposal attached', 'Quick question about rollout', 'Re: Pricing discussion', 'Introduction & next steps', 'Contract for review'];
-  for (let i = 0; i < 24; i++) {
+  const WHATSAPP_BODIES = [
+    'Hi! Just following up on the proposal we sent over — any questions?',
+    'Thanks for the call today, sharing the pricing sheet here shortly 👍',
+    'Quick reminder: demo is scheduled for tomorrow at 11am.',
+    'Appreciate the quick turnaround on the paperwork!',
+    'Sending the updated quote on email as well — let me know if it works.',
+  ];
+  const SMS_BODIES = [
+    'Reminder: your renewal is due this week. Reply CALL ME for a callback.',
+    'Your invoice has been sent to your email. Thank you for your business!',
+    'Hi, this is Careva+ CRM — could we reschedule our call to 3pm?',
+    'Quick check-in: did the contract reach you okay?',
+  ];
+  const MESSAGE_CHANNEL_WEIGHTS: MessageChannel[] = ['email', 'email', 'email', 'whatsapp', 'whatsapp', 'sms'];
+  for (let i = 0; i < 36; i++) {
     const contactId = pick(rand, contactIds);
     const contact = contacts[contactId];
     const author = contact.ownerId ?? ownerOf();
-    const id = uid('eml_');
-    emailLog[id] = {
+    const authorEmail = teamProfiles.find((p) => p.id === author)?.email ?? 'team@carevaplus.example';
+    const id = uid('msg_');
+    const channel = pick(rand, MESSAGE_CHANNEL_WEIGHTS);
+    const direction = rand() < 0.65 ? 'outbound' : 'inbound';
+    const base = {
       id,
       orgId,
-      direction: rand() < 0.65 ? 'outbound' : 'inbound',
-      subject: pick(rand, EMAIL_SUBJECTS),
-      body: pick(rand, NOTE_TEMPLATES),
-      toAddress: contact.email ?? `${slug(contact.firstName)}@example.com`,
-      fromAddress: teamProfiles.find((p) => p.id === author)?.email ?? 'team@carevaplus.example',
+      channel,
+      direction,
       contactId,
       authorId: author,
       at: daysFromNow(-intRange(rand, 0, 50)),
-    };
+    } as const;
+    if (channel === 'email') {
+      messageLog[id] = {
+        ...base,
+        subject: pick(rand, EMAIL_SUBJECTS),
+        body: pick(rand, NOTE_TEMPLATES),
+        to: contact.email ?? `${slug(contact.firstName)}@example.com`,
+        from: authorEmail,
+      };
+    } else if (channel === 'whatsapp') {
+      messageLog[id] = {
+        ...base,
+        body: pick(rand, WHATSAPP_BODIES),
+        to: contact.phone ?? '+91 90000 00000',
+      };
+    } else {
+      messageLog[id] = {
+        ...base,
+        body: pick(rand, SMS_BODIES),
+        to: contact.phone ?? '+91 90000 00000',
+      };
+    }
   }
 
   const collections: Collections = {
@@ -452,7 +488,7 @@ export function buildDemoSeed(): SeedResult {
     products,
     quotes,
     invoices,
-    emailLog,
+    messageLog,
     profiles: Object.fromEntries(teamProfiles.map((p) => [p.id, p])),
   };
 

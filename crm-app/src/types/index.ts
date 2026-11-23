@@ -206,17 +206,21 @@ export interface Invoice {
   updatedAt: string;
 }
 
-// ── Email log ─────────────────────────────────────────────────────────────
+// ── Communication log (Email / WhatsApp / SMS) ───────────────────────────
 
-export interface EmailLogEntry {
+export type MessageChannel = 'email' | 'whatsapp' | 'sms';
+
+export interface MessageLogEntry {
   id: string;
   orgId: string;
+  channel: MessageChannel;
   direction: 'outbound' | 'inbound';
-  subject: string;
+  subject?: string;
   body: string;
-  toAddress: string;
-  fromAddress: string;
+  to: string;
+  from?: string;
   contactId?: string;
+  companyId?: string;
   dealId?: string;
   authorId?: string;
   at: string;
@@ -235,7 +239,7 @@ export interface Collections {
   products: Record<string, Product>;
   quotes: Record<string, Quote>;
   invoices: Record<string, Invoice>;
-  emailLog: Record<string, EmailLogEntry>;
+  messageLog: Record<string, MessageLogEntry>;
   profiles: Record<string, Profile>;
 }
 
@@ -251,6 +255,6 @@ export const COLLECTIONS: CollectionName[] = [
   'products',
   'quotes',
   'invoices',
-  'emailLog',
+  'messageLog',
   'profiles',
 ];

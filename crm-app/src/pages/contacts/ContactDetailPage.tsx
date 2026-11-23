@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Mail, Phone, Building2, Pencil, Trash2, Plus, ArrowLeft, KanbanSquare } from 'lucide-react';
+import { Mail, Phone, Building2, Pencil, Trash2, Plus, ArrowLeft, KanbanSquare, MessageCircle, MessageSquareText } from 'lucide-react';
 import { useStore } from '@/store';
 import { useCompany, useContact, useDealsForContact, useOrgId } from '@/store/selectors';
 import { fullName, money, fmtDate } from '@/lib/format';
@@ -10,6 +10,8 @@ import { AvatarOf, ActivityTimeline } from '@/components/record/ActivityTimeline
 import { RecordTasks } from '@/components/record/RecordTasks';
 import { ContactFormDrawer } from './ContactFormDrawer';
 import { uid, nowIso } from '@/lib/id';
+import { mailLink, smsLink, waLink } from '@/lib/comms';
+import type { MessageChannel } from '@/types';
 
 export function ContactDetailPage() {
   const { id } = useParams();
@@ -32,23 +34,50 @@ export function ContactDetailPage() {
     );
   }
 
-  const logEmail = () => {
-    if (!contact.email) return;
-    const subject = encodeURIComponent('Following up');
-    const body = encodeURIComponent(`Hi ${contact.firstName},\n\n`);
-    window.open(`mailto:${contact.email}?subject=${subject}&body=${body}`, '_blank');
-    upsert('emailLog', {
-      id: uid('eml_'),
-      orgId,
-      direction: 'outbound',
-      subject: 'Following up',
-      body: '(composed in mail client)',
-      toAddress: contact.email,
-      fromAddress: 'you@carevaplus.example',
-      contactId: contact.id,
-      at: nowIso(),
-    });
-    notify({ kind: 'info', title: 'Draft opened in your mail app', subtitle: 'Logged on this contact' });
+  const sendMessage = (channel: MessageChannel) => {
+    const greeting = `Hi ${contact.firstName},\n\n`;
+    if (channel === 'email' && contact.email) {
+      window.open(mailLink(contact.email, 'Following up', greeting), '_blank');
+      upsert('messageLog', {
+        id: uid('msg_'),
+        orgId,
+        channel: 'email',
+        direction: 'outbound',
+        subject: 'Following up',
+        body: '(composed in mail client)',
+        to: contact.email,
+        from: 'you@carevaplus.example',
+        contactId: contact.id,
+        at: nowIso(),
+      });
+      notify({ kind: 'info', title: 'Draft opened in your mail app', subtitle: 'Logged on this contact' });
+    } else if (channel === 'whatsapp' && contact.phone) {
+      window.open(waLink(contact.phone, greeting), '_blank');
+      upsert('messageLog', {
+        id: uid('msg_'),
+        orgId,
+        channel: 'whatsapp',
+        direction: 'outbound',
+        body: '(composed in WhatsApp)',
+        to: contact.phone,
+        contactId: contact.id,
+        at: nowIso(),
+      });
+      notify({ kind: 'info', title: 'WhatsApp opened', subtitle: 'Logged on this contact' });
+    } else if (channel === 'sms' && contact.phone) {
+      window.open(smsLink(contact.phone, greeting), '_blank');
+      upsert('messageLog', {
+        id: uid('msg_'),
+        orgId,
+        channel: 'sms',
+        direction: 'outbound',
+        body: '(composed as a text message)',
+        to: contact.phone,
+        contactId: contact.id,
+        at: nowIso(),
+      });
+      notify({ kind: 'info', title: 'Text message app opened', subtitle: 'Logged on this contact' });
+    }
   };
 
   const del = async () => {
@@ -106,15 +135,25 @@ export function ContactDetailPage() {
               )}
             </div>
 
-            <div className="flex gap-2 mt-4">
+            <div className="grid grid-cols-2 gap-2 mt-4">
               {contact.email && (
-                <Button size="sm" variant="secondary" icon={<Mail className="size-3.5" />} onClick={logEmail} className="flex-1">
+                <Button size="sm" variant="secondary" icon={<Mail className="size-3.5" />} onClick={() => sendMessage('email')}>
                   Email
                 </Button>
               )}
               {contact.phone && (
-                <Button size="sm" variant="secondary" icon={<Phone className="size-3.5" />} className="flex-1" onClick={() => window.open(`tel:${contact.phone}`)}>
+                <Button size="sm" variant="secondary" icon={<Phone className="size-3.5" />} onClick={() => window.open(`tel:${contact.phone}`)}>
                   Call
+                </Button>
+              )}
+              {contact.phone && (
+                <Button size="sm" variant="secondary" icon={<MessageCircle className="size-3.5 text-success-600" />} onClick={() => sendMessage('whatsapp')}>
+                  WhatsApp
+                </Button>
+              )}
+              {contact.phone && (
+                <Button size="sm" variant="secondary" icon={<MessageSquareText className="size-3.5" />} onClick={() => sendMessage('sms')}>
+                  Text / SMS
                 </Button>
               )}
             </div>

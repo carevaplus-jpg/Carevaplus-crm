@@ -1,13 +1,23 @@
-import { useState } from 'react';
-import { StickyNote, Phone, Mail, Users as UsersIcon, ArrowRightLeft, Trophy, XCircle, CheckSquare, Send } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { StickyNote, Phone, Mail, Users as UsersIcon, ArrowRightLeft, Trophy, XCircle, CheckSquare, Send, MessageCircle, MessageSquareText } from 'lucide-react';
 import { useStore } from '@/store';
-import { useActivitiesFor, useCurrentProfile, useOrgId, useTeam } from '@/store/selectors';
-import type { Activity, ActivityType } from '@/types';
+import { useActivitiesFor, useCurrentProfile, useMessagesFor, useOrgId, useTeam } from '@/store/selectors';
+import type { ActivityType, MessageChannel } from '@/types';
 import { timeAgo } from '@/lib/format';
 import { uid } from '@/lib/id';
 import { Avatar, Button, Textarea, EmptyState } from '@/ui';
 
-const ICONS: Record<ActivityType, typeof StickyNote> = {
+type TimelineKind = ActivityType | MessageChannel;
+
+interface TimelineItem {
+  id: string;
+  kind: TimelineKind;
+  body: string;
+  authorId?: string;
+  at: string;
+}
+
+const ICONS: Record<TimelineKind, typeof StickyNote> = {
   note: StickyNote,
   call: Phone,
   email: Mail,
@@ -17,9 +27,11 @@ const ICONS: Record<ActivityType, typeof StickyNote> = {
   deal_created: ArrowRightLeft,
   deal_won: Trophy,
   deal_lost: XCircle,
+  whatsapp: MessageCircle,
+  sms: MessageSquareText,
 };
 
-const TONE: Record<ActivityType, string> = {
+const TONE: Record<TimelineKind, string> = {
   note: 'bg-surface-100 text-ink-500',
   call: 'bg-brand-50 text-brand-600',
   email: 'bg-info-50 text-info-500',
@@ -29,30 +41,31 @@ const TONE: Record<ActivityType, string> = {
   deal_created: 'bg-surface-100 text-ink-500',
   deal_won: 'bg-success-50 text-success-600',
   deal_lost: 'bg-danger-50 text-danger-600',
+  whatsapp: 'bg-success-50 text-success-600',
+  sms: 'bg-brand-50 text-brand-600',
 };
 
 const LOG_TYPES: { type: ActivityType; label: string }[] = [
   { type: 'note', label: 'Note' },
   { type: 'call', label: 'Call' },
   { type: 'meeting', label: 'Meeting' },
-  { type: 'email', label: 'Email' },
 ];
 
-function Row({ activity }: { activity: Activity }) {
+function Row({ item }: { item: TimelineItem }) {
   const team = useTeam();
-  const author = team.find((p) => p.id === activity.authorId);
-  const Icon = ICONS[activity.type];
+  const author = team.find((p) => p.id === item.authorId);
+  const Icon = ICONS[item.kind];
   return (
-    <div className="flex gap-3">
-      <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${TONE[activity.type]}`}>
+    <div className="flex gap-3 animate-[riseIn_.3s_ease-out_both]">
+      <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ring-1 ring-black/5 ${TONE[item.kind]}`}>
         <Icon className="size-4" strokeWidth={2} />
       </div>
       <div className="flex-1 min-w-0 pb-5 border-l border-surface-200 -ml-[17px] pl-[21px] -mt-1 pt-1">
-        <p className="text-sm text-ink-800 whitespace-pre-wrap break-words">{activity.body}</p>
+        <p className="text-sm text-ink-800 whitespace-pre-wrap break-words">{item.body}</p>
         <div className="flex items-center gap-1.5 mt-1 text-xs text-ink-400">
           {author && <span className="font-medium text-ink-500">{author.name}</span>}
           <span>·</span>
-          <span>{timeAgo(activity.at)}</span>
+          <span>{timeAgo(item.at)}</span>
         </div>
       </div>
     </div>
@@ -61,11 +74,24 @@ function Row({ activity }: { activity: Activity }) {
 
 export function ActivityTimeline({ contactId, companyId, dealId }: { contactId?: string; companyId?: string; dealId?: string }) {
   const activities = useActivitiesFor({ contactId, companyId, dealId });
+  const messages = useMessagesFor({ contactId, companyId, dealId });
   const upsert = useStore((s) => s.upsert);
   const profile = useCurrentProfile();
   const orgId = useOrgId();
   const [body, setBody] = useState('');
   const [type, setType] = useState<ActivityType>('note');
+
+  const items = useMemo<TimelineItem[]>(() => {
+    const fromActivities: TimelineItem[] = activities.map((a) => ({ id: a.id, kind: a.type, body: a.body, authorId: a.authorId, at: a.at }));
+    const fromMessages: TimelineItem[] = messages.map((m) => ({
+      id: m.id,
+      kind: m.channel,
+      body: m.subject ? `${m.subject} — ${m.body}` : m.body,
+      authorId: m.authorId,
+      at: m.at,
+    }));
+    return [...fromActivities, ...fromMessages].sort((a, b) => b.at.localeCompare(a.at));
+  }, [activities, messages]);
 
   const submit = () => {
     if (!body.trim()) return;
@@ -105,12 +131,12 @@ export function ActivityTimeline({ contactId, companyId, dealId }: { contactId?:
         </div>
       </div>
 
-      {activities.length === 0 ? (
-        <EmptyState icon={StickyNote} title="No activity yet" body="Calls, meetings and notes you log will show up here." />
+      {items.length === 0 ? (
+        <EmptyState icon={StickyNote} title="No activity yet" body="Calls, meetings, notes, emails, WhatsApp messages and texts you log will show up here." />
       ) : (
         <div>
-          {activities.map((a) => (
-            <Row key={a.id} activity={a} />
+          {items.map((item) => (
+            <Row key={item.id} item={item} />
           ))}
         </div>
       )}

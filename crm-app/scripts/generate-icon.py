@@ -78,3 +78,27 @@ splash.alpha_composite(sc, ((2732 - sc.width) // 2, (2732 - sc.height) // 2))
 splash.convert("RGB").save(OUT / "splash.png")
 
 print("icons written to", OUT)
+
+# ── PWA icons (public/icons/*.png) — referenced by vite.config.ts's manifest ──
+PWA_OUT = Path(__file__).resolve().parent.parent / "public" / "icons"
+PWA_OUT.mkdir(parents=True, exist_ok=True)
+base_icon = icon_square(S).convert("RGBA")
+
+for size in (192, 512):
+    base_icon.resize((size, size), Image.LANCZOS).save(PWA_OUT / f"icon-{size}.png")
+
+# Maskable: pad content into the ~80% safe zone so OS mask-crop doesn't clip it.
+maskable_size = 512
+maskable = Image.new("RGBA", (maskable_size, maskable_size), (*NAVY_DEEP.tolist(), 255))
+pad = int(maskable_size * 0.14)
+inner = base_icon.resize((maskable_size - pad * 2, maskable_size - pad * 2), Image.LANCZOS)
+maskable.alpha_composite(inner, (pad, pad))
+maskable.save(PWA_OUT / "maskable-512.png")
+
+# apple-touch-icon: flatten onto navy (iOS ignores alpha and shows black otherwise)
+apple = Image.new("RGB", (180, 180), tuple(NAVY_DEEP.tolist()))
+apple_icon = base_icon.resize((180, 180), Image.LANCZOS)
+apple.paste(apple_icon, (0, 0), apple_icon)
+apple.save(PWA_OUT / "apple-touch-icon.png")
+
+print("PWA icons written to", PWA_OUT)

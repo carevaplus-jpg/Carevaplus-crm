@@ -34,8 +34,8 @@ export function MobileNav({ open, onClose }: { open: boolean; onClose: () => voi
   if (!open) return null;
   return createPortal(
     <div className="fixed inset-0 z-[65] lg:hidden">
-      <div className="absolute inset-0 bg-navy-950/50" onClick={onClose} />
-      <div className="relative h-full w-[260px] bg-navy-900 text-white/90 flex flex-col animate-[slideIn_.2s_cubic-bezier(.16,1,.3,1)]">
+      <div className="absolute inset-0 bg-navy-950/50 backdrop-blur-[2px]" onClick={onClose} />
+      <div className="glass-navy relative h-full w-[260px] text-white/90 flex flex-col animate-[slideIn_.26s_var(--ease-spring)]">
         <div className="flex items-center justify-between px-4 h-16 shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center">
@@ -54,7 +54,7 @@ export function MobileNav({ open, onClose }: { open: boolean; onClose: () => voi
               to={item.to}
               end={item.end}
               onClick={onClose}
-              className={({ isActive }) => cn('flex items-center gap-2.5 px-3 rounded-lg text-sm font-medium', isActive ? 'bg-white/10 text-white' : 'text-white/60')}
+              className={({ isActive }) => cn('flex items-center gap-2.5 px-3 rounded-xl text-sm font-medium transition-colors', isActive ? 'bg-white/12 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white/90')}
               style={{ height: 42 }}
             >
               <item.icon className="size-4" />

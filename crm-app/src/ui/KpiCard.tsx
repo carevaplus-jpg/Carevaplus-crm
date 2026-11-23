@@ -25,10 +25,10 @@ export function KpiCard({
   };
   const positive = (delta ?? 0) >= 0;
   return (
-    <div className="bg-surface-0 rounded-xl ring-1 ring-surface-200 shadow-card p-4 flex flex-col gap-3">
+    <div className="glass-panel glass-sheen hover-lift rounded-xl p-4 flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-ink-500">{label}</span>
-        <div className={cn('h-8 w-8 rounded-lg flex items-center justify-center', tintClasses[tint])}>
+        <div className={cn('h-8 w-8 rounded-lg flex items-center justify-center ring-1 ring-black/5', tintClasses[tint])}>
           <Icon className="size-4" strokeWidth={2} />
         </div>
       </div>

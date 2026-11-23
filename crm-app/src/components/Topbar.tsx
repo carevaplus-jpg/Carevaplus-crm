@@ -27,14 +27,14 @@ export function Topbar({ onOpenCommand, onOpenMobileNav }: { onOpenCommand: () =
   };
 
   return (
-    <header className="sticky top-0 z-30 h-16 shrink-0 bg-surface-0/85 backdrop-blur border-b border-surface-200 flex items-center gap-3 px-4 lg:px-6">
-      <button onClick={onOpenMobileNav} aria-label="Open navigation menu" className="lg:hidden h-9 w-9 flex items-center justify-center rounded-lg hover:bg-surface-100 text-ink-600">
+    <header className="glass-bar sticky top-0 z-30 h-16 shrink-0 border-b border-white/40 flex items-center gap-3 px-4 lg:px-6">
+      <button onClick={onOpenMobileNav} aria-label="Open navigation menu" className="lg:hidden h-9 w-9 flex items-center justify-center rounded-lg hover:bg-surface-100 text-ink-600 press-scale">
         <MenuIcon className="size-5" />
       </button>
 
       <button
         onClick={onOpenCommand}
-        className="flex items-center gap-2.5 px-3 rounded-lg bg-surface-100 text-ink-500 text-sm w-full max-w-sm hover:bg-surface-200/70 transition-colors"
+        className="flex items-center gap-2.5 px-3 rounded-full bg-white/60 ring-1 ring-white/70 text-ink-500 text-sm w-full max-w-sm hover:bg-white/80 transition-colors press-scale"
         style={{ height: 38 }}
       >
         <Search className="size-4" />
@@ -52,7 +52,7 @@ export function Topbar({ onOpenCommand, onOpenMobileNav }: { onOpenCommand: () =
 
       <Menu
         trigger={
-          <button className="hidden sm:inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 transition-colors shadow-card">
+          <button className="hidden sm:inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 transition-all shadow-card press-scale hover-lift">
             <Plus className="size-4" /> Create
           </button>
         }

@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { Plus, Trash2, Crown, Shield, UserCircle2, RotateCcw, CloudOff, GripVertical } from 'lucide-react';
+import { Plus, Trash2, Crown, Shield, UserCircle2, RotateCcw, CloudOff, GripVertical, Bell, MessageCircle, MessageSquareText, Mail, Smartphone } from 'lucide-react';
 import { useStore } from '@/store';
 import { useCurrentProfile, useDefaultPipelineId, useOrgId, useStages, useTeam } from '@/store/selectors';
+import { usePrefs } from '@/store/prefs';
+import { notificationsSupported, requestNotificationPermission } from '@/lib/notifications';
 import { cloudEnabled } from '@/lib/supabase';
 import { uid, nowIso } from '@/lib/id';
 import type { Role } from '@/types';
-import { Avatar, Badge, Button, Card, CardHeader, Input, PageHeader, PageShell, Select, confirm } from '@/ui';
+import { Avatar, Badge, Button, Card, CardHeader, Input, PageHeader, PageShell, Select, Switch, confirm } from '@/ui';
 
 const ROLE_LABEL: Record<Role, string> = { admin: 'Admin', executive: 'Executive', sales_rep: 'Sales Rep' };
 const ROLE_ICON: Record<Role, typeof Crown> = { admin: Crown, executive: Shield, sales_rep: UserCircle2 };
@@ -21,6 +23,8 @@ export function SettingsPage() {
   const notify = useStore((s) => s.notify);
   const resetDemoData = useStore((s) => s.resetDemoData);
   const setCurrentProfile = useStore((s) => s.setCurrentProfile);
+  const taskReminders = usePrefs((s) => s.taskReminders);
+  const setTaskReminders = usePrefs((s) => s.setTaskReminders);
 
   const isAdmin = profile?.role === 'admin';
   const [newStage, setNewStage] = useState('');
@@ -87,6 +91,18 @@ export function SettingsPage() {
       resetDemoData();
       notify({ kind: 'success', title: 'Demo data reset' });
     }
+  };
+
+  const toggleReminders = async (v: boolean) => {
+    if (v) {
+      const perm = await requestNotificationPermission();
+      if (perm !== 'granted') {
+        notify({ kind: 'warning', title: 'Notifications blocked', subtitle: 'Allow notifications for this site in your browser settings to enable reminders.' });
+        return;
+      }
+    }
+    setTaskReminders(v);
+    notify({ kind: 'success', title: v ? 'Task reminders enabled' : 'Task reminders disabled' });
   };
 
   const openStages = stages.filter((s) => !s.isWon && !s.isLost).sort((a, b) => a.order - b.order);
@@ -183,7 +199,7 @@ export function SettingsPage() {
         </Card>
       </div>
 
-      <div className="mt-4">
+      <div className="mt-4 grid lg:grid-cols-2 gap-4">
         <Card>
           <CardHeader title="Data & sync" />
           <div className="flex items-start gap-3 p-3 bg-surface-50 rounded-lg mb-4">
@@ -199,6 +215,39 @@ export function SettingsPage() {
             )}
           </div>
           <Button variant="secondary" icon={<RotateCcw className="size-4" />} onClick={doReset}>Reset to fresh demo data</Button>
+        </Card>
+
+        <Card>
+          <CardHeader title="Notifications" subtitle="Local reminders for tasks that come due" />
+          <div className="flex items-center justify-between py-1.5">
+            <div className="flex items-center gap-2.5">
+              <div className="h-8 w-8 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center shrink-0"><Bell className="size-4" /></div>
+              <div>
+                <p className="text-sm font-medium text-ink-800">Task due reminders</p>
+                <p className="text-xs text-ink-500">{notificationsSupported() ? 'Pings this device when one of your tasks is due.' : 'Not supported in this browser.'}</p>
+              </div>
+            </div>
+            <Switch checked={taskReminders} onChange={toggleReminders} disabled={!notificationsSupported()} label="Task due reminders" />
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-surface-200">
+            <p className="text-xs font-semibold text-ink-500 mb-2.5">Outreach channels</p>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2.5 text-sm text-ink-600">
+                <Mail className="size-4 text-ink-400" /> Email — opens a pre-filled draft in your mail app, logged on the contact
+              </div>
+              <div className="flex items-center gap-2.5 text-sm text-ink-600">
+                <MessageCircle className="size-4 text-success-500" /> WhatsApp — opens a pre-filled chat via <code className="text-xs bg-surface-50 px-1 py-0.5 rounded">wa.me</code>, logged on the contact
+              </div>
+              <div className="flex items-center gap-2.5 text-sm text-ink-600">
+                <MessageSquareText className="size-4 text-brand-500" /> SMS — opens your phone's texting app, logged on the contact
+              </div>
+            </div>
+            <p className="text-[11px] text-ink-400 mt-3 flex items-start gap-1.5">
+              <Smartphone className="size-3.5 shrink-0 mt-0.5" />
+              No account linking required — sends go through apps already on your device. Automated bulk sending (Twilio / WhatsApp Business API) can be wired in later if you need it.
+            </p>
+          </div>
         </Card>
       </div>
     </PageShell>

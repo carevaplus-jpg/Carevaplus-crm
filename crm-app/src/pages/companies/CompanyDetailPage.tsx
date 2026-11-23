@@ -1,14 +1,17 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Globe, Phone, MapPin, Pencil, Trash2, Plus, ArrowLeft, Users, KanbanSquare, Building2 } from 'lucide-react';
+import { Globe, Phone, MapPin, Pencil, Trash2, Plus, ArrowLeft, Users, KanbanSquare, Building2, MessageCircle, MessageSquareText } from 'lucide-react';
 import { useStore } from '@/store';
-import { useCompany, useContactsForCompany, useDealsForCompany } from '@/store/selectors';
+import { useCompany, useContactsForCompany, useDealsForCompany, useOrgId } from '@/store/selectors';
 import { fullName, money } from '@/lib/format';
 import { Avatar, Badge, Button, Card, EmptyState, IconButton, Menu, Tabs, PageShell, confirm } from '@/ui';
 import { AvatarOf, ActivityTimeline } from '@/components/record/ActivityTimeline';
 import { RecordTasks } from '@/components/record/RecordTasks';
 import { CONTACT_STATUS } from '@/lib/status';
 import { CompanyFormDrawer } from './CompanyFormDrawer';
+import { smsLink, waLink } from '@/lib/comms';
+import { uid, nowIso } from '@/lib/id';
+import type { MessageChannel } from '@/types';
 
 export function CompanyDetailPage() {
   const { id } = useParams();
@@ -17,9 +20,28 @@ export function CompanyDetailPage() {
   const contacts = useContactsForCompany(id);
   const deals = useDealsForCompany(id);
   const remove = useStore((s) => s.remove);
+  const upsert = useStore((s) => s.upsert);
   const notify = useStore((s) => s.notify);
+  const orgId = useOrgId();
   const [tab, setTab] = useState<'activity' | 'contacts' | 'deals' | 'tasks'>('activity');
   const [editOpen, setEditOpen] = useState(false);
+
+  const sendMessage = (channel: Extract<MessageChannel, 'whatsapp' | 'sms'>) => {
+    if (!company?.phone) return;
+    const greeting = `Hi,\n\n`;
+    window.open(channel === 'whatsapp' ? waLink(company.phone, greeting) : smsLink(company.phone, greeting), '_blank');
+    upsert('messageLog', {
+      id: uid('msg_'),
+      orgId,
+      channel,
+      direction: 'outbound',
+      body: channel === 'whatsapp' ? '(composed in WhatsApp)' : '(composed as a text message)',
+      to: company.phone,
+      companyId: company.id,
+      at: nowIso(),
+    });
+    notify({ kind: 'info', title: channel === 'whatsapp' ? 'WhatsApp opened' : 'Text message app opened', subtitle: 'Logged on this company' });
+  };
 
   if (!company) {
     return (
@@ -83,6 +105,16 @@ export function CompanyDetailPage() {
                 </a>
               )}
             </div>
+            {company.phone && (
+              <div className="grid grid-cols-2 gap-2 mt-4">
+                <Button size="sm" variant="secondary" icon={<MessageCircle className="size-3.5 text-success-600" />} onClick={() => sendMessage('whatsapp')}>
+                  WhatsApp
+                </Button>
+                <Button size="sm" variant="secondary" icon={<MessageSquareText className="size-3.5" />} onClick={() => sendMessage('sms')}>
+                  Text / SMS
+                </Button>
+              </div>
+            )}
             {company.notes && <p className="text-sm text-ink-600 mt-4 pt-4 border-t border-surface-200">{company.notes}</p>}
           </Card>
 

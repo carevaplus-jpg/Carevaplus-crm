@@ -36,7 +36,7 @@ export function Menu({ trigger, items }: { trigger: ReactNode; items: MenuItem[]
       <div onClick={toggle}>{trigger}</div>
       {open &&
         createPortal(
-          <div className="fixed z-50 w-48 bg-white rounded-lg shadow-float ring-1 ring-surface-200 py-1 animate-[menuIn_.1s_ease-out]" style={{ top: pos.top, left: pos.left }}>
+          <div className="glass-panel glass-sheen fixed z-50 w-48 rounded-xl py-1 animate-[menuIn_.16s_var(--ease-spring)]" style={{ top: pos.top, left: pos.left }}>
             {items.map((item) => (
               <button
                 key={item.label}
@@ -44,13 +44,13 @@ export function Menu({ trigger, items }: { trigger: ReactNode; items: MenuItem[]
                   setOpen(false);
                   item.onClick();
                 }}
-                className={cn('w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-surface-50', item.danger ? 'text-danger-600' : 'text-ink-700')}
+                className={cn('w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left transition-colors hover:bg-white/60', item.danger ? 'text-danger-600' : 'text-ink-700')}
               >
                 {item.icon}
                 {item.label}
               </button>
             ))}
-            <style>{`@keyframes menuIn { from { opacity: 0; transform: translateY(-4px) } to { opacity: 1; transform: translateY(0) } }`}</style>
+            <style>{`@keyframes menuIn { from { opacity: 0; transform: translateY(-4px) scale(.98) } to { opacity: 1; transform: translateY(0) scale(1) } }`}</style>
           </div>,
           document.body,
         )}

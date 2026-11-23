@@ -1,9 +1,17 @@
 import type { HTMLAttributes, ReactNode } from 'react';
 import { cn } from './cn';
 
-export function Card({ children, className, padded = true, ...rest }: HTMLAttributes<HTMLDivElement> & { padded?: boolean }) {
+export function Card({ children, className, padded = true, glass = false, ...rest }: HTMLAttributes<HTMLDivElement> & { padded?: boolean; glass?: boolean }) {
   return (
-    <div className={cn('bg-surface-0 rounded-xl ring-1 ring-surface-200 shadow-card', padded && 'p-5', className)} {...rest}>
+    <div
+      className={cn(
+        'rounded-xl shadow-card transition-shadow duration-200',
+        glass ? 'glass-panel glass-sheen' : 'bg-surface-0 ring-1 ring-surface-200',
+        padded && 'p-5',
+        className,
+      )}
+      {...rest}
+    >
       {children}
     </div>
   );

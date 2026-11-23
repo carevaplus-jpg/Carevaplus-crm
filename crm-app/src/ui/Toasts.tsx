@@ -19,7 +19,7 @@ function ToastItem({ toast }: { toast: Toast }) {
     return () => clearTimeout(t);
   }, [toast.id, dismiss]);
   return (
-    <div className="flex items-start gap-3 bg-navy-900 text-white rounded-xl shadow-float px-4 py-3 min-w-[280px] max-w-sm animate-[toastIn_.18s_ease-out]">
+    <div className="glass-navy flex items-start gap-3 text-white rounded-xl px-4 py-3 min-w-[280px] max-w-sm animate-[toastIn_.25s_var(--ease-spring)]">
       <Icon className={cn('size-5 shrink-0 mt-0.5', TONE[toast.kind])} />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium">{toast.title}</p>

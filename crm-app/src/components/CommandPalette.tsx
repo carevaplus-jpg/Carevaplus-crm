@@ -78,9 +78,9 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
 
   return createPortal(
     <div className="fixed inset-0 z-[70] flex items-start justify-center pt-[12vh] px-4">
-      <div className="absolute inset-0 bg-navy-950/50 backdrop-blur-[2px]" onClick={onClose} />
+      <div className="absolute inset-0 bg-navy-950/50 backdrop-blur-[3px] animate-[fadeIn_.15s_ease-out]" onClick={onClose} />
       <div
-        className="relative w-full max-w-lg bg-white rounded-2xl shadow-float ring-1 ring-surface-200 overflow-hidden animate-[pop_.15s_cubic-bezier(.16,1,.3,1)]"
+        className="glass-panel glass-sheen relative w-full max-w-lg rounded-2xl overflow-hidden animate-[pop_.2s_var(--ease-spring)]"
         onKeyDown={(e) => {
           if (e.key === 'ArrowDown') {
             e.preventDefault();
@@ -96,7 +96,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
           }
         }}
       >
-        <div className="flex items-center gap-2.5 px-4 h-13 border-b border-surface-200" style={{ height: 52 }}>
+        <div className="flex items-center gap-2.5 px-4 h-13 border-b border-white/50" style={{ height: 52 }}>
           <Search className="size-4 text-ink-400" />
           <input
             ref={inputRef}
@@ -114,7 +114,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
               key={`${h.kind}-${h.id}`}
               onMouseEnter={() => setActive(i)}
               onClick={() => go(h)}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 text-left ${i === active ? 'bg-brand-50' : ''}`}
+              className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${i === active ? 'bg-brand-50/80' : ''}`}
             >
               {h.kind === 'contact' ? (
                 <Avatar name={h.title} hue={h.avatarHue} size={28} />
@@ -131,7 +131,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-4 px-4 py-2 border-t border-surface-200 text-[11px] text-ink-400 bg-surface-50">
+        <div className="flex items-center gap-4 px-4 py-2 border-t border-white/50 text-[11px] text-ink-400 bg-white/30">
           <span className="flex items-center gap-1"><Users className="size-3" /> {contacts.length} contacts</span>
           <span className="flex items-center gap-1"><Building2 className="size-3" /> {companies.length} companies</span>
           <span className="flex items-center gap-1"><KanbanSquare className="size-3" /> {deals.length} deals</span>
