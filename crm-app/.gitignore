@@ -22,8 +22,13 @@ dist-ssr/
 /android
 /ios
 
-# Built APK (distributed separately, not committed)
+# Built APK (distributed separately, not committed) and signing material
+# (NEVER commit a keystore or its passwords)
 *.apk
+*.aab
+*.keystore
+*.jks
+android-sign/
 
 # logs
 npm-debug.log*
