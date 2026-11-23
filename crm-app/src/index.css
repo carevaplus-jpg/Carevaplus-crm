@@ -1,0 +1,133 @@
+@import 'tailwindcss';
+
+/* ───────────────────────── Careva+ CRM design tokens ───────────────────────── */
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Lexend', 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  /* Royal navy — sidebar, header, dark surfaces */
+  --color-navy-950: #060a14;
+  --color-navy-900: #0b1220;
+  --color-navy-800: #121c33;
+  --color-navy-700: #1b2744;
+  --color-navy-600: #26355a;
+  --color-navy-500: #3a4b78;
+
+  /* Gold — the "royal" accent: premium touches, crowns, highlights */
+  --color-gold-400: #f0d386;
+  --color-gold-500: #d9b35b;
+  --color-gold-600: #c9a227;
+  --color-gold-700: #a9841a;
+
+  /* Primary action blue */
+  --color-brand-50: #eef4ff;
+  --color-brand-100: #dbe7ff;
+  --color-brand-200: #b8ccff;
+  --color-brand-300: #8babff;
+  --color-brand-400: #5c84fb;
+  --color-brand-500: #3461ef;
+  --color-brand-600: #2347d6;
+  --color-brand-700: #1c38ab;
+  --color-brand-800: #1a3189;
+  --color-brand-900: #182b6e;
+
+  /* Neutral surface scale (light workspace) */
+  --color-surface-0: #ffffff;
+  --color-surface-50: #f7f8fb;
+  --color-surface-100: #eef1f6;
+  --color-surface-200: #e3e7ee;
+  --color-surface-300: #cdd3df;
+
+  /* Text */
+  --color-ink-900: #0f1626;
+  --color-ink-700: #2b3650;
+  --color-ink-500: #5b6780;
+  --color-ink-400: #8691a8;
+  --color-ink-300: #aeb6c7;
+
+  /* Semantic */
+  --color-success-50: #ecfdf3;
+  --color-success-500: #17a356;
+  --color-success-600: #0f8a47;
+  --color-warning-50: #fff8eb;
+  --color-warning-500: #d98c0c;
+  --color-warning-600: #b4720a;
+  --color-danger-50: #fef2f2;
+  --color-danger-500: #e0394d;
+  --color-danger-600: #c22840;
+  --color-info-50: #eef6ff;
+  --color-info-500: #2f87e0;
+
+  /* Pipeline stage palette (cycled across stages) */
+  --color-stage-1: #8babff;
+  --color-stage-2: #5cc7e8;
+  --color-stage-3: #7fd4a8;
+  --color-stage-4: #f0c569;
+  --color-stage-5: #ef9d6e;
+  --color-stage-6: #e68bb0;
+  --color-stage-7: #b296f0;
+
+  --shadow-card: 0 1px 2px rgba(15, 22, 38, 0.04), 0 1px 1px rgba(15, 22, 38, 0.02);
+  --shadow-float: 0 12px 32px -8px rgba(15, 22, 38, 0.18), 0 4px 10px -4px rgba(15, 22, 38, 0.08);
+  --shadow-gold: 0 10px 28px -10px rgba(201, 162, 39, 0.45);
+
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+}
+
+@layer base {
+  * {
+    @apply border-surface-200;
+  }
+  html {
+    @apply antialiased;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-surface-50 text-ink-900 font-sans;
+    font-feature-settings: 'cv11', 'ss01';
+  }
+  ::selection {
+    background: var(--color-gold-400);
+    color: var(--color-navy-900);
+  }
+  /* Slim, unobtrusive scrollbars for the data-dense workspace */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-surface-300) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: var(--color-surface-300);
+    border-radius: 999px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-brand-400);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  input::placeholder,
+  textarea::placeholder {
+    @apply text-ink-400;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
