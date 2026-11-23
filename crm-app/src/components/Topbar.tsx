@@ -27,7 +27,7 @@ export function Topbar({ onOpenCommand, onOpenMobileNav }: { onOpenCommand: () =
   };
 
   return (
-    <header className="glass-bar sticky top-0 z-30 h-16 shrink-0 border-b border-white/40 flex items-center gap-3 px-4 lg:px-6">
+    <header className="glass-bar safe-top safe-x sticky top-0 z-30 shrink-0 border-b border-white/40 flex items-center gap-3 px-4 lg:px-6" style={{ paddingBottom: 0, minHeight: 64 }}>
       <button onClick={onOpenMobileNav} aria-label="Open navigation menu" className="lg:hidden h-9 w-9 flex items-center justify-center rounded-lg hover:bg-surface-100 text-ink-600 press-scale">
         <MenuIcon className="size-5" />
       </button>

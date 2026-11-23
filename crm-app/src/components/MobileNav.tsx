@@ -15,6 +15,7 @@ import {
   Settings,
 } from 'lucide-react';
 import { cn } from '@/ui';
+import { haptic } from '@/lib/native';
 
 const NAV = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -35,7 +36,7 @@ export function MobileNav({ open, onClose }: { open: boolean; onClose: () => voi
   return createPortal(
     <div className="fixed inset-0 z-[65] lg:hidden">
       <div className="absolute inset-0 bg-navy-950/50 backdrop-blur-[2px]" onClick={onClose} />
-      <div className="glass-navy relative h-full w-[260px] text-white/90 flex flex-col animate-[slideIn_.26s_var(--ease-spring)]">
+      <div className="glass-navy safe-top safe-bottom relative h-full w-[260px] text-white/90 flex flex-col animate-[slideIn_.26s_var(--ease-spring)]">
         <div className="flex items-center justify-between px-4 h-16 shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center">
@@ -43,7 +44,7 @@ export function MobileNav({ open, onClose }: { open: boolean; onClose: () => voi
             </div>
             <span className="font-display font-bold">Careva+</span>
           </div>
-          <button onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-white/10">
+          <button onClick={() => { haptic(); onClose(); }} className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-white/10">
             <X className="size-4" />
           </button>
         </div>
@@ -53,7 +54,10 @@ export function MobileNav({ open, onClose }: { open: boolean; onClose: () => voi
               key={item.to}
               to={item.to}
               end={item.end}
-              onClick={onClose}
+              onClick={() => {
+                haptic();
+                onClose();
+              }}
               className={({ isActive }) => cn('flex items-center gap-2.5 px-3 rounded-xl text-sm font-medium transition-colors', isActive ? 'bg-white/12 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white/90')}
               style={{ height: 42 }}
             >

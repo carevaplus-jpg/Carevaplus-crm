@@ -52,6 +52,8 @@ The current build code (`src/store`) runs fully offline-first against local stor
 
 Download `careva-crm.apk` and open it on an Android phone (Android 7.0+). Allow "Install unknown apps" for your browser or file manager when asked.
 
+This is a real native app, not a bookmarked website: edge-to-edge status bar, the hardware/gesture back button navigates the app (and exits on the root screen), task-due reminders fire as real OS notifications scheduled with `@capacitor/local-notifications` (they arrive even if the app is closed), key actions get a light haptic tap, the keyboard resizes the layout instead of covering inputs, and there's no pinch-to-zoom, pull-to-refresh or browser-style text-selection on buttons/nav. All of this (`src/lib/native.ts`, `src/lib/notifications.ts`) is gated behind a Capacitor native-platform check, so the same codebase still behaves like a normal installable PWA in a browser.
+
 To build it yourself (uses [Capacitor](https://capacitorjs.com), which wraps the web build in a native WebView shell):
 
 ```bash

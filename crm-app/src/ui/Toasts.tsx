@@ -1,7 +1,15 @@
 import { useEffect } from 'react';
 import { CheckCircle2, Info, AlertTriangle, XCircle, X } from 'lucide-react';
 import { useStore, type Toast } from '@/store';
+import { haptic, hapticNotification, ImpactStyle, NotificationType } from '@/lib/native';
 import { cn } from './cn';
+
+const TOAST_HAPTIC: Record<Toast['kind'], () => void> = {
+  success: () => hapticNotification(NotificationType.Success),
+  danger: () => hapticNotification(NotificationType.Error),
+  warning: () => hapticNotification(NotificationType.Warning),
+  info: () => haptic(ImpactStyle.Light),
+};
 
 const ICONS = { success: CheckCircle2, info: Info, warning: AlertTriangle, danger: XCircle };
 const TONE: Record<Toast['kind'], string> = {
@@ -15,9 +23,10 @@ function ToastItem({ toast }: { toast: Toast }) {
   const dismiss = useStore((s) => s.dismissToast);
   const Icon = ICONS[toast.kind];
   useEffect(() => {
+    TOAST_HAPTIC[toast.kind]();
     const t = setTimeout(() => dismiss(toast.id), 4200);
     return () => clearTimeout(t);
-  }, [toast.id, dismiss]);
+  }, [toast, dismiss]);
   return (
     <div className="glass-navy flex items-start gap-3 text-white rounded-xl px-4 py-3 min-w-[280px] max-w-sm animate-[toastIn_.25s_var(--ease-spring)]">
       <Icon className={cn('size-5 shrink-0 mt-0.5', TONE[toast.kind])} />
@@ -35,7 +44,7 @@ function ToastItem({ toast }: { toast: Toast }) {
 export function Toasts() {
   const toasts = useStore((s) => s.toasts);
   return (
-    <div className="fixed bottom-5 right-5 z-[60] flex flex-col gap-2 items-end">
+    <div className="fixed bottom-5 right-5 z-[60] flex flex-col gap-2 items-end safe-bottom safe-x">
       {toasts.map((t) => (
         <ToastItem key={t.id} toast={t} />
       ))}

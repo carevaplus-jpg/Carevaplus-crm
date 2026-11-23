@@ -34,7 +34,7 @@ export function Sidebar() {
   const dueToday = tasks.filter((t) => !t.done && new Date(t.dueAt) <= new Date()).length;
 
   return (
-    <aside className="relative z-10 hidden lg:flex w-[248px] shrink-0 flex-col h-screen sticky top-0 p-3">
+    <aside className="relative z-10 hidden lg:flex w-[248px] shrink-0 flex-col h-screen sticky top-0 p-3 safe-top safe-bottom safe-x">
       <div className="glass-navy glass-sheen flex flex-col h-full rounded-[var(--radius-2xl)] text-white/90 overflow-hidden">
         <div className="flex items-center gap-2.5 px-5 h-16 shrink-0">
           <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center shadow-gold animate-[floatY_6s_ease-in-out_infinite]">

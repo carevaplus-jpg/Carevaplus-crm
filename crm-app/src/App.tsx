@@ -16,8 +16,10 @@ import { InvoicesPage } from '@/pages/invoices/InvoicesPage';
 import { InvoiceDetailPage } from '@/pages/invoices/InvoiceDetailPage';
 import { ReportsPage } from '@/pages/reports/ReportsPage';
 import { SettingsPage } from '@/pages/settings/SettingsPage';
+import { useEffect } from 'react';
 import { useStore } from '@/store';
 import { Toasts, ConfirmHost } from '@/ui';
+import { hideNativeSplash } from '@/lib/native';
 
 function LoadingScreen() {
   return (
@@ -29,6 +31,10 @@ function LoadingScreen() {
 
 export default function App() {
   const hydrated = useStore((s) => s.hydrated);
+
+  useEffect(() => {
+    if (hydrated) hideNativeSplash();
+  }, [hydrated]);
 
   if (!hydrated) return <LoadingScreen />;
 

@@ -92,6 +92,16 @@
   body {
     @apply bg-surface-50 text-ink-900 font-sans;
     font-feature-settings: 'cv11', 'ss01';
+    /* No browser pull-to-refresh / edge-bounce glow — this is an app shell, not a page. */
+    overscroll-behavior-y: contain;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button,
+  a,
+  [role='button'] {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
   }
   ::selection {
     background: var(--color-gold-400);
@@ -192,6 +202,18 @@
   }
   .press-scale:active {
     transform: scale(0.97);
+  }
+
+  /* Safe-area insets — the Android app draws edge-to-edge behind the status/gesture bars. */
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .safe-x {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
   }
 }
 
