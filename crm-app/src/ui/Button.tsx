@@ -34,12 +34,13 @@ export const Button = forwardRef<HTMLButtonElement, Props>(function Button(
     <button
       ref={ref}
       className={cn(
-        'inline-flex items-center justify-center font-medium transition-all duration-150 disabled:opacity-45 disabled:pointer-events-none select-none active:scale-[0.97]',
+        'inline-flex items-center justify-center whitespace-nowrap shrink-0 font-medium transition-all duration-150 disabled:opacity-45 disabled:pointer-events-none select-none active:scale-[0.97]',
         VARIANT[variant],
         SIZE[size],
         className,
       )}
       disabled={disabled || loading}
+      type="button"
       {...rest}
     >
       {loading ? <Loader2 className="size-4 animate-spin" /> : icon}

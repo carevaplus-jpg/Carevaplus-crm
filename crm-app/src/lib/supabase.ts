@@ -5,10 +5,9 @@ const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
 /**
- * null when the app is built without Supabase credentials → the CRM runs fully in
- * local "demo mode" (data lives in this browser only, seeded with realistic sample
- * records). Set VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY to switch on multi-user
- * cloud accounts and sync — see README.md.
+ * null when the app is built without Supabase credentials → the CRM keeps every
+ * record on this device (local-first). Set VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY
+ * to provide a Supabase client for multi-user cloud accounts — see README.md.
  */
 export const supabase: SupabaseClient | null =
   url && key

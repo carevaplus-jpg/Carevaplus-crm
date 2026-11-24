@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="ta-Latn">
+<head>
+<meta charset="utf-8">
+<title>Careva+ CRM — Features Guide (Thanglish)</title>
+<style>
+@font-face { font-family: Lexend; font-weight: 500; src: url(../node_modules/@fontsource/lexend/files/lexend-latin-500-normal.woff2); }
+@font-face { font-family: Lexend; font-weight: 700; src: url(../node_modules/@fontsource/lexend/files/lexend-latin-700-normal.woff2); }
+@font-face { font-family: Inter; font-weight: 100 900; src: url(../node_modules/@fontsource-variable/inter/files/inter-latin-opsz-normal.woff2); }
+@page { size: A4; margin: 16mm 15mm 18mm; }
+:root { --navy: #0b1220; --navy2: #1b2744; --gold: #c9a227; --gold-l: #f0d386; --brand: #2347d6; --ink: #0f1626; --muted: #5b6780; --line: #e3e7ee; --soft: #f5f7fb; --green: #0f8a47; }
+* { box-sizing: border-box; }
+body { font-family: Inter, sans-serif; color: var(--ink); font-size: 10.6pt; line-height: 1.55; margin: 0; }
+h1, h2, h3 { font-family: Lexend, sans-serif; line-height: 1.2; }
+h2 { font-size: 17pt; margin: 0 0 4px; color: var(--navy); }
+h2 .n { display: inline-block; width: 30px; height: 30px; border-radius: 9px; background: linear-gradient(135deg, var(--gold-l), var(--gold)); color: var(--navy); text-align: center; line-height: 30px; font-size: 12pt; margin-right: 8px; vertical-align: 2px; }
+h3 { font-size: 12pt; margin: 14px 0 4px; color: var(--navy2); }
+p { margin: 5px 0 8px; }
+.sub { color: var(--muted); margin-bottom: 12px; }
+section { margin-bottom: 18px; break-inside: avoid; }
+section.long { break-inside: auto; }
+section.long pre { font-size: 9pt; line-height: 1.42; padding: 8px 11px; }
+h2, h3 { break-after: avoid; }
+.page-break { page-break-before: always; }
+ul { margin: 4px 0 10px; padding-left: 18px; }
+li { margin: 3px 0; }
+b, strong { color: var(--navy); }
+.cover { height: 262mm; border-radius: 18px; padding: 34mm 18mm 0; color: #fff; position: relative; overflow: hidden;
+  background: radial-gradient(120% 90% at 10% 0%, #1b2744 0%, #0b1220 55%, #060a14 100%); }
+.cover .blob1 { position: absolute; width: 120mm; height: 120mm; border-radius: 50%; left: -40mm; top: -50mm; background: #3461ef; opacity: .35; filter: blur(30mm); }
+.cover .blob2 { position: absolute; width: 120mm; height: 120mm; border-radius: 50%; right: -30mm; bottom: -40mm; background: #d9b35b; opacity: .3; filter: blur(30mm); }
+.cover .logo { width: 58px; height: 58px; border-radius: 16px; background: linear-gradient(135deg, var(--gold-l), var(--gold)); display: flex; align-items: center; justify-content: center; position: relative; }
+.cover h1 { font-size: 40pt; margin: 22px 0 6px; position: relative; letter-spacing: -1px; }
+.cover h1 span { color: var(--gold-l); }
+.cover .t { font-family: Lexend; font-size: 15pt; color: rgba(255,255,255,.8); position: relative; }
+.cover .meta { position: relative; margin-top: 18px; font-size: 10.5pt; color: rgba(255,255,255,.65); }
+.cover .phones { position: absolute; left: 18mm; right: 18mm; bottom: 16mm; display: flex; gap: 6mm; justify-content: center; }
+.cover .phones img { width: 46mm; border-radius: 14px; border: 2px solid rgba(255,255,255,.3); box-shadow: 0 20px 40px -18px rgba(0,0,0,.9); }
+.cover .phones img:nth-child(2) { transform: translateY(-8mm); }
+.toc { columns: 2; column-gap: 10mm; padding: 0; list-style: none; }
+.toc li { break-inside: avoid; padding: 7px 10px; border-radius: 10px; background: var(--soft); margin-bottom: 6px; }
+.toc b { font-family: Lexend; }
+.card { border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin: 8px 0 10px; background: #fff; break-inside: avoid; }
+.tip { border-left: 4px solid var(--gold); background: #fff8eb; border-radius: 8px; padding: 8px 12px; margin: 8px 0 12px; break-inside: avoid; }
+.warn { border-left: 4px solid #e0394d; background: #fef2f2; border-radius: 8px; padding: 8px 12px; margin: 8px 0 12px; break-inside: avoid; }
+.ok { border-left: 4px solid var(--green); background: #ecfdf3; border-radius: 8px; padding: 8px 12px; margin: 8px 0 12px; break-inside: avoid; }
+.row { display: flex; gap: 12px; align-items: flex-start; break-inside: avoid; }
+.row .shot { width: 52mm; flex-shrink: 0; border-radius: 12px; border: 1px solid var(--line); }
+.row .txt { flex: 1; }
+table { width: 100%; border-collapse: collapse; margin: 6px 0 12px; font-size: 9.8pt; break-inside: avoid; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { background: var(--soft); font-family: Lexend; font-weight: 500; color: var(--navy); }
+.steps { counter-reset: s; list-style: none; padding: 0; }
+.steps > li { counter-increment: s; position: relative; padding: 2px 0 8px 36px; break-inside: avoid; }
+.steps > li::before { content: counter(s); position: absolute; left: 0; top: 1px; width: 24px; height: 24px; border-radius: 50%; background: var(--navy); color: var(--gold-l); font-family: Lexend; font-size: 9.5pt; text-align: center; line-height: 24px; }
+pre { white-space: pre-wrap; background: var(--soft); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-family: Inter, sans-serif; font-size: 9.6pt; margin: 6px 0 12px; }
+.chip { display: inline-block; padding: 1px 8px; border-radius: 999px; background: #eef4ff; color: var(--brand); font-size: 9pt; font-weight: 600; }
+.k { font-family: Lexend; font-weight: 500; background: var(--soft); border: 1px solid var(--line); border-radius: 6px; padding: 0 5px; font-size: 9.5pt; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="blob1"></div><div class="blob2"></div>
+  <div class="logo"><svg width="32" height="32" viewBox="0 0 24 24" fill="#0b1220" stroke="#0b1220" stroke-width="1.6" stroke-linejoin="round"><path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z"/><path d="M5 21h14"/></svg></div>
+  <h1>Careva<span>+</span> CRM</h1>
+  <div class="t">Full Features Guide — Thanglish la</div>
+  <div class="meta">Version 1.0.0 &nbsp;·&nbsp; Android app + Play Store publishing guide &nbsp;·&nbsp; November 2026</div>
+  <div class="phones">
+    <img src="../store-listing/screenshots/01-dashboard.png">
+    <img src="../store-listing/screenshots/02-deals-pipeline.png">
+    <img src="../store-listing/screenshots/03-contact-whatsapp-sms.png">
+  </div>
+</div>
+
+<div class="page-break"></div>
+
+<section>
+  <h2>Indha guide la enna irukku?</h2>
+  <p class="sub">Careva+ CRM app la irukura ovvoru feature-um simple-aa Thanglish la explain pannirukkom. Kadaisi la, app-a Google Play Store la eppadi publish pannanum-nu step-by-step guide-um irukku.</p>
+  <ul class="toc">
+    <li><b>1.</b> App enna? Yaarukku?</li>
+    <li><b>2.</b> First time setup</li>
+    <li><b>3.</b> Dashboard</li>
+    <li><b>4.</b> Contacts</li>
+    <li><b>5.</b> Email, WhatsApp, SMS, Call</li>
+    <li><b>6.</b> Companies</li>
+    <li><b>7.</b> Deals pipeline</li>
+    <li><b>8.</b> Tasks &amp; Calendar</li>
+    <li><b>9.</b> Products, Quotes, Invoices</li>
+    <li><b>10.</b> Reports</li>
+    <li><b>11.</b> Search &amp; Quick create</li>
+    <li><b>12.</b> Settings &amp; Team</li>
+    <li><b>13.</b> Notifications</li>
+    <li><b>14.</b> Backup, Restore &amp; Privacy</li>
+    <li><b>15.</b> App experience (Liquid Glass)</li>
+    <li><b>16.</b> Play Store la publish pannuradhu</li>
+    <li><b>17.</b> Store listing text (copy-paste)</li>
+    <li><b>18.</b> Important points &amp; next steps</li>
+  </ul>
+</section>
+
+<section>
+  <h2><span class="n">1</span>App enna? Yaarukku?</h2>
+  <p><b>Careva+ CRM</b> — unga company-oda <b>customers, leads, deals, tasks, quotes, invoices</b> ellathaiyum oru edathula manage panna help pannura executive-level CRM app. HubSpot maadhiri periya CRM-la irukura main features ellam, unga phone-la simple-aa use panna mudiyum.</p>
+  <ul>
+    <li><b>Yaarukku:</b> Business owners, sales managers, sales executives, small &amp; medium companies.</li>
+    <li><b>Enga data irukkum:</b> Unga phone-kulla mattum. Account create panna vendaam, internet illama kooda (offline) full-aa work aagum.</li>
+    <li><b>Currency:</b> Indian Rupee (₹) default — lakhs/crores format la (₹3.6Cr, ₹38.7L) kaatum. Deal-ku USD-um select pannalam.</li>
+  </ul>
+</section>
+
+<section>
+  <h2><span class="n">2</span>First time setup</h2>
+  <p>App-a first time open panna <b>"Welcome to Careva+ CRM"</b> screen varum. Idhula 4 details kudukkanum:</p>
+  <table>
+    <tr><th>Field</th><th>Enna podanum</th></tr>
+    <tr><td>Your name <span class="chip">required</span></td><td>Unga peyar — e.g. Karthik Raja</td></tr>
+    <tr><td>Your role</td><td>Unga designation — e.g. Managing Director</td></tr>
+    <tr><td>Your email</td><td>Unga email (optional) — emails log aagum bodhu idhu use aagum</td></tr>
+    <tr><td>Company name <span class="chip">required</span></td><td>Unga company peyar — e.g. Careva Plus</td></tr>
+  </table>
+  <p><b>"Create my workspace"</b> click pannina, app <b>empty-aa, fresh-aa</b> start aagum — demo data edhuvum irukkadhu. Oru ready-made sales pipeline (New Lead → Qualified → Proposal Sent → Negotiation → Won / Lost) automatic-aa create aagum. Neenga dhaan <b>Admin</b>.</p>
+  <div class="tip"><b>Pudhu phone-aa?</b> Munnaadi edutha backup file irundha, setup screen-laye <b>"Restore from backup"</b> click panni unga full data-vai thirumba kondu varalam.</div>
+</section>
+
+<section>
+  <h2><span class="n">3</span>Dashboard — Executive view</h2>
+  <div class="row">
+    <img class="shot" src="../store-listing/screenshots/01-dashboard.png">
+    <div class="txt">
+      <p>App open panna first-aa varra screen. Unga business eppadi poyittu irukku-nu oru paarvai-la theriyum.</p>
+      <ul>
+        <li><b>Get started checklist</b> — pudhu user-ku: first contact, company, deal, products add panna shortcut. Ellam mudinja automatic-aa maraindhidum.</li>
+        <li><b>Open Pipeline</b> — innum close aagaadha deals-oda total value.</li>
+        <li><b>Won This Month</b> — indha maasam jeyicha deals value.</li>
+        <li><b>Win Rate</b> — close aana deals la evlo % jeyichom.</li>
+        <li><b>Due Today</b> — innikku mudikka vendiya tasks count.</li>
+        <li><b>Revenue chart</b> — last 6 months won vs lost.</li>
+        <li><b>Pipeline by stage</b> — ovvoru stage-la evlo value irukku.</li>
+        <li><b>Team leaderboard</b> — yaaru adhigama deals jeyichaanga.</li>
+        <li><b>Recent deals &amp; activity feed</b> — latest updates.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">4</span>Contacts</h2>
+  <p>Unga customers, leads, partners — ellarum inga. <b>Contacts</b> page-la:</p>
+  <ul>
+    <li><b>New contact</b> — first name, last name, email, phone, job title, company, status, source, owner, tags.</li>
+    <li><b>Search</b> — peyar, email, company vechu udane theduralaam.</li>
+    <li><b>Status filter</b> — <span class="chip">Lead</span> <span class="chip">Prospect</span> <span class="chip">Customer</span> <span class="chip">Churned</span> — customer journey-la yaaru enga irukaanga-nu paakalaam.</li>
+    <li><b>Sort</b> — column header-a tap panni name/company/status vechu arrange pannalaam.</li>
+    <li><b>Contact page</b> — avanga full details, <b>Activity timeline</b> (notes, calls, meetings, emails, WhatsApp, SMS ellam date-wise), avanga <b>Deals</b>, avanga <b>Tasks</b>.</li>
+    <li><b>Log activity</b> — Note / Call / Meeting select panni enna pesuneenga-nu type panni "Log" pannunga. Team-ku history theriyum.</li>
+    <li><b>Edit / Delete</b> — pencil icon menu-la.</li>
+  </ul>
+</section>
+
+<section>
+  <h2><span class="n">5</span>Email, WhatsApp, SMS, Call — one tap la</h2>
+  <div class="row">
+    <img class="shot" src="../store-listing/screenshots/03-contact-whatsapp-sms.png">
+    <div class="txt">
+      <p>Contact page-la 4 buttons irukku:</p>
+      <table>
+        <tr><th>Button</th><th>Enna nadakkum</th></tr>
+        <tr><td><b>Email</b></td><td>Unga mail app (Gmail etc.) open aagi, "Hi &lt;name&gt;," nu draft ready-aa irukkum.</td></tr>
+        <tr><td><b>Call</b></td><td>Phone dialer-la number automatic-aa vandhidum.</td></tr>
+        <tr><td><b>WhatsApp</b></td><td>Andha number-oda WhatsApp chat open aagi, greeting message type aagi irukkum.</td></tr>
+        <tr><td><b>Text / SMS</b></td><td>Phone-oda SMS app-la message draft ready.</td></tr>
+      </table>
+      <p>Ovvoru send-um contact-oda <b>timeline-la automatic-aa log</b> aagum — yaar, eppo, endha channel-nu theriyum.</p>
+      <p><b>Companies</b> page-la kooda company phone number-ku WhatsApp / SMS buttons irukku.</p>
+      <div class="tip">Number <b>+91 country code oda</b> save panna WhatsApp correct-aa open aagum (e.g. +91 98433 94513).</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">6</span>Companies</h2>
+  <ul>
+    <li>Ovvoru client company-kum oru record — industry, size, phone, city, country, website, owner, notes, tags.</li>
+    <li>Company page-la: <b>Open pipeline value</b>, <b>Won revenue</b>, andha company-oda <b>contacts list</b>, <b>deals</b>, <b>tasks</b>, <b>activity</b> — ellam oru edathula.</li>
+  </ul>
+</section>
+
+<section>
+  <h2><span class="n">7</span>Deals pipeline — Kanban board</h2>
+  <div class="row">
+    <img class="shot" src="../store-listing/screenshots/02-deals-pipeline.png">
+    <div class="txt">
+      <p>Ungaloda ellaa sales opportunities-um oru board-la columns-aa theriyum. Ovvoru column oru <b>stage</b>.</p>
+      <ul>
+        <li><b>Drag &amp; drop</b> — deal card-a pidichu adutha stage-ku izhuthaa podhum. Column totals udane update aagum.</li>
+        <li><b>New deal</b> — deal name, amount (₹ / $), contact, company, owner, expected close date, stage.</li>
+        <li><b>Person filter</b> — "Everyone" illa oru particular team member-oda deals mattum paakalaam.</li>
+        <li><b>Deal page</b> — stage stepper, <b>Mark Won</b> / <b>Mark Lost</b> buttons, activity timeline, tasks.</li>
+        <li>Overdue close date irundha <b>red-aa</b> highlight aagum.</li>
+      </ul>
+      <p>Stages-a <b>Settings</b>-la rename / add / delete pannalaam.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">8</span>Tasks &amp; Calendar</h2>
+  <div class="row">
+    <img class="shot" src="../store-listing/screenshots/04-tasks.png">
+    <div class="txt">
+      <ul>
+        <li><b>Task types:</b> Call, Email, Meeting, Follow-up, To-do.</li>
+        <li><b>Priority:</b> Low / Medium / High.</li>
+        <li><b>Due date &amp; time</b>, assignee (team member), contact / company / deal link, notes.</li>
+        <li><b>Tabs:</b> My tasks · Overdue · Today · Upcoming · All open · Completed.</li>
+        <li>Checkbox tick panna task <b>done</b> — Completed tab-ku pogum.</li>
+        <li>Tablet / computer-la, left sidebar-la <b>Tasks</b> pakkathula due count badge theriyum.</li>
+        <li><b>Calendar</b> — month view-la ella tasks-um date-wise. Oru date-a tap panni andha naal tasks paakalaam.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">9</span>Products, Quotes &amp; Invoices</h2>
+  <div class="row">
+    <img class="shot" src="../store-listing/screenshots/05-quote.png">
+    <div class="txt">
+      <h3>Products</h3>
+      <p>Neenga vikkura products / services-oda price list — name, SKU, price, unit (per month, one-time…), description, active / inactive.</p>
+      <h3>Quotes (Quotation)</h3>
+      <ul>
+        <li>Customer &amp; deal select panni <b>line items</b> add pannunga — product, qty, price, <b>discount %</b>.</li>
+        <li><b>Tax %</b> (e.g. 18% GST) — subtotal, tax, total automatic-aa calculate aagum.</li>
+        <li>Status: Draft → Sent → Accepted / Declined / Expired. Valid-until date.</li>
+        <li>Accepted quote-a oru click-la <b>Invoice-aa convert</b> pannalaam.</li>
+      </ul>
+      <h3>Invoices</h3>
+      <ul>
+        <li>Status: Draft · Sent · <b>Paid</b> · Overdue · Void. Due date, paid date track aagum.</li>
+        <li>Evlo payment varanum, evlo vandhudhu-nu clear-aa theriyum.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">10</span>Reports</h2>
+  <div class="row">
+    <img class="shot" src="../store-listing/screenshots/06-reports.png">
+    <div class="txt">
+      <ul>
+        <li><b>Total won revenue</b>, <b>average deal size</b>, <b>overall win rate</b>, companies count.</li>
+        <li><b>Won vs lost revenue</b> — monthly bar chart.</li>
+        <li><b>Contacts by status</b> — Lead, Prospect, Customer, Churned — ovvonnula evlo per irukaanga.</li>
+        <li><b>Rep performance table</b> — ovvoru sales person-um evlo deals jeyichaanga, evlo value, win rate.</li>
+      </ul>
+      <p>Monthly review meeting-ku idhu dhaan main screen.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">11</span>Search &amp; Quick create</h2>
+  <ul>
+    <li>Mela irukura <b>search bar</b> tap panna — contacts, companies, deals ellathaiyum oru idathula theda command palette varum. Computer-la <span class="k">Ctrl</span> + <span class="k">K</span>.</li>
+    <li>Mela irukura <b>blue "+" button</b> — Contact, Company, Deal, Task, Quote edhuvanalum udane create pannalaam.</li>
+    <li>Left-la <b>☰ menu</b> — ella pages-kum navigation.</li>
+  </ul>
+</section>
+
+<section>
+  <h2><span class="n">12</span>Settings &amp; Team</h2>
+  <ul>
+    <li><b>Team</b> — team members add pannunga (name, email, role). Deals, tasks, contacts-a avangalukku assign pannalaam; reports-la avanga performance theriyum.</li>
+    <li><b>Roles:</b> <span class="chip">Admin</span> (ellam control) · <span class="chip">Executive</span> · <span class="chip">Sales Rep</span>. Admin mattum dhaan roles maatha / members remove panna mudiyum.</li>
+    <li><b>Sales pipeline</b> — stages rename / pudhu stage add / delete. Won &amp; Lost fixed.</li>
+    <li><b>Workspace &amp; data</b> — company name maathalaam, Backup / Restore / Erase.</li>
+    <li><b>Notifications</b> &amp; <b>Outreach channels</b> info.</li>
+    <li><b>Privacy policy</b> link.</li>
+  </ul>
+</section>
+
+<section>
+  <h2><span class="n">13</span>Notifications — task reminders</h2>
+  <p>Settings → Notifications → <b>"Task due reminders"</b> ON pannunga. Phone "Allow notifications?" kekkum — <b>Allow</b> kudunga.</p>
+  <ul>
+    <li>Ungaloda task due time vandha, phone-la <b>real notification</b> varum — app close-aa irundhaalum.</li>
+    <li>Task-oda time maathina, reminder-um automatic-aa maarum. Task done / delete panna, reminder cancel aagum.</li>
+    <li>Phone restart aanaalum reminders thirumba set aagum.</li>
+  </ul>
+  <div class="tip">Android 14+ phones-la exact time reminders-ku: Settings → Apps → Careva+ CRM → <b>"Alarms &amp; reminders" → Allow</b>. Illana konjam late-aa varalaam.</div>
+</section>
+
+<section>
+  <h2><span class="n">14</span>Backup, Restore &amp; Privacy</h2>
+  <p>Unga data <b>unga phone-la mattum</b> irukku — engalukku (developer-ku) edhuvum varaadhu. Adhanaala backup romba mukkiyam.</p>
+  <table>
+    <tr><th>Option</th><th>Enna pannum</th></tr>
+    <tr><td><b>Back up now</b></td><td>Full data-vai oru <b>.json file</b>-aa create panni share menu open aagum — <b>Google Drive, Gmail, WhatsApp</b> edhula venaalum save pannunga.</td></tr>
+    <tr><td><b>Restore from backup</b></td><td>Saved backup file-a select panna, full data thirumba vandhidum (current data replace aagum — confirm kekkum).</td></tr>
+    <tr><td><b>Erase all data</b></td><td>Ella data-vum delete aagi, setup screen-ku thirumba pogum. Undo panna mudiyaadhu (Admin mattum).</td></tr>
+  </table>
+  <div class="warn"><b>Mukkiyam:</b> Backup edukkaama app-a uninstall panna, data poidum. <b>Vaaram oru thadava "Back up now"</b> panni Google Drive-la vechukonga.</div>
+  <div class="ok"><b>Privacy:</b> No login, no ads, no tracking, no analytics. App edhuvum internet-ku anuppaadhu. Full policy: <i>crm-app/PRIVACY.md</i> (GitHub-la).</div>
+</section>
+
+<section>
+  <h2><span class="n">15</span>App experience — "Liquid Glass" design</h2>
+  <ul>
+    <li><b>Apple Liquid Glass style</b> — frosted glass panels, soft blur, gold highlights, navy executive theme.</li>
+    <li><b>Smooth animations</b> — drawers slide aagum, cards lift aagum, buttons press feel.</li>
+    <li><b>Native Android app</b> — edge-to-edge status bar, phone <b>back button</b> correct-aa velai seiyum, root screen-la back panna app exit aagum.</li>
+    <li><b>Haptics</b> — save / delete / error-ku chinna vibration feedback.</li>
+    <li><b>Keyboard</b> — type pannum bodhu form fields keyboard-ku keezha maraiyaadhu.</li>
+    <li><b>Fully offline</b> — fonts kooda app-kulla bundled; internet thevai illa.</li>
+  </ul>
+</section>
+
+<section class="long page-break">
+  <h2><span class="n">16</span>Play Store la publish pannuradhu — step by step</h2>
+  <p class="sub">Ungaluku anuppina files: <b>careva-crm-1.0.0.aab</b> (Play Store-ku upload panna), <b>careva-crm-1.0.0.apk</b> (direct-aa phone-la install panni test panna), <b>upload key</b> (keystore + password), <b>store-listing</b> images.</p>
+  <ol class="steps">
+    <li><b>Google Play Console account</b> — play.google.com/console-la sign up pannunga. One-time fee <b>$25 (~₹2,100)</b>. Company-aa register panna (Organization account) D-U-N-S number venum; individual-aa panna ID verification pannanum.</li>
+    <li><b>Create app</b> — App name: <b>Careva+ CRM</b> · Default language: English (India) · Type: <b>App</b> · <b>Free</b> · declarations tick pannunga.</li>
+    <li><b>Testing first</b> — <i>Testing → Internal testing → Create release</i>. <b>careva-crm-1.0.0.aab</b> upload pannunga. "Play App Signing" kekkum — <b>Accept / Continue</b> (Google unga app-a sign pannum; neenga vechirukkuradhu "upload key").</li>
+    <li><b>Personal account-na:</b> Google rule — production-ku munnaadi <b>Closed testing-la kuraindhadhu 12 testers, 14 naal</b> continuous-aa test pannanum. Unga team/friends Gmail IDs add panni, avangala opt-in link vazhiya install panna sollunga. Organization account-ku indha rule illa.</li>
+    <li><b>Store listing</b> (Grow → Store presence → Main store listing) — next section-la irukura text-a copy-paste pannunga. Images:
+      <ul>
+        <li>App icon: <b>app-icon-512.png</b> (512×512)</li>
+        <li>Feature graphic: <b>feature-graphic-1024x500.png</b></li>
+        <li>Phone screenshots: <b>screenshots/01…06.png</b> (6 images, 1080×1920)</li>
+      </ul>
+    </li>
+    <li><b>Privacy policy URL</b> — PR merge aana piragu indha link podunga:<br><i>https://github.com/carevaplus-jpg/Carevaplus-crm/blob/main/crm-app/PRIVACY.md</i></li>
+    <li><b>App content</b> section-la ellaa forms-um fill pannunga (keezha table paarunga).</li>
+    <li><b>Category</b>: Business · Tags: CRM, Sales · Contact email: unga support email.</li>
+    <li><b>Production → Create release</b> → same .aab → Countries: India (illa ellaa countries) → <b>Review &amp; roll out</b>. Google review-ku <b>2–7 naal</b> aagalaam.</li>
+  </ol>
+
+  <h3>App content — enna answer kudukkanum</h3>
+  <table>
+    <tr><th>Form</th><th>Answer</th></tr>
+    <tr><td>Privacy policy</td><td>Mela sonna GitHub link</td></tr>
+    <tr><td>Ads</td><td><b>No</b>, app la ads illa</td></tr>
+    <tr><td>App access</td><td><b>All functionality is available without special access</b> (login illa)</td></tr>
+    <tr><td>Content rating</td><td>Category: <b>Utility, Productivity, Communication or Other</b> → violence / sexual / gambling ellathukkum <b>No</b> → result "Everyone / 3+"</td></tr>
+    <tr><td>Target audience</td><td><b>18 and over</b> (business app)</td></tr>
+    <tr><td>Data safety</td><td>"Does your app collect or share any of the required user data types?" → <b>No</b>. (Ellaa data-vum phone-la mattum; developer-ku edhuvum anuppuradhu illa.)</td></tr>
+    <tr><td>News app / Government app / Health</td><td><b>No</b></td></tr>
+    <tr><td>Financial features</td><td><b>My app doesn't provide any financial features</b> (invoices record mattum dhaan, payment processing illa)</td></tr>
+    <tr><td>Exact alarm permission</td><td>Kettaa: "Task due reminders at the time the user set" — calendar / reminder use case</td></tr>
+  </table>
+
+  <div class="warn"><b>Upload key-a pathirama vechukonga!</b> <i>careva-crm-upload.jks</i> file-um adhoda password-um illama future updates upload panna mudiyaadhu (Google support-la reset panna days aagum). Google Drive + innoru safe edathula 2 copy vechukonga. Yaarukum share pannaadhinga.</div>
+  <div class="tip"><b>Future update podum bodhu:</b> developer kitta <i>versionCode</i> number-a 1 → 2 → 3 nu increase panni pudhu .aab build panna sollunga, adhe upload key-la sign pannanum.</div>
+</section>
+
+<section class="long page-break">
+  <h2><span class="n">17</span>Store listing text — copy-paste pannunga</h2>
+  <h3>App name (30 chars max)</h3>
+  <pre>Careva+ CRM</pre>
+  <h3>Short description (80 chars max)</h3>
+  <pre>Executive CRM: contacts, deal pipeline, quotes, invoices, WhatsApp &amp; reminders</pre>
+  <h3>Full description</h3>
+  <pre>Careva+ CRM is an executive-grade CRM that puts your whole sales business in your pocket — contacts, companies, a drag-and-drop deal pipeline, tasks, quotes, invoices and reports, in a beautiful liquid-glass design.
+
+★ EXECUTIVE DASHBOARD
+See open pipeline, revenue won this month, win rate and today's tasks at a glance, with a 6-month revenue trend, pipeline by stage and a team leaderboard.
+
+★ CONTACTS & COMPANIES
+Keep every lead, prospect and customer in one place. Track status from Lead to Customer, see a full activity timeline, and link contacts to their companies.
+
+★ ONE-TAP WHATSAPP, SMS, EMAIL & CALL
+Message any contact on WhatsApp, by SMS or email — a pre-filled draft opens in your own apps — or call them in one tap. Every message is logged on the contact's timeline.
+
+★ DEAL PIPELINE
+A visual Kanban board for every opportunity. Drag deals between stages, filter by salesperson, mark deals Won or Lost, and customise your stages.
+
+★ TASKS, CALENDAR & REMINDERS
+Calls, meetings, follow-ups and to-dos with priorities and due times, a month calendar, and phone notifications when a task is due — even when the app is closed.
+
+★ PRODUCTS, QUOTES & INVOICES
+Build a product catalogue, create professional quotes with discounts and GST/tax, convert accepted quotes to invoices, and track what's paid and overdue.
+
+★ REPORTS
+Won vs lost revenue, contacts by status and sales rep performance for your monthly reviews.
+
+★ TEAM & ROLES
+Add your team with Admin, Executive and Sales Rep roles, and assign contacts, deals and tasks.
+
+★ PRIVATE & OFFLINE
+No sign-up, no ads, no tracking. Your data stays on your phone and works fully offline. Back up to Google Drive, email or WhatsApp in one tap, and restore on a new phone.
+
+Built for founders, sales leaders and growing teams.</pre>
+</section>
+
+<section>
+  <h2><span class="n">18</span>Important points &amp; next steps</h2>
+  <ul>
+    <li><b>Ippo data ovvoru phone-la thaniya irukkum.</b> Team members ellarum oray data-vai live-aa share panna (multi-user cloud sync), Supabase cloud connect panna vendiyadhu adutha step. Database project (<i>careva-crm</i>) ready; tables apply panna unga approval venum.</li>
+    <li>Pazhaya test APK (demo data oda) phone-la irundha, <b>adha uninstall panni</b> pudhu <b>careva-crm-1.0.0.apk</b> install pannunga.</li>
+    <li>iPhone (App Store) version innum build pannala — venumna sollunga.</li>
+    <li>Web version (browser-la) kooda use pannalaam — adhe app, "Install app" option-oda.</li>
+  </ul>
+  <div class="ok"><b>Summary:</b> Careva+ CRM 1.0.0 — demo data illama, fresh-aa, Play Store-ku ready. .aab upload pannunga, listing text &amp; images podunga, forms fill pannunga — publish!</div>
+</section>
+
+</body>
+</html>

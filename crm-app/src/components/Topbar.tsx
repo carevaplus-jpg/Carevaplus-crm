@@ -1,10 +1,8 @@
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, Menu as MenuIcon, UserPlus, Building2, KanbanSquare, CheckSquare, FileText } from 'lucide-react';
-import { useStore } from '@/store';
-import { useCurrentProfile, useTeam } from '@/store/selectors';
+import { Search, Plus, Menu as MenuIcon, UserPlus, Building2, KanbanSquare, CheckSquare, FileText, Settings } from 'lucide-react';
+import { useCurrentProfile } from '@/store/selectors';
 import { useUi, type QuickAddKind } from '@/store/ui';
-import { Avatar, Badge, Menu } from '@/ui';
-import { cloudEnabled } from '@/lib/supabase';
+import { Avatar, Menu } from '@/ui';
 
 const CREATE_ROUTES: Record<QuickAddKind, string> = {
   contact: '/contacts',
@@ -16,8 +14,6 @@ const CREATE_ROUTES: Record<QuickAddKind, string> = {
 
 export function Topbar({ onOpenCommand, onOpenMobileNav }: { onOpenCommand: () => void; onOpenMobileNav: () => void }) {
   const profile = useCurrentProfile();
-  const team = useTeam();
-  const setProfile = useStore((s) => s.setCurrentProfile);
   const setRequestNew = useUi((s) => s.setRequestNew);
   const navigate = useNavigate();
 
@@ -27,33 +23,27 @@ export function Topbar({ onOpenCommand, onOpenMobileNav }: { onOpenCommand: () =
   };
 
   return (
-    <header className="glass-bar safe-top safe-x sticky top-0 z-30 shrink-0 border-b border-white/40 flex items-center gap-3 px-4 lg:px-6" style={{ paddingBottom: 0, minHeight: 64 }}>
-      <button onClick={onOpenMobileNav} aria-label="Open navigation menu" className="lg:hidden h-9 w-9 flex items-center justify-center rounded-lg hover:bg-surface-100 text-ink-600 press-scale">
+    <header className="glass-bar safe-top safe-x sticky top-0 z-30 shrink-0 border-b border-white/40 flex items-center gap-2.5 sm:gap-3 px-3 sm:px-4 lg:px-6" style={{ paddingBottom: 0, minHeight: 64 }}>
+      <button onClick={onOpenMobileNav} aria-label="Open navigation menu" className="lg:hidden h-9 w-9 shrink-0 flex items-center justify-center rounded-lg hover:bg-surface-100 text-ink-600 press-scale">
         <MenuIcon className="size-5" />
       </button>
 
       <button
         onClick={onOpenCommand}
-        className="flex items-center gap-2.5 px-3 rounded-full bg-white/60 ring-1 ring-white/70 text-ink-500 text-sm w-full max-w-sm hover:bg-white/80 transition-colors press-scale"
+        className="flex flex-1 min-w-0 max-w-sm items-center gap-2.5 px-3 rounded-full bg-white/60 ring-1 ring-white/70 text-ink-500 text-sm hover:bg-white/80 transition-colors press-scale"
         style={{ height: 38 }}
       >
-        <Search className="size-4" />
-        <span className="flex-1 text-left truncate">Search contacts, companies, deals…</span>
+        <Search className="size-4 shrink-0" />
+        <span className="flex-1 min-w-0 text-left truncate">Search contacts, deals…</span>
         <kbd className="hidden sm:inline-flex items-center gap-0.5 text-[10px] font-medium text-ink-400 bg-white ring-1 ring-surface-300 rounded px-1.5 py-0.5">⌘K</kbd>
       </button>
 
-      <div className="flex-1" />
-
-      {!cloudEnabled && (
-        <Badge tone="gold" className="hidden md:inline-flex">
-          Demo mode
-        </Badge>
-      )}
+      <div className="hidden sm:block flex-1" />
 
       <Menu
         trigger={
-          <button className="hidden sm:inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 transition-all shadow-card press-scale hover-lift">
-            <Plus className="size-4" /> Create
+          <button aria-label="Create" className="inline-flex shrink-0 items-center justify-center gap-1.5 h-9 w-9 sm:w-auto sm:px-3.5 rounded-full bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 transition-all shadow-card press-scale hover-lift">
+            <Plus className="size-4" /> <span className="hidden sm:inline">Create</span>
           </button>
         }
         items={[
@@ -68,16 +58,11 @@ export function Topbar({ onOpenCommand, onOpenMobileNav }: { onOpenCommand: () =
       {profile && (
         <Menu
           trigger={
-            <button className="flex items-center gap-2 pl-1 pr-1">
+            <button aria-label="Account menu" className="flex shrink-0 items-center">
               <Avatar name={profile.name} hue={profile.avatarHue} size={34} />
             </button>
           }
-          items={[
-            ...team
-              .filter((p) => p.id !== profile.id)
-              .map((p) => ({ label: `Switch to ${p.name.split(' ')[0]}`, onClick: () => setProfile(p.id) })),
-            { label: 'Settings & Team', onClick: () => navigate('/settings') },
-          ]}
+          items={[{ label: 'Settings & Team', icon: <Settings className="size-4" />, onClick: () => navigate('/settings') }]}
         />
       )}
     </header>

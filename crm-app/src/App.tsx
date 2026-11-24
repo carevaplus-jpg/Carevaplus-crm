@@ -20,6 +20,7 @@ import { useEffect } from 'react';
 import { useStore } from '@/store';
 import { Toasts, ConfirmHost } from '@/ui';
 import { hideNativeSplash } from '@/lib/native';
+import { OnboardingPage } from '@/pages/OnboardingPage';
 
 function LoadingScreen() {
   return (
@@ -31,12 +32,21 @@ function LoadingScreen() {
 
 export default function App() {
   const hydrated = useStore((s) => s.hydrated);
+  const hasOwner = useStore((s) => !!s.currentProfileId && !!s.data.profiles[s.currentProfileId]);
 
   useEffect(() => {
     if (hydrated) hideNativeSplash();
   }, [hydrated]);
 
   if (!hydrated) return <LoadingScreen />;
+  if (!hasOwner)
+    return (
+      <>
+        <OnboardingPage />
+        <Toasts />
+        <ConfirmHost />
+      </>
+    );
 
   return (
     <BrowserRouter>

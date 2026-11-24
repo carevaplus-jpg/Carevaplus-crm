@@ -63,18 +63,18 @@ export function InvoiceDetailPage() {
               <thead>
                 <tr className="text-xs text-ink-500 border-b border-surface-200">
                   <th className="text-left font-semibold pb-2">Item</th>
-                  <th className="text-right font-semibold pb-2">Qty</th>
-                  <th className="text-right font-semibold pb-2">Price</th>
-                  <th className="text-right font-semibold pb-2">Total</th>
+                  <th className="text-right font-semibold pb-2 pl-3 whitespace-nowrap">Qty</th>
+                  <th className="text-right font-semibold pb-2 pl-3 whitespace-nowrap">Price</th>
+                  <th className="text-right font-semibold pb-2 pl-3 whitespace-nowrap">Total</th>
                 </tr>
               </thead>
               <tbody>
                 {invoice.items.map((item) => (
                   <tr key={item.id} className="border-b border-surface-100">
                     <td className="py-2.5 text-ink-800">{item.name}</td>
-                    <td className="py-2.5 text-right text-ink-600">{item.qty}</td>
-                    <td className="py-2.5 text-right text-ink-600 tabular-nums">{money(item.unitPrice)}</td>
-                    <td className="py-2.5 text-right font-medium text-ink-900 tabular-nums">{money(item.qty * item.unitPrice * (1 - item.discountPct / 100))}</td>
+                    <td className="py-2.5 pl-3 whitespace-nowrap text-right text-ink-600">{item.qty}</td>
+                    <td className="py-2.5 pl-3 whitespace-nowrap text-right text-ink-600 tabular-nums">{money(item.unitPrice)}</td>
+                    <td className="py-2.5 pl-3 whitespace-nowrap text-right font-medium text-ink-900 tabular-nums">{money(item.qty * item.unitPrice * (1 - item.discountPct / 100))}</td>
                   </tr>
                 ))}
               </tbody>

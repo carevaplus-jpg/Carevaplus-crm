@@ -4,6 +4,7 @@ import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YA
 import { Wallet, Trophy, Target, AlarmClock, ArrowRight, Flame } from 'lucide-react';
 import { useCurrentProfile, useDeals, useDefaultPipelineId, useStages, useTasks, useTeam } from '@/store/selectors';
 import { ActivityTimeline, AvatarOf } from '@/components/record/ActivityTimeline';
+import { GetStarted } from '@/components/GetStarted';
 import { money, moneyCompact, pct } from '@/lib/format';
 import { isDueToday, isOverdue, pipelineByStage, revenueTrend, winRate } from '@/lib/stats';
 import { Avatar, Badge, Card, CardHeader, KpiCard, PageShell } from '@/ui';
@@ -61,6 +62,8 @@ export function DashboardPage() {
         </div>
         {profile && <Avatar name={profile.name} hue={profile.avatarHue} size={44} ring />}
       </div>
+
+      <GetStarted />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <KpiCard label="Open Pipeline" value={moneyCompact(openPipeline)} icon={Wallet} tint="brand" />

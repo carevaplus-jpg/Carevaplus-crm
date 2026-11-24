@@ -2,8 +2,8 @@
 
 /* ───────────────────────── Careva+ CRM design tokens ───────────────────────── */
 @theme {
-  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
-  --font-display: 'Lexend', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Inter Variable', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Lexend', 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
 
   /* Royal navy — sidebar, header, dark surfaces */
   --color-navy-950: #060a14;

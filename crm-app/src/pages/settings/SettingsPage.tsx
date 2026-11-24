@@ -1,13 +1,15 @@
 import { useState } from 'react';
-import { Plus, Trash2, Crown, Shield, UserCircle2, RotateCcw, CloudOff, GripVertical, Bell, MessageCircle, MessageSquareText, Mail, Smartphone } from 'lucide-react';
+import { Plus, Trash2, Crown, Shield, UserCircle2, GripVertical, Bell, MessageCircle, MessageSquareText, Mail, Smartphone, HardDrive } from 'lucide-react';
 import { useStore } from '@/store';
 import { useCurrentProfile, useDefaultPipelineId, useOrgId, useStages, useTeam } from '@/store/selectors';
 import { usePrefs } from '@/store/prefs';
 import { notificationsSupported, requestNotificationPermission } from '@/lib/notifications';
-import { cloudEnabled } from '@/lib/supabase';
 import { uid, nowIso } from '@/lib/id';
 import type { Role } from '@/types';
+import { BackupButton, RestoreBackupButton } from '@/components/BackupButtons';
 import { Avatar, Badge, Button, Card, CardHeader, Input, PageHeader, PageShell, Select, Switch, confirm } from '@/ui';
+
+const PRIVACY_URL = 'https://github.com/carevaplus-jpg/Carevaplus-crm/blob/main/crm-app/PRIVACY.md';
 
 const ROLE_LABEL: Record<Role, string> = { admin: 'Admin', executive: 'Executive', sales_rep: 'Sales Rep' };
 const ROLE_ICON: Record<Role, typeof Crown> = { admin: Crown, executive: Shield, sales_rep: UserCircle2 };
@@ -21,14 +23,16 @@ export function SettingsPage() {
   const upsert = useStore((s) => s.upsert);
   const remove = useStore((s) => s.remove);
   const notify = useStore((s) => s.notify);
-  const resetDemoData = useStore((s) => s.resetDemoData);
-  const setCurrentProfile = useStore((s) => s.setCurrentProfile);
+  const eraseAllData = useStore((s) => s.eraseAllData);
+  const orgName = useStore((s) => s.orgName);
+  const renameWorkspace = useStore((s) => s.renameWorkspace);
   const taskReminders = usePrefs((s) => s.taskReminders);
   const setTaskReminders = usePrefs((s) => s.setTaskReminders);
 
   const isAdmin = profile?.role === 'admin';
   const [newStage, setNewStage] = useState('');
   const [newMemberName, setNewMemberName] = useState('');
+  const [newMemberEmail, setNewMemberEmail] = useState('');
   const [newMemberRole, setNewMemberRole] = useState<Role>('sales_rep');
   const [showAddMember, setShowAddMember] = useState(false);
 
@@ -59,11 +63,10 @@ export function SettingsPage() {
 
   const addMember = () => {
     if (!newMemberName.trim()) return;
-    const slug = newMemberName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '.');
     upsert('profiles', {
       id: uid('profile_'),
       orgId,
-      email: `${slug}@carevaplus.example`,
+      email: newMemberEmail.trim(),
       name: newMemberName.trim(),
       role: newMemberRole,
       avatarHue: Math.floor(Math.random() * 360),
@@ -71,6 +74,7 @@ export function SettingsPage() {
     });
     notify({ kind: 'success', title: 'Team member added', subtitle: newMemberName });
     setNewMemberName('');
+    setNewMemberEmail('');
     setShowAddMember(false);
   };
 
@@ -81,23 +85,20 @@ export function SettingsPage() {
 
   const removeMember = async (id: string) => {
     if (id === profile?.id) return;
-    const ok = await confirm({ title: 'Remove team member?', body: 'They will lose access to this CRM.', danger: true, confirmLabel: 'Remove' });
+    const ok = await confirm({ title: 'Remove team member?', body: 'They will be removed from your team list. Contacts, deals and tasks assigned to them are kept.', danger: true, confirmLabel: 'Remove' });
     if (ok) remove('profiles', id);
   };
 
-  const doReset = async () => {
-    const ok = await confirm({ title: 'Reset demo data?', body: 'This replaces all contacts, deals, tasks and everything else with a fresh sample dataset. This cannot be undone.', danger: true, confirmLabel: 'Reset everything' });
-    if (ok) {
-      resetDemoData();
-      notify({ kind: 'success', title: 'Demo data reset' });
-    }
+  const doErase = async () => {
+    const ok = await confirm({ title: 'Erase all data?', body: 'Every contact, company, deal, task, quote, invoice and message log on this device will be permanently deleted, and you will start setup again. This cannot be undone.', danger: true, confirmLabel: 'Erase everything' });
+    if (ok) eraseAllData();
   };
 
   const toggleReminders = async (v: boolean) => {
     if (v) {
       const perm = await requestNotificationPermission();
       if (perm !== 'granted') {
-        notify({ kind: 'warning', title: 'Notifications blocked', subtitle: 'Allow notifications for this site in your browser settings to enable reminders.' });
+        notify({ kind: 'warning', title: 'Notifications blocked', subtitle: 'Allow notifications for Careva+ CRM in your phone or browser settings to enable reminders.' });
         return;
       }
     }
@@ -117,14 +118,15 @@ export function SettingsPage() {
           <CardHeader title="Team" subtitle={`${team.length} members`} action={isAdmin && <Button size="sm" icon={<Plus className="size-3.5" />} onClick={() => setShowAddMember((v) => !v)}>Add</Button>} />
 
           {showAddMember && (
-            <div className="flex gap-2 mb-3 p-3 bg-surface-50 rounded-lg">
-              <Input value={newMemberName} onChange={(e) => setNewMemberName(e.target.value)} placeholder="Full name" className="flex-1" />
-              <Select value={newMemberRole} onChange={(e) => setNewMemberRole(e.target.value as Role)} className="w-32">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3 p-3 bg-surface-50 rounded-lg">
+              <Input value={newMemberName} onChange={(e) => setNewMemberName(e.target.value)} placeholder="Full name" />
+              <Input type="email" value={newMemberEmail} onChange={(e) => setNewMemberEmail(e.target.value)} placeholder="Email (optional)" />
+              <Select value={newMemberRole} onChange={(e) => setNewMemberRole(e.target.value as Role)}>
                 <option value="sales_rep">Sales Rep</option>
                 <option value="executive">Executive</option>
                 <option value="admin">Admin</option>
               </Select>
-              <Button size="sm" onClick={addMember} disabled={!newMemberName.trim()}>Add</Button>
+              <Button size="md" variant="primary" onClick={addMember} disabled={!newMemberName.trim()}>Add member</Button>
             </div>
           )}
 
@@ -139,7 +141,7 @@ export function SettingsPage() {
                       {p.name}
                       {p.id === profile?.id && <Badge tone="brand">You</Badge>}
                     </p>
-                    <p className="text-xs text-ink-500 truncate">{p.title ?? p.email}</p>
+                    <p className="text-xs text-ink-500 truncate">{p.title || p.email || ROLE_LABEL[p.role]}</p>
                   </div>
                   {isAdmin && p.id !== profile?.id ? (
                     <Select value={p.role} onChange={(e) => changeRole(p.id, e.target.value as Role)} className="w-32 h-8 text-xs">
@@ -153,11 +155,6 @@ export function SettingsPage() {
                   {isAdmin && p.id !== profile?.id && (
                     <button onClick={() => removeMember(p.id)} className="text-ink-300 hover:text-danger-500">
                       <Trash2 className="size-3.5" />
-                    </button>
-                  )}
-                  {p.id !== profile?.id && (
-                    <button onClick={() => setCurrentProfile(p.id)} className="text-xs text-brand-600 hover:underline shrink-0">
-                      View as
                     </button>
                   )}
                 </div>
@@ -178,7 +175,7 @@ export function SettingsPage() {
                   onBlur={(e) => renameStage(s.id, e.target.value)}
                   className="flex-1 text-sm bg-transparent outline-none focus:bg-surface-50 rounded px-1.5 py-1"
                 />
-                <button onClick={() => deleteStage(s.id)} className="opacity-0 group-hover:opacity-100 text-ink-300 hover:text-danger-500">
+                <button onClick={() => deleteStage(s.id)} aria-label={`Delete ${s.name} stage`} className="p-1 text-ink-300 hover:text-danger-500 lg:opacity-0 lg:group-hover:opacity-100">
                   <Trash2 className="size-3.5" />
                 </button>
               </div>
@@ -201,20 +198,24 @@ export function SettingsPage() {
 
       <div className="mt-4 grid lg:grid-cols-2 gap-4">
         <Card>
-          <CardHeader title="Data & sync" />
-          <div className="flex items-start gap-3 p-3 bg-surface-50 rounded-lg mb-4">
-            {cloudEnabled ? (
-              <Badge tone="success">Cloud sync connected</Badge>
-            ) : (
-              <>
-                <CloudOff className="size-4 text-ink-400 mt-0.5 shrink-0" />
-                <p className="text-sm text-ink-600">
-                  You're in <strong>demo mode</strong> — everything is saved only on this device. To enable multi-user accounts with real-time sync, connect a Supabase project (see <code className="text-xs bg-white px-1 py-0.5 rounded ring-1 ring-surface-300">README.md</code>) and set its URL + anon key as build environment variables.
-                </p>
-              </>
+          <CardHeader title="Workspace & data" />
+          <Input label="Company name" defaultValue={orgName} onBlur={(e) => e.target.value.trim() && renameWorkspace(e.target.value.trim())} disabled={!isAdmin} />
+          <div className="flex items-start gap-3 p-3 bg-surface-50 rounded-lg my-4">
+            <HardDrive className="size-4 text-ink-400 mt-0.5 shrink-0" />
+            <p className="text-sm text-ink-600">
+              Everything is saved privately on this device and works fully offline. Tap <strong>Back up now</strong> regularly to save a copy to Google Drive, WhatsApp or email — and use <strong>Restore</strong> to bring it back on a new phone. Uninstalling the app without a backup deletes your data.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <BackupButton />
+            <RestoreBackupButton />
+            {isAdmin && (
+              <Button variant="danger" icon={<Trash2 className="size-4" />} onClick={doErase}>Erase all data</Button>
             )}
           </div>
-          <Button variant="secondary" icon={<RotateCcw className="size-4" />} onClick={doReset}>Reset to fresh demo data</Button>
+          <a href={PRIVACY_URL} target="_blank" rel="noreferrer" className="inline-block text-xs text-brand-600 hover:underline mt-4">
+            Privacy policy
+          </a>
         </Card>
 
         <Card>

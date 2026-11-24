@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Mail, Phone, Building2, Pencil, Trash2, Plus, ArrowLeft, KanbanSquare, MessageCircle, MessageSquareText } from 'lucide-react';
 import { useStore } from '@/store';
-import { useCompany, useContact, useDealsForContact, useOrgId } from '@/store/selectors';
+import { useCompany, useContact, useCurrentProfile, useDealsForContact, useOrgId } from '@/store/selectors';
 import { fullName, money, fmtDate } from '@/lib/format';
 import { CONTACT_STATUS } from '@/lib/status';
 import { Avatar, Badge, Button, Card, EmptyState, IconButton, Menu, Tabs, PageShell, confirm } from '@/ui';
@@ -23,6 +23,7 @@ export function ContactDetailPage() {
   const upsert = useStore((s) => s.upsert);
   const notify = useStore((s) => s.notify);
   const orgId = useOrgId();
+  const me = useCurrentProfile();
   const [tab, setTab] = useState<'activity' | 'deals' | 'tasks'>('activity');
   const [editOpen, setEditOpen] = useState(false);
 
@@ -46,8 +47,9 @@ export function ContactDetailPage() {
         subject: 'Following up',
         body: '(composed in mail client)',
         to: contact.email,
-        from: 'you@carevaplus.example',
+        from: me?.email || undefined,
         contactId: contact.id,
+        authorId: me?.id,
         at: nowIso(),
       });
       notify({ kind: 'info', title: 'Draft opened in your mail app', subtitle: 'Logged on this contact' });
@@ -61,6 +63,7 @@ export function ContactDetailPage() {
         body: '(composed in WhatsApp)',
         to: contact.phone,
         contactId: contact.id,
+        authorId: me?.id,
         at: nowIso(),
       });
       notify({ kind: 'info', title: 'WhatsApp opened', subtitle: 'Logged on this contact' });
@@ -74,6 +77,7 @@ export function ContactDetailPage() {
         body: '(composed as a text message)',
         to: contact.phone,
         contactId: contact.id,
+        authorId: me?.id,
         at: nowIso(),
       });
       notify({ kind: 'info', title: 'Text message app opened', subtitle: 'Logged on this contact' });

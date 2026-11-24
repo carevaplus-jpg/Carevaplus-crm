@@ -62,7 +62,7 @@ export function CompaniesPage() {
     <PageShell>
       <PageHeader
         title="Companies"
-        subtitle={`${companies.length} companies`}
+        subtitle={`${companies.length} ${companies.length === 1 ? 'company' : 'companies'}`}
         action={<Button variant="primary" icon={<Plus className="size-4" />} onClick={() => setFormOpen(true)}>New company</Button>}
       />
 

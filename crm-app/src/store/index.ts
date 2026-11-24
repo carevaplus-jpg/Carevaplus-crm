@@ -1,16 +1,11 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-import { buildDemoSeed, DEMO_ORG_ID } from '@/lib/demo-seed';
 import { nowIso, uid } from '@/lib/id';
-import { cloudEnabled } from '@/lib/supabase';
+import { createWorkspace, emptyCollections, type WorkspaceInput } from '@/lib/workspace';
 import type { Collections, CollectionName } from '@/types';
-import { COLLECTIONS } from '@/types';
 
 type Base = { id: string; createdAt?: string; updatedAt?: string };
-
-const emptyCollections = (): Collections =>
-  Object.fromEntries(COLLECTIONS.map((c) => [c, {}])) as unknown as Collections;
 
 export interface Toast {
   id: string;
@@ -22,17 +17,20 @@ export interface Toast {
 export interface StoreState {
   hydrated: boolean;
   orgId: string;
-  /** In demo mode there's no password auth — pick which seeded teammate you are. Cloud mode uses real Supabase auth instead. */
+  orgName: string;
+  /** The workspace owner on this device; null until first-run setup is done. */
   currentProfileId: string | null;
   data: Collections;
   toasts: Toast[];
 
-  setCurrentProfile: (id: string) => void;
+  setupWorkspace: (input: WorkspaceInput) => void;
+  renameWorkspace: (name: string) => void;
   upsert: <K extends CollectionName>(col: K, rec: Collections[K][string]) => void;
   remove: (col: CollectionName, id: string) => void;
   notify: (t: Omit<Toast, 'id'>) => void;
   dismissToast: (id: string) => void;
-  resetDemoData: () => void;
+  eraseAllData: () => void;
+  restoreBackup: (b: { orgId: string; orgName: string; currentProfileId: string | null; data: Collections }) => void;
 }
 
 function withTimestamps<T extends Base>(rec: T): T {
@@ -40,16 +38,30 @@ function withTimestamps<T extends Base>(rec: T): T {
   return { ...rec, createdAt: existingCreatedAt ?? nowIso(), updatedAt: nowIso() };
 }
 
+// The pre-release builds stored a seeded demo dataset under this key; drop it so
+// an updated install starts clean instead of carrying sample records forward.
+try {
+  localStorage.removeItem('careva-crm-store-v1');
+} catch {
+  // storage unavailable — nothing to clean up
+}
+
 export const useStore = create<StoreState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       hydrated: false,
-      orgId: DEMO_ORG_ID,
+      orgId: '',
+      orgName: '',
       currentProfileId: null,
       data: emptyCollections(),
       toasts: [],
 
-      setCurrentProfile: (id) => set({ currentProfileId: id }),
+      setupWorkspace: (input) => {
+        const ws = createWorkspace(input);
+        set({ orgId: ws.orgId, orgName: ws.orgName, currentProfileId: ws.ownerId, data: ws.data });
+      },
+
+      renameWorkspace: (orgName) => set({ orgName }),
 
       upsert: (col, rec) =>
         set((s) => ({
@@ -66,54 +78,33 @@ export const useStore = create<StoreState>()(
       notify: (t) => set((s) => ({ toasts: [...s.toasts, { ...t, id: uid('toast_') }].slice(-4) })),
       dismissToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
 
-      resetDemoData: () => {
-        const seed = buildDemoSeed();
-        set({ data: seed.collections, currentProfileId: get().currentProfileId ?? seed.teamProfiles[0].id });
+      eraseAllData: () => set({ orgId: '', orgName: '', currentProfileId: null, data: emptyCollections() }),
+
+      restoreBackup: (b) => {
+        const profiles = Object.values(b.data.profiles);
+        const owner = (b.currentProfileId && b.data.profiles[b.currentProfileId]) || profiles.find((p) => p.role === 'admin') || profiles[0];
+        set({ orgId: b.orgId, orgName: b.orgName, currentProfileId: owner?.id ?? null, data: b.data });
       },
     }),
     {
-      name: 'careva-crm-store-v1',
-      version: 2,
+      name: 'careva-crm-workspace-v1',
+      version: 1,
       storage: createJSONStorage(() => localStorage),
-      partialize: (s) => ({ orgId: s.orgId, currentProfileId: s.currentProfileId, data: s.data }),
-      migrate: (persisted) => {
-        const state = persisted as { data?: Record<string, unknown> } | undefined;
-        const data = state?.data;
-        if (data && !data.messageLog && data.emailLog) {
-          const legacy = data.emailLog as Record<string, Record<string, unknown>>;
-          data.messageLog = Object.fromEntries(
-            Object.entries(legacy).map(([id, e]) => [
-              id,
-              { ...e, channel: 'email', to: e.toAddress, from: e.fromAddress },
-            ]),
-          );
-          delete data.emailLog;
-        }
-        return state;
+      partialize: (s) => ({ orgId: s.orgId, orgName: s.orgName, currentProfileId: s.currentProfileId, data: s.data }),
+      // Collections added in later versions arrive empty instead of undefined.
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<StoreState>;
+        return { ...current, ...p, data: { ...emptyCollections(), ...(p.data ?? {}) } };
       },
     },
   ),
 );
 
-// Finish hydration *after* `useStore` itself has finished being assigned (the
-// persist middleware can rehydrate synchronously from localStorage, which
-// would otherwise run this callback while `useStore` is still in its
-// temporal dead zone). First run — or an empty persisted store — gets the
-// demo dataset so the app is immediately useful. `cloudEnabled` governs
-// whether Settings offers switching to a real multi-user Supabase account.
-function finishHydration(state: StoreState | undefined) {
-  const hasData = state && Object.values(state.data.companies).length > 0;
-  if (!hasData) {
-    const seed = buildDemoSeed();
-    useStore.setState({ data: seed.collections, currentProfileId: seed.teamProfiles[0].id, hydrated: true });
-  } else {
-    useStore.setState({ hydrated: true });
-  }
-  void cloudEnabled;
-}
-
+// Mark hydrated *after* `useStore` itself has been assigned (persist can rehydrate
+// synchronously from localStorage, which would otherwise run while `useStore` is
+// still in its temporal dead zone).
 if (useStore.persist.hasHydrated()) {
-  finishHydration(useStore.getState());
+  useStore.setState({ hydrated: true });
 } else {
-  useStore.persist.onFinishHydration(finishHydration);
+  useStore.persist.onFinishHydration(() => useStore.setState({ hydrated: true }));
 }

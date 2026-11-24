@@ -72,7 +72,7 @@ export function ContactsPage() {
     <PageShell>
       <PageHeader
         title="Contacts"
-        subtitle={`${contacts.length} people across ${companies.length} companies`}
+        subtitle={`${contacts.length} ${contacts.length === 1 ? 'person' : 'people'} across ${companies.length} ${companies.length === 1 ? 'company' : 'companies'}`}
         action={<Button variant="primary" icon={<Plus className="size-4" />} onClick={() => setFormOpen(true)}>New contact</Button>}
       />
 
