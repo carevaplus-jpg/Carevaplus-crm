@@ -258,22 +258,25 @@ create table if not exists public.invoices (
 );
 call public.add_org_scoped_policies('public.invoices');
 
--- ── Email log ─────────────────────────────────────────────────────────────
+-- ── Message log (Email / WhatsApp / SMS) ─────────────────────────────────
 
-create table if not exists public.email_log (
+create table if not exists public.message_log (
   id uuid primary key default gen_random_uuid(),
   org_id uuid not null references public.organizations (id) on delete cascade,
+  channel text not null default 'email' check (channel in ('email', 'whatsapp', 'sms')),
   direction text not null check (direction in ('outbound', 'inbound')),
-  subject text not null,
-  body text,
+  subject text,
+  body text not null default '',
   to_address text not null,
-  from_address text not null,
+  from_address text,
   contact_id uuid references public.contacts (id) on delete cascade,
+  company_id uuid references public.companies (id) on delete cascade,
   deal_id uuid references public.deals (id) on delete cascade,
   author_id uuid references public.profiles (id) on delete set null,
   at timestamptz not null default now()
 );
-call public.add_org_scoped_policies('public.email_log');
+call public.add_org_scoped_policies('public.message_log');
+create index if not exists message_log_contact_idx on public.message_log (contact_id);
 
 -- ── New-organization bootstrap ───────────────────────────────────────────
 -- Called once, right after a brand-new user's first sign-up, to create their
@@ -360,3 +363,9 @@ drop trigger if exists on_auth_user_created_invite on auth.users;
 create trigger on_auth_user_created_invite
   after insert on auth.users
   for each row execute function public.handle_new_user_invite();
+
+-- ── Realtime: teammates see each other's changes live (RLS still applies) ──
+alter publication supabase_realtime add table
+  public.profiles, public.companies, public.contacts, public.pipelines, public.pipeline_stages,
+  public.deals, public.tasks, public.activities, public.products, public.quotes, public.invoices,
+  public.message_log, public.invites;
