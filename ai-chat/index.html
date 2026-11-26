@@ -6,71 +6,77 @@
   <title>Careva AI</title>
   <meta name="description" content="A free AI assistant powered by the best open-source models on OpenRouter." />
   <meta name="theme-color" content="#f7f5ef" media="(prefers-color-scheme: light)" />
-  <meta name="theme-color" content="#1f1e1c" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#262522" media="(prefers-color-scheme: dark)" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap" rel="stylesheet" />
   <link id="hl-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" />
   <link id="hl-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" disabled />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css" />
   <link rel="stylesheet" href="styles.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js" defer></script>
   <script type="module" src="js/app.js"></script>
 </head>
 <body>
+  <a class="skip" href="#prompt">Skip to message box</a>
   <div id="app">
-    <aside id="sidebar" aria-label="Conversations">
-      <div class="side-top">
+    <!-- ============ Sidebar ============ -->
+    <aside id="sidebar" aria-label="Chats">
+      <div class="side-head">
         <a class="brand" href="./" aria-label="Careva AI home">
-          <img src="icons/icon.svg" alt="" width="26" height="26" />
-          <span>Careva AI</span>
+          <img src="icons/icon.svg" alt="" width="24" height="24" />
+          <span class="label">Careva AI</span>
         </a>
-        <button class="icon-btn only-mobile" id="close-sidebar" aria-label="Close sidebar">
-          <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        <button class="icon-btn" id="rail-toggle" data-icon="panel" aria-label="Collapse sidebar" title="Collapse sidebar"></button>
+      </div>
+
+      <div class="side-actions">
+        <button class="side-item new" id="new-chat" title="New chat (Ctrl+Shift+O)">
+          <span class="new-dot" data-icon="plus"></span><span class="label">New chat</span>
         </button>
+        <button class="side-item" id="search-btn" data-icon="search" title="Search chats (Ctrl+K)"><span class="label">Search chats</span></button>
       </div>
-      <button class="new-chat" id="new-chat">
-        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-        New chat
-      </button>
-      <div class="search">
-        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
-        <input id="search" type="search" placeholder="Search chats" autocomplete="off" />
+
+      <div class="side-search label-block" id="side-search" hidden>
+        <input id="search" type="search" placeholder="Search your chats…" autocomplete="off" aria-label="Search chats" />
       </div>
-      <nav id="convo-list"></nav>
-      <div class="side-bottom">
-        <button class="account" id="open-settings">
+
+      <nav id="convo-list" class="label-block" aria-label="Chat history"></nav>
+
+      <div class="side-foot">
+        <button class="account" id="open-settings" title="Settings">
           <span class="avatar" id="avatar">?</span>
-          <span class="account-text">
+          <span class="account-text label">
             <span id="account-name">Settings</span>
             <span id="account-status" class="muted">Not connected</span>
           </span>
-          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+          <span class="label" data-icon="settings"></span>
         </button>
       </div>
     </aside>
     <div id="scrim" hidden></div>
 
-    <main id="main">
+    <!-- ============ Main ============ -->
+    <main id="main" class="is-empty">
       <header id="topbar">
-        <button class="icon-btn" id="toggle-sidebar" aria-label="Toggle sidebar">
-          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg>
+        <button class="icon-btn only-mobile" id="open-sidebar" data-icon="menu" aria-label="Open chats"></button>
+        <button class="title-btn" id="title-btn" hidden aria-haspopup="menu">
+          <span id="chat-title"></span><span data-icon="chevronDown"></span>
         </button>
-        <div id="chat-title" class="chat-title"></div>
-        <div class="top-actions">
-          <button class="icon-btn" id="export-chat" aria-label="Export chat as Markdown" title="Export chat">
-            <svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
-          </button>
-        </div>
+        <span class="spacer"></span>
+        <button class="icon-btn only-mobile" id="new-chat-top" data-icon="pen" aria-label="New chat"></button>
       </header>
 
       <section id="thread" aria-live="polite"></section>
+      <button id="to-bottom" class="to-bottom" data-icon="arrowDown" aria-label="Scroll to latest message" hidden></button>
 
       <div id="composer-wrap">
         <form id="composer" autocomplete="off">
@@ -78,39 +84,68 @@
           <textarea id="prompt" rows="1" placeholder="How can I help you today?" aria-label="Message"></textarea>
           <div class="composer-row">
             <div class="left">
-              <label class="icon-btn" title="Attach images or text files" aria-label="Attach files">
-                <input id="file-input" type="file" multiple hidden
-                  accept="image/*,.txt,.md,.csv,.json,.js,.ts,.jsx,.tsx,.py,.html,.css,.xml,.yaml,.yml,.sql,.java,.c,.cpp,.cs,.go,.rs,.php,.rb,.sh,.log" />
-                <svg viewBox="0 0 24 24"><path d="M21 12.5l-8.3 8.3a5.5 5.5 0 0 1-7.8-7.8l8.9-8.9a3.7 3.7 0 0 1 5.2 5.2l-8.9 8.9a1.8 1.8 0 0 1-2.6-2.6l8.3-8.3"/></svg>
-              </label>
-              <button type="button" class="icon-btn" id="mic" title="Dictate" aria-label="Dictate" hidden>
-                <svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
-              </button>
+              <button type="button" class="icon-btn tool" id="plus-btn" data-icon="plus" aria-label="Add files, styles and more" aria-haspopup="menu" title="Add files, styles and more"></button>
+              <button type="button" class="icon-btn tool toggle" id="think-btn" data-icon="bulb" aria-pressed="false" title="Extended thinking"></button>
+              <button type="button" class="style-chip" id="style-chip" hidden></button>
+              <div class="voice-bar" id="voice-bar" hidden>
+                <button type="button" class="icon-btn tool" id="voice-cancel" data-icon="x" aria-label="Cancel dictation" title="Cancel (Esc)"></button>
+                <span class="rec-dot" aria-hidden="true"></span>
+                <span class="voice-time" id="voice-time">0:00</span>
+                <span class="wave" id="voice-wave" aria-hidden="true"></span>
+                <span class="voice-status" id="voice-status">Listening…</span>
+              </div>
             </div>
             <div class="right">
-              <button type="button" id="model-btn" class="model-btn" aria-haspopup="listbox">
-                <span id="model-label">Auto</span>
-                <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+              <button type="button" id="model-btn" class="model-btn" aria-haspopup="menu">
+                <span id="model-label">Auto</span><span data-icon="chevronDown"></span>
               </button>
-              <button type="submit" id="send" class="send" aria-label="Send" disabled>
-                <svg class="i-send" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
-                <svg class="i-stop" viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor" stroke="none"/></svg>
+              <button type="button" class="icon-btn mic" id="mic" data-icon="mic" aria-label="Dictate with your voice" title="Dictate (Ctrl+M)"></button>
+              <button type="submit" id="send" class="send" aria-label="Send message" disabled>
+                <span class="i-send" data-icon="arrowUp"></span>
+                <span class="i-stop" data-icon="stop"></span>
+                <span class="i-done" data-icon="check"></span>
               </button>
             </div>
           </div>
+          <input id="file-input" type="file" multiple hidden
+            accept="image/*,.txt,.md,.csv,.json,.js,.ts,.jsx,.tsx,.py,.html,.css,.xml,.yaml,.yml,.sql,.java,.c,.cpp,.cs,.go,.rs,.php,.rb,.sh,.log" />
+          <input id="camera-input" type="file" accept="image/*" capture="environment" hidden />
         </form>
-        <p class="disclaimer">Careva AI runs on free open-source models and can make mistakes. Double-check important info.</p>
+        <div id="suggestions" class="chips"></div>
+        <p class="disclaimer">Careva AI runs on free open-source models and can make mistakes. Please double-check responses.</p>
       </div>
     </main>
+
+    <!-- ============ Artifact panel ============ -->
+    <aside id="artifact-panel" aria-label="Artifact" hidden>
+      <header class="ap-head">
+        <div class="ap-title">
+          <span id="ap-title"></span>
+          <span id="ap-sub" class="muted"></span>
+        </div>
+        <div class="seg" id="ap-tabs" role="group" aria-label="View">
+          <button type="button" data-tab="preview" data-icon="eye"><span>Preview</span></button>
+          <button type="button" data-tab="code" data-icon="code"><span>Code</span></button>
+        </div>
+        <button class="icon-btn" id="ap-copy" data-icon="copy" aria-label="Copy" title="Copy"></button>
+        <button class="icon-btn" id="ap-download" data-icon="download" aria-label="Download" title="Download"></button>
+        <button class="icon-btn" id="ap-close" data-icon="x" aria-label="Close panel" title="Close"></button>
+      </header>
+      <div class="ap-body">
+        <iframe id="ap-frame" title="Artifact preview" sandbox="allow-scripts allow-forms allow-modals allow-popups" referrerpolicy="no-referrer"></iframe>
+        <pre id="ap-code"><code></code></pre>
+      </div>
+    </aside>
   </div>
 
-  <div id="model-menu" class="popover" role="listbox" hidden></div>
+  <div id="menu" class="popover" role="menu" hidden></div>
 
+  <!-- ============ Dialogs ============ -->
   <dialog id="settings">
     <form method="dialog" class="dialog-body">
       <header class="dialog-head">
         <h2>Settings</h2>
-        <button class="icon-btn" value="close" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+        <button class="icon-btn" value="close" data-icon="x" aria-label="Close"></button>
       </header>
 
       <section class="card">
@@ -123,10 +158,10 @@
         <details>
           <summary>Or paste an API key</summary>
           <div class="row">
-            <input id="key-input" type="password" placeholder="sk-or-v1-…" autocomplete="off" spellcheck="false" />
+            <input id="key-input" type="password" placeholder="sk-or-v1-…" autocomplete="off" spellcheck="false" aria-label="OpenRouter API key" />
             <button type="button" class="btn" id="save-key">Save</button>
           </div>
-          <p class="muted small">Create one at <a href="https://openrouter.ai/settings/keys" target="_blank" rel="noopener">openrouter.ai/settings/keys</a>. Your key stays in this browser and is sent only to OpenRouter.</p>
+          <p class="muted small">Create one at <a href="https://openrouter.ai/settings/keys" target="_blank" rel="noopener">openrouter.ai/settings/keys</a>. Your key stays in this browser and is only sent to OpenRouter.</p>
         </details>
       </section>
 
@@ -136,19 +171,35 @@
           <input id="user-name" type="text" maxlength="40" placeholder="Your name" />
         </label>
         <label class="field">Custom instructions
-          <textarea id="instructions" rows="4" placeholder="e.g. Keep answers concise. I'm a nurse running a home-care business in India."></textarea>
+          <textarea id="instructions" rows="4" placeholder="e.g. Keep answers concise. I run a home-care business in India."></textarea>
         </label>
       </section>
 
       <section class="card">
+        <h3>Voice input</h3>
+        <label class="field">Language you speak
+          <select id="voice-lang"></select>
+        </label>
+        <label class="field">Speech engine
+          <select id="voice-engine">
+            <option value="auto">Automatic (best available)</option>
+            <option value="browser">Browser speech recognition (live words)</option>
+            <option value="ai">AI transcription via OpenRouter (any browser)</option>
+          </select>
+        </label>
+        <p class="muted small" id="voice-support"></p>
+        <label class="check"><input id="voice-autosend" type="checkbox" /> Send automatically when I finish speaking</label>
+      </section>
+
+      <section class="card">
         <h3>Models</h3>
-        <label class="field">Council size (models consulted in Council mode)
-          <input id="council-size" type="range" min="2" max="6" step="1" /> <span id="council-size-val"></span>
+        <label class="field">Council size (models consulted in Council mode): <b id="council-size-val"></b>
+          <input id="council-size" type="range" min="2" max="6" step="1" />
         </label>
-        <label class="field">Creativity (temperature)
-          <input id="temperature" type="range" min="0" max="1.5" step="0.1" /> <span id="temperature-val"></span>
+        <label class="field">Creativity (temperature): <b id="temperature-val"></b>
+          <input id="temperature" type="range" min="0" max="1.5" step="0.1" />
         </label>
-        <label class="check"><input id="show-thinking" type="checkbox" /> Show model thinking when available</label>
+        <label class="check"><input id="show-thinking" type="checkbox" /> Show the model's thinking when available</label>
         <button type="button" class="btn" id="refresh-models">Refresh free model list</button>
       </section>
 
@@ -170,11 +221,23 @@
     <div class="dialog-body welcome">
       <img src="icons/icon.svg" alt="" width="56" height="56" />
       <h2>Welcome to Careva AI</h2>
-      <p>A free assistant that routes every message to the strongest open-source models on OpenRouter, with automatic fallback and a multi-model <b>Council</b> mode for hard questions.</p>
+      <p>A free assistant that sends every message to the strongest open-source models on OpenRouter. If one model is busy it switches to the next, and <b>Council</b> mode combines several models' answers for hard questions.</p>
       <button class="btn primary big" id="welcome-connect">Connect with OpenRouter</button>
-      <p class="muted small">Free account, no card needed. Free models allow about 50 messages a day (1,000/day after a one-time $10 credit top-up).</p>
+      <p class="muted small">Free account, no card needed. Free models allow about 50 messages a day, or about 1,000 a day after a one-time $10 credit top-up.</p>
       <button class="link" id="welcome-later">I'll paste a key in Settings</button>
     </div>
+  </dialog>
+
+  <dialog id="ask" class="small-dialog">
+    <form method="dialog" class="dialog-body">
+      <h2 id="ask-title"></h2>
+      <p id="ask-text" class="muted"></p>
+      <input id="ask-input" type="text" maxlength="120" />
+      <div class="row end">
+        <button class="btn" value="cancel">Cancel</button>
+        <button class="btn primary" id="ask-ok" value="ok">OK</button>
+      </div>
+    </form>
   </dialog>
 
   <div id="toast" role="status" hidden></div>

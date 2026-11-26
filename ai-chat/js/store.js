@@ -41,6 +41,12 @@ export const DEFAULT_SETTINGS = {
   userName: '',
   theme: 'system',       // system | light | dark
   showThinking: true,
+  style: 'normal',       // normal | concise | explanatory | formal | friendly
+  thinking: false,       // "Extended thinking" toggle
+  voiceLang: '',         // '' = browser language
+  voiceEngine: 'auto',   // auto | browser | ai
+  voiceAutoSend: false,
+  rail: false,           // sidebar collapsed to icon rail (desktop)
 };
 
 export function loadSettings() {

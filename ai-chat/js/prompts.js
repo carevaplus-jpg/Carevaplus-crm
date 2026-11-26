@@ -1,6 +1,6 @@
 import { APP_NAME } from './openrouter.js';
 
-export function systemPrompt({ instructions, userName }) {
+export function systemPrompt({ instructions, userName, style }) {
   const today = new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   return `You are ${APP_NAME}, a thoughtful, warm and highly capable AI assistant. Today is ${today}.
 
@@ -12,7 +12,7 @@ How you work:
 - Write code that is complete, correct and runnable, with brief explanations of the non-obvious parts.
 - Treat the person as a capable adult: give real information and your honest view, including tradeoffs and risks, while being kind. Decline only what would cause serious harm, and briefly say why.
 - Reply in the language the user writes in.
-- If asked which model you are, explain that you are ${APP_NAME}, running on open-source models served through OpenRouter.${userName ? `\n\nThe user's name is ${userName}.` : ''}${instructions?.trim() ? `\n\nThe user's custom instructions (follow them unless they conflict with the above):\n${instructions.trim()}` : ''}`;
+- If asked which model you are, explain that you are ${APP_NAME}, running on open-source models served through OpenRouter.${STYLES[style]?.prompt ? `\n\nResponse style for this conversation: ${STYLES[style].prompt}` : ''}${userName ? `\n\nThe user's name is ${userName}.` : ''}${instructions?.trim() ? `\n\nThe user's custom instructions (follow them unless they conflict with the above):\n${instructions.trim()}` : ''}`;
 }
 
 export function synthesisPrompt(question, drafts) {
@@ -35,9 +35,18 @@ Write the single best final answer to the user's message.
 export const TITLE_PROMPT = 'Write a short title (3 to 6 words) for a conversation that starts with the message below. Reply with the title only: no quotes, no punctuation at the end.';
 
 export const SUGGESTIONS = [
-  { icon: '✍️', label: 'Write', prompt: 'Help me write a friendly, professional email to ' },
-  { icon: '📚', label: 'Learn', prompt: 'Explain like I\'m a smart beginner: ' },
-  { icon: '💻', label: 'Code', prompt: 'Write a well-commented function in JavaScript that ' },
-  { icon: '💡', label: 'Brainstorm', prompt: 'Give me 10 creative ideas for ' },
-  { icon: '🔍', label: 'Analyze', prompt: 'Analyze the pros, cons and risks of ' },
+  { icon: 'pen', label: 'Write', prompt: 'Help me write a friendly, professional email to ' },
+  { icon: 'book', label: 'Learn', prompt: 'Explain like I\'m a smart beginner: ' },
+  { icon: 'code', label: 'Code', prompt: 'Write a well-commented function in JavaScript that ' },
+  { icon: 'bulb', label: 'Brainstorm', prompt: 'Give me 10 creative ideas for ' },
+  { icon: 'chart', label: 'Analyze', prompt: 'Analyze the pros, cons and risks of ' },
 ];
+
+// Writing styles (like Claude's "Use style" menu)
+export const STYLES = {
+  normal: { label: 'Normal', desc: 'Default responses', prompt: '' },
+  concise: { label: 'Concise', desc: 'Shorter, more direct', prompt: 'Be concise. Lead with the answer, cut every unnecessary word, prefer short paragraphs and tight bullet points. No preamble or recap.' },
+  explanatory: { label: 'Explanatory', desc: 'Teaches step by step', prompt: 'Be explanatory and educational. Build understanding step by step, define terms, use concrete examples and analogies, and check the reasoning as you go.' },
+  formal: { label: 'Formal', desc: 'Clear, professional', prompt: 'Write in a formal, polished, professional register suitable for business documents. Precise wording, well organized, no slang or emoji.' },
+  friendly: { label: 'Friendly', desc: 'Warm and casual', prompt: 'Write in a warm, friendly, conversational tone, like a knowledgeable friend. Keep it natural and encouraging while staying accurate.' },
+};

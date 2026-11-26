@@ -69,6 +69,7 @@ function normalize(m) {
     contextLength: m.context_length || m.top_provider?.context_length || 0,
     maxOutput: m.top_provider?.max_completion_tokens || 0,
     vision: inputs.includes('image'),
+    audio: inputs.includes('audio'),
     supportsTools: params.includes('tools'),
     supportsReasoning: params.includes('reasoning') || params.includes('include_reasoning'),
     created: m.created || 0,
@@ -83,7 +84,7 @@ export function isFreeChatModel(m) {
   return free && out.length === 1 && out[0] === 'text';
 }
 
-const MODEL_CACHE = 'careva.models.v1';
+const MODEL_CACHE = 'careva.models.v2';
 
 export async function fetchFreeModels({ force = false } = {}) {
   if (!force) {
@@ -127,11 +128,11 @@ async function readError(res, model) {
 /**
  * Streams a chat completion. Yields { content?, reasoning?, model?, usage? }.
  */
-export async function* streamChat({ key, model, messages, signal, temperature, maxTokens, reasoning = true }) {
+export async function* streamChat({ key, model, messages, signal, temperature, maxTokens, effort }) {
   const body = { model, messages, stream: true };
   if (temperature != null) body.temperature = temperature;
   if (maxTokens) body.max_tokens = maxTokens;
-  if (reasoning === false) body.reasoning = { exclude: true };
+  if (effort) body.reasoning = { effort }; // "Extended thinking" asks reasoning models to think harder
 
   const res = await fetch(`${API}/chat/completions`, {
     method: 'POST', headers: headers(key), body: JSON.stringify(body), signal,
@@ -176,6 +177,26 @@ export async function completeChat({ key, model, messages, maxTokens = 60, signa
   if (!res.ok) throw await readError(res, model);
   const j = await res.json();
   return j.choices?.[0]?.message?.content || '';
+}
+
+/** Speech-to-text with an audio-capable chat model (input_audio content part). */
+export async function transcribeAudio({ key, model, wavBase64, langName }) {
+  const instructions = 'Transcribe this audio recording exactly as spoken, word for word, with natural punctuation.' +
+    (langName ? ` The speaker is most likely speaking ${langName}; write it in that language's own script.` : ' Keep the original language.') +
+    ' Output only the transcript text: no quotes, labels, notes or translation. If there is no speech, output nothing.';
+  const res = await fetch(`${API}/chat/completions`, {
+    method: 'POST', headers: headers(key),
+    body: JSON.stringify({
+      model, max_tokens: 1500, temperature: 0, reasoning: { exclude: true },
+      messages: [{ role: 'user', content: [
+        { type: 'text', text: instructions },
+        { type: 'input_audio', input_audio: { data: wavBase64, format: 'wav' } },
+      ] }],
+    }),
+  });
+  if (!res.ok) throw await readError(res, model);
+  const j = await res.json();
+  return (j.choices?.[0]?.message?.content || '').replace(/<think>[\s\S]*?<\/think>/g, '').trim();
 }
 
 export async function getKeyInfo(key) {

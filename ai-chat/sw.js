@@ -1,9 +1,10 @@
 // App-shell service worker: makes Careva AI installable and open instantly / offline.
 // API calls to openrouter.ai are never cached.
-const CACHE = 'careva-ai-v1';
+const CACHE = 'careva-ai-v2';
 const SHELL = [
   './', 'index.html', 'styles.css', 'manifest.webmanifest',
   'js/app.js', 'js/openrouter.js', 'js/store.js', 'js/prompts.js',
+  'js/icons.js', 'js/markdown.js', 'js/artifacts.js', 'js/voice.js',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png',
 ];
 
