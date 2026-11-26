@@ -18,11 +18,21 @@ export interface ModelInfo {
 
 export interface FileAttachment { name: string; text: string }
 
+/** Measured telemetry for one generation. */
+export interface Stats {
+  start: number;          // request sent
+  first?: number;         // first token received
+  end?: number;           // stream finished
+  tokens: number;         // output tokens (live count of streamed deltas; replaced by the provider's exact count when sent)
+  exact?: boolean;        // true once the provider's usage numbers arrived
+}
+
 export interface Draft {
   model: string;
   content: string;
   status: 'pending' | 'done' | 'error';
   error?: string;
+  stats?: Stats;
 }
 
 export interface Message {
@@ -41,6 +51,7 @@ export interface Message {
   status?: 'streaming' | 'done';
   phase?: 'council' | 'synth';
   drafts?: Draft[];
+  stats?: Stats;
   notes?: string[];
   error?: string;
   stopped?: boolean;

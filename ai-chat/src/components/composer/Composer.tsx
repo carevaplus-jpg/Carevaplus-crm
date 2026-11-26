@@ -16,6 +16,7 @@ import { Icon } from '../ui/Icon';
 import { ModelPicker } from './ModelPicker';
 import { VoiceBar } from './VoiceBar';
 import { FileChip } from '../chat/UserMessage';
+import { pulseField, surgeField } from '../chat/NeuralField';
 
 const LONG_PASTE = 2500;
 const TEXT_LIMIT = 150_000;
@@ -72,6 +73,7 @@ export function Composer({ centered }: { centered: boolean }) {
   const submit = () => {
     if (voice.busy) { voice.finish(true); return; }
     if (generating) { stop(); return; }
+    if (useChat.getState().draft.trim() || useChat.getState().attachments.length) surgeField();
     void send(useChat.getState().draft);
   };
   const canSend = voice.busy || generating || !!draft.trim() || attachments.length > 0;
@@ -85,6 +87,7 @@ export function Composer({ centered }: { centered: boolean }) {
       onDragOver={(e) => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)}
       onDrop={(e) => { e.preventDefault(); setDrag(false); void addFiles([...e.dataTransfer.files]); }}
       className={clsx('relative mx-auto w-full max-w-[740px] rounded-[20px] border bg-raised px-4 pb-2.5 pt-3.5 shadow-soft transition-[border-color] duration-150 max-md:rounded-[22px] max-md:pl-3.5 max-md:pr-2',
+        generating && !voice.busy && 'compute-live',
         drag ? 'border-dashed border-accent' : voice.busy ? 'border-rec/45' : 'border-line focus-within:border-line-strong')}
     >
       <AnimatePresence initial={false}>
@@ -108,7 +111,7 @@ export function Composer({ centered }: { centered: boolean }) {
       <textarea
         id="prompt" ref={ta} rows={1} value={draft} aria-label="Message"
         placeholder={voice.busy ? 'Listening… speak now' : centered ? 'How can I help you today?' : 'Reply to Careva AI…'}
-        onChange={(e) => setDraft(e.target.value)}
+        onChange={(e) => { setDraft(e.target.value); if (centered) pulseField(e.target.value.length > draft.length ? 0.7 : 0.3); }}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && !(mobile && 'ontouchstart' in window)) { e.preventDefault(); if (!generating) submit(); }
         }}

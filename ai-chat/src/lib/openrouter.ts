@@ -128,13 +128,13 @@ async function readError(res: Response, model: string) {
 }
 
 export type ApiMessage = { role: 'system' | 'user' | 'assistant'; content: string | any[] };
-export interface StreamEvent { content?: string; reasoning?: string; model?: string }
+export interface StreamEvent { content?: string; reasoning?: string; model?: string; usage?: { completion_tokens?: number; prompt_tokens?: number } }
 
 export async function* streamChat(opts: {
   key: string; model: string; messages: ApiMessage[]; signal?: AbortSignal;
   temperature?: number; effort?: 'high' | 'medium' | 'low';
 }): AsyncGenerator<StreamEvent> {
-  const body: any = { model: opts.model, messages: opts.messages, stream: true };
+  const body: any = { model: opts.model, messages: opts.messages, stream: true, usage: { include: true } };
   if (opts.temperature != null) body.temperature = opts.temperature;
   if (opts.effort) body.reasoning = { effort: opts.effort };
   const res = await fetch(`${API}/chat/completions`, {
@@ -159,7 +159,7 @@ export async function* streamChat(opts: {
       try { j = JSON.parse(data); } catch { continue; }
       if (j.error) throw new ApiError(j.error.code || 500, j.error.message || 'Stream error', opts.model);
       const d = j.choices?.[0]?.delta || {};
-      yield { content: d.content || undefined, reasoning: d.reasoning || undefined, model: j.model };
+      yield { content: d.content || undefined, reasoning: d.reasoning || undefined, model: j.model, usage: j.usage || undefined };
     }
   }
 }

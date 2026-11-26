@@ -13,6 +13,11 @@ import { Logo } from '../ui/Logo';
 import { CopyButton } from '../ui/CopyButton';
 import { IconButton, Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
+import { ComputeCore } from '../ui/ComputeCore';
+import { CouncilLanes } from './CouncilLanes';
+import { Telemetry } from './Telemetry';
+import { tokensPerSecond } from '../../lib/telemetry';
+import { useNow } from '../../hooks/useNow';
 
 export const AssistantMessage = memo(function AssistantMessage({ msg, isLast, versionOf }: { msg: Message; isLast: boolean; versionOf: (a: Artifact) => number | undefined }) {
   const streaming = msg.status === 'streaming';
@@ -22,6 +27,8 @@ export const AssistantMessage = memo(function AssistantMessage({ msg, isLast, ve
   const text = useSmoothText(msg.content, streaming);
   const thinkingNow = streaming && !msg.content && !!msg.reasoning;
   const thinkBody = useRef<HTMLDivElement>(null);
+  const now = useNow(streaming, 120);
+  const rate = tokensPerSecond(msg.stats, now);
   useEffect(() => { if (thinkingNow && thinkBody.current) thinkBody.current.scrollTop = thinkBody.current.scrollHeight; }, [msg.reasoning, thinkingNow]);
 
   const secs = Math.max(1, Math.round(((msg.thinkEnd || Date.now()) - (msg.thinkStart || Date.now())) / 1000));
@@ -30,7 +37,9 @@ export const AssistantMessage = memo(function AssistantMessage({ msg, isLast, ve
 
   return (
     <div className="group/msg">
-      {msg.drafts?.length ? (
+      {msg.drafts?.length && streaming && (msg.phase === 'council' || msg.phase === 'synth') ? (
+        <CouncilLanes drafts={msg.drafts} merging={msg.phase === 'synth'} />
+      ) : msg.drafts?.length ? (
         <Disclosure summary={<span>Council: {done} of {msg.drafts.length} models answered</span>}>
           {msg.drafts.map((d) => (
             <div key={d.model} className="border-t border-line px-4 py-3">
@@ -55,8 +64,10 @@ export const AssistantMessage = memo(function AssistantMessage({ msg, isLast, ve
       )}
 
       <AnimatePresence>
-        {streaming && !msg.content && !(msg.reasoning && showThinking) && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="mb-2 text-[14px]"><span className="shimmer">{status}…</span></motion.div>
+        {streaming && !msg.content && !(msg.reasoning && showThinking) && !msg.drafts?.length && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="mb-2 text-[14px]">
+            <span className="shimmer">{msg.stats?.first ? 'Thinking' : status.replace(/^Asking /, 'Routing to ')}…</span>
+          </motion.div>
         )}
       </AnimatePresence>
 
@@ -74,15 +85,26 @@ export const AssistantMessage = memo(function AssistantMessage({ msg, isLast, ve
       )}
       {msg.stopped && <p className="mt-2 text-[13px] text-muted">Stopped.</p>}
 
-      <div className="mt-3 flex min-h-8 items-center gap-0.5 text-[12px] text-muted">
-        {(streaming || isLast) && <Logo size={24} state={streaming ? (msg.content ? 'streaming' : 'thinking') : 'idle'} className="mr-2" />}
-        {!streaming && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25, delay: 0.1 }}
-            className={`flex min-w-0 items-center gap-0.5 transition-opacity ${isLast ? '' : 'md:opacity-0 md:group-hover/msg:opacity-100 md:group-focus-within/msg:opacity-100'}`}>
-            {msg.content && <CopyButton text={msg.content} />}
-            <IconButton icon="retry" label="Retry" size="sm" onClick={() => retry(msg.id)} disabled={generating} />
-            {msg.model && <span className="ml-2 truncate">{msg.drafts?.length ? `Council, answered by ${shortName(msg.model)}` : shortName(msg.model)}</span>}
-          </motion.div>
+      <div className="mt-3 flex min-h-8 min-w-0 items-center gap-0.5 text-[12px] text-muted">
+        {streaming ? (
+          <span className="mr-2 flex min-w-0 items-center gap-2.5">
+            <ComputeCore mode={msg.phase === 'synth' ? 'merging' : !msg.stats?.first ? 'routing' : msg.content ? 'streaming' : 'thinking'} rate={rate} size={24} />
+            {!msg.drafts?.length || msg.phase === 'synth' ? <Telemetry stats={msg.stats} live model={shortName(msg.model)} /> : null}
+          </span>
+        ) : (
+          <>
+            {isLast && <Logo size={24} className="mr-2" />}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25, delay: 0.1 }}
+              className={`flex min-w-0 items-center gap-0.5 transition-opacity ${isLast ? '' : 'md:opacity-0 md:group-hover/msg:opacity-100 md:group-focus-within/msg:opacity-100'}`}>
+              {msg.content && <CopyButton text={msg.content} />}
+              <IconButton icon="retry" label="Retry" size="sm" onClick={() => retry(msg.id)} disabled={generating} />
+              {msg.model && (
+                <span className="ml-2 min-w-0">
+                  <Telemetry stats={msg.stats} live={false} model={msg.drafts?.length ? `Council, answered by ${shortName(msg.model)}` : shortName(msg.model)} />
+                </span>
+              )}
+            </motion.div>
+          </>
         )}
       </div>
     </div>

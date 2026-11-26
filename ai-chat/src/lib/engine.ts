@@ -1,7 +1,7 @@
 // Generation engine: Auto (best model + fallback), Single, Council; streams into the chat store.
 import { completeChat, streamChat, type ApiMessage } from './openrouter';
 import { systemPrompt, synthesisPrompt, TITLE_PROMPT } from './prompts';
-import type { Conversation, Draft, Message, ModelInfo } from './types';
+import type { Conversation, Draft, Message, ModelInfo, Stats } from './types';
 import { uid } from './utils';
 import { useChat } from '../stores/chat';
 import { useSettings } from '../stores/settings';
@@ -43,15 +43,24 @@ function apiMessages(conv: Conversation, upto: number, vision: boolean): ApiMess
 }
 const needsVision = (conv: Conversation, upto: number) => conv.messages.slice(0, upto).some((m) => m.images?.length);
 
-type Target = { content: string; reasoning?: string; model?: string; thinkStart?: number; thinkEnd?: number };
+type Target = { content: string; reasoning?: string; model?: string; thinkStart?: number; thinkEnd?: number; stats?: Stats };
 
 async function streamInto(target: Target, model: string, messages: ApiMessage[], signal: AbortSignal, onEvent: () => void) {
   const s = useSettings.getState();
-  for await (const ev of streamChat({ key: s.apiKey, model, messages, signal, temperature: s.temperature, effort: s.thinking ? 'high' : undefined })) {
-    if (ev.reasoning) { target.thinkStart ||= Date.now(); target.reasoning = (target.reasoning || '') + ev.reasoning; }
-    if (ev.content) { if (target.thinkStart && !target.thinkEnd) target.thinkEnd = Date.now(); target.content += ev.content; }
-    if (ev.model && model === 'openrouter/free') target.model = ev.model;
-    onEvent();
+  const stats: Stats = { start: Date.now(), tokens: 0 };
+  target.stats = stats;
+  try {
+    for await (const ev of streamChat({ key: s.apiKey, model, messages, signal, temperature: s.temperature, effort: s.thinking ? 'high' : undefined })) {
+      const now = Date.now();
+      if (ev.reasoning || ev.content) { stats.first ||= now; if (!stats.exact) stats.tokens++; }
+      if (ev.reasoning) { target.thinkStart ||= now; target.reasoning = (target.reasoning || '') + ev.reasoning; }
+      if (ev.content) { if (target.thinkStart && !target.thinkEnd) target.thinkEnd = now; target.content += ev.content; }
+      if (ev.usage?.completion_tokens) { stats.tokens = ev.usage.completion_tokens; stats.exact = true; }
+      if (ev.model && model === 'openrouter/free') target.model = ev.model;
+      onEvent();
+    }
+  } finally {
+    stats.end = Date.now();
   }
   if (target.thinkStart && !target.thinkEnd) target.thinkEnd = Date.now();
 }
@@ -59,7 +68,7 @@ async function streamInto(target: Target, model: string, messages: ApiMessage[],
 async function runWithFallback(asst: Message, convId: string, candidates: ModelInfo[], build: (m: ModelInfo) => ApiMessage[], signal: AbortSignal) {
   let lastErr: unknown;
   for (const m of candidates) {
-    Object.assign(asst, { model: m.id, content: '', reasoning: '', thinkStart: 0, thinkEnd: 0 });
+    Object.assign(asst, { model: m.id, content: '', reasoning: '', thinkStart: 0, thinkEnd: 0, stats: { start: Date.now(), tokens: 0 } });
     schedule(convId, asst);
     try {
       await streamInto(asst, m.id, build(m), signal, () => schedule(convId, asst));
@@ -92,7 +101,7 @@ async function runCouncil(asst: Message, conv: Conversation, idx: number, signal
       if ((e as Error).name === 'AbortError') throw e;
       d.status = 'error'; d.error = (e as Error).message;
     }
-    delete d.reasoning; delete d.thinkStart; delete d.thinkEnd;
+    delete d.reasoning; delete d.thinkStart; delete d.thinkEnd;   // drafts keep their stats for the lanes
     schedule(conv.id, asst);
   }));
   const ok = asst.drafts.filter((d) => d.status === 'done');
@@ -153,7 +162,8 @@ export async function generate(convId: string) {
     if (controller === ctrl) controller = null;
     cancelAnimationFrame(raf); raf = 0; pending.clear();
     const latest = useChat.getState().convos.find((c) => c.id === conv.id) ?? conv;
-    const final: Conversation = { ...latest, messages: latest.messages.map((m) => (m.id === asst.id ? { ...asst } : m)) };
+    if (asst.stats && !asst.stats.end) asst.stats.end = Date.now();
+    const final: Conversation = { ...latest, messages: latest.messages.map((m) => (m.id === asst.id ? { ...asst, stats: asst.stats && { ...asst.stats } } : m)) };
     useChat.setState({ generating: false });
     await useChat.getState().save(final);
     if (isFirst && asst.content && !asst.error) void makeTitle(final);

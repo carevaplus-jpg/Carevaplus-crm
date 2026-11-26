@@ -1,4 +1,5 @@
-import { motion, type Variants } from 'framer-motion';
+import { motion, useReducedMotion, type Variants } from 'framer-motion';
+import { useEffect, useState } from 'react';
 import { SUGGESTIONS } from '../../lib/prompts';
 import { useSettings } from '../../stores/settings';
 import { useModels, chatModels } from '../../stores/models';
@@ -20,12 +21,13 @@ export function WelcomeHero() {
   const name = useSettings((s) => s.userName);
   const { models, error } = useModels();
   const n = chatModels(models).length;
+  const shown = useCountUp(n);
   return (
     <motion.div variants={rise} className="text-center">
       <h1 className="m-0 inline-flex items-center gap-3.5 font-serif text-[clamp(30px,4.6vw,42px)] font-normal leading-tight tracking-[-0.02em] [text-wrap:balance] max-md:gap-2.5">
         <Logo size={38} className="max-md:size-[30px]" />{greeting(name)}
       </h1>
-      <p className="mt-2.5 text-[14px] text-muted">{n ? `${n} free open-source models ready` : error ? 'Model list unavailable. Check your connection.' : 'Loading free models…'}</p>
+      <p className="mt-2.5 text-[14px] text-muted">{n ? <><span className="font-mono tabular-nums text-ink-2">{shown}</span> free open-source models online</> : error ? 'Model list unavailable. Check your connection.' : <span className="shimmer">Connecting to the model network…</span>}</p>
     </motion.div>
   );
 }
@@ -48,3 +50,23 @@ export function Suggestions() {
 export const WelcomeStagger = ({ children }: { children: React.ReactNode }) => (
   <motion.div variants={parent} initial="hidden" animate="show" className="contents">{children}</motion.div>
 );
+
+/** Counts up to n (the models coming online), once. */
+function useCountUp(n: number, ms = 900) {
+  const reduce = useReducedMotion();
+  const [v, setV] = useState(0);
+  useEffect(() => {
+    if (!n) return;
+    if (reduce) { setV(n); return; }
+    let raf = 0;
+    const t0 = performance.now();
+    const tick = (t: number) => {
+      const p = Math.min(1, (t - t0) / ms);
+      setV(Math.round(n * (1 - (1 - p) ** 3)));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [n, ms, reduce]);
+  return v;
+}

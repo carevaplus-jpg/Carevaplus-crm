@@ -127,7 +127,7 @@ textarea:focus-visible, input:not([type=checkbox]):not([type=range]):focus-visib
 .prose-careva.small { font-size: 15px; }
 
 /* streaming caret, attached to the last block */
-.caret > :last-child::after, .caret.empty::after {
+.caret > :last-child:not(ol):not(ul)::after, .caret > :is(ol, ul):last-child > li:last-child::after, .caret.empty::after {
   content: ""; display: inline-block; width: .5em; height: 1.05em; margin-left: 3px; vertical-align: -.16em;
   background: var(--accent); border-radius: 2px; animation: caret 1s steps(2) infinite;
 }
@@ -145,6 +145,18 @@ textarea:focus-visible, input:not([type=checkbox]):not([type=range]):focus-visib
 .hljs-meta, .hljs-params, .hljs-variable, .hljs-punctuation { color: var(--hl-meta); }
 .hljs-deletion { color: var(--danger); }
 .hljs-emphasis { font-style: italic; } .hljs-strong { font-weight: 600; }
+
+/* ---------- Processing ring: a light sweeps the composer border while a request runs ---------- */
+@property --sweep { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+.compute-live::before {
+  content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 1.5px; pointer-events: none;
+  background: conic-gradient(from var(--sweep), transparent 0deg, transparent 250deg, color-mix(in srgb, var(--accent) 55%, transparent) 310deg, var(--accent) 350deg, transparent 360deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  animation: sweep 1.8s linear infinite;
+}
+@keyframes sweep { to { --sweep: 360deg; } }
+@media (prefers-reduced-motion: reduce) { .compute-live::before { animation: none; background: color-mix(in srgb, var(--accent) 45%, transparent); } }
 
 /* ---------- Shimmer text (status lines) ---------- */
 .shimmer {

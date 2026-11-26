@@ -16,6 +16,9 @@ import { SettingsDialog } from './components/dialogs/SettingsDialog';
 import { WelcomeDialog } from './components/dialogs/WelcomeDialog';
 import { AskDialog } from './components/dialogs/AskDialog';
 import { Toaster } from './components/ui/Toaster';
+import { NeuralField } from './components/chat/NeuralField';
+
+const composerAnchor = { get current() { return document.getElementById('prompt')?.closest('form') ?? null; } };
 
 function useTheme() {
   const theme = useSettings((s) => s.theme);
@@ -74,7 +77,8 @@ export default function App() {
             <AnimatePresence mode="popLayout" initial={false}>
               {empty ? (
                 // New chat: greeting, centred composer, suggestions
-                <motion.div key="welcome" exit={{ opacity: 0, transition: { duration: 0.15 } }} className="flex min-h-0 flex-1 flex-col px-5 pb-[max(10px,env(safe-area-inset-bottom))] max-md:px-3">
+                <motion.div key="welcome" exit={{ opacity: 0, transition: { duration: 0.15 } }} className="relative flex min-h-0 flex-1 flex-col px-5 pb-[max(10px,env(safe-area-inset-bottom))] max-md:px-3">
+                  <NeuralField anchor={composerAnchor} />
                   <WelcomeStagger>
                     <div className="flex flex-1 flex-col justify-end pb-7"><WelcomeHero /></div>
                     <motion.div variants={rise}><Composer centered /></motion.div>
