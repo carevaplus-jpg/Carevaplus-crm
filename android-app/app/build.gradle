@@ -1,0 +1,60 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Release signing: put your keystore details in android-app/keystore.properties (never commit it).
+def keystorePropsFile = rootProject.file('keystore.properties')
+def keystoreProps = new Properties()
+if (keystorePropsFile.exists()) keystoreProps.load(new FileInputStream(keystorePropsFile))
+
+def twaHost = 'careva-ai.netlify.app'
+def twaUrl = "https://${twaHost}/"
+
+android {
+    namespace 'com.carevaplus.ai'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'com.carevaplus.ai'
+        minSdk 24
+        targetSdk 36
+        versionCode 1
+        versionName '1.0.0'
+
+        manifestPlaceholders = [hostName: twaHost, defaultUrl: twaUrl, launcherName: 'Careva AI']
+        resValue 'string', 'app_name', 'Careva AI'
+        // Digital Asset Links statement: proves this app and the website belong together,
+        // so Chrome shows the app full-screen with no URL bar.
+        resValue 'string', 'asset_statements', "[{\"relation\": [\"delegate_permission/common.handle_all_urls\"], \"target\": {\"namespace\": \"web\", \"site\": \"https://${twaHost}\"}}]"
+    }
+
+    signingConfigs {
+        release {
+            if (keystorePropsFile.exists()) {
+                storeFile rootProject.file(keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt')
+            if (keystorePropsFile.exists()) signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    buildFeatures { resValues true }
+}
+
+dependencies {
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.8.0'
+}

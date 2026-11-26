@@ -1022,8 +1022,17 @@ function bind() {
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
 }
 
+// Running inside the installed Android app (Trusted Web Activity)? Then hide the "get the app" card.
+const IN_ANDROID_APP = (() => {
+  try {
+    if (document.referrer.startsWith('android-app://com.carevaplus.ai')) sessionStorage.setItem('careva.twa', '1');
+    return sessionStorage.getItem('careva.twa') === '1';
+  } catch { return false; }
+})();
+
 async function init() {
   hydrateIcons();
+  if (IN_ANDROID_APP) $('#android-card').hidden = true;
   applyTheme();
   if (state.settings.rail) setRail(true);
   renderSuggestions();
