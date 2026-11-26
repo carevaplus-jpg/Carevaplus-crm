@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+  <title>Careva AI</title>
+  <meta name="description" content="A free AI assistant powered by the best open-source models on OpenRouter." />
+  <meta name="theme-color" content="#f7f5ef" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#1f1e1c" media="(prefers-color-scheme: dark)" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap" rel="stylesheet" />
+  <link id="hl-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" />
+  <link id="hl-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" disabled />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" defer></script>
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <div id="app">
+    <aside id="sidebar" aria-label="Conversations">
+      <div class="side-top">
+        <a class="brand" href="./" aria-label="Careva AI home">
+          <img src="icons/icon.svg" alt="" width="26" height="26" />
+          <span>Careva AI</span>
+        </a>
+        <button class="icon-btn only-mobile" id="close-sidebar" aria-label="Close sidebar">
+          <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <button class="new-chat" id="new-chat">
+        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        New chat
+      </button>
+      <div class="search">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+        <input id="search" type="search" placeholder="Search chats" autocomplete="off" />
+      </div>
+      <nav id="convo-list"></nav>
+      <div class="side-bottom">
+        <button class="account" id="open-settings">
+          <span class="avatar" id="avatar">?</span>
+          <span class="account-text">
+            <span id="account-name">Settings</span>
+            <span id="account-status" class="muted">Not connected</span>
+          </span>
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        </button>
+      </div>
+    </aside>
+    <div id="scrim" hidden></div>
+
+    <main id="main">
+      <header id="topbar">
+        <button class="icon-btn" id="toggle-sidebar" aria-label="Toggle sidebar">
+          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg>
+        </button>
+        <div id="chat-title" class="chat-title"></div>
+        <div class="top-actions">
+          <button class="icon-btn" id="export-chat" aria-label="Export chat as Markdown" title="Export chat">
+            <svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <section id="thread" aria-live="polite"></section>
+
+      <div id="composer-wrap">
+        <form id="composer" autocomplete="off">
+          <div id="attachments" hidden></div>
+          <textarea id="prompt" rows="1" placeholder="How can I help you today?" aria-label="Message"></textarea>
+          <div class="composer-row">
+            <div class="left">
+              <label class="icon-btn" title="Attach images or text files" aria-label="Attach files">
+                <input id="file-input" type="file" multiple hidden
+                  accept="image/*,.txt,.md,.csv,.json,.js,.ts,.jsx,.tsx,.py,.html,.css,.xml,.yaml,.yml,.sql,.java,.c,.cpp,.cs,.go,.rs,.php,.rb,.sh,.log" />
+                <svg viewBox="0 0 24 24"><path d="M21 12.5l-8.3 8.3a5.5 5.5 0 0 1-7.8-7.8l8.9-8.9a3.7 3.7 0 0 1 5.2 5.2l-8.9 8.9a1.8 1.8 0 0 1-2.6-2.6l8.3-8.3"/></svg>
+              </label>
+              <button type="button" class="icon-btn" id="mic" title="Dictate" aria-label="Dictate" hidden>
+                <svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+              </button>
+            </div>
+            <div class="right">
+              <button type="button" id="model-btn" class="model-btn" aria-haspopup="listbox">
+                <span id="model-label">Auto</span>
+                <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+              <button type="submit" id="send" class="send" aria-label="Send" disabled>
+                <svg class="i-send" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+                <svg class="i-stop" viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor" stroke="none"/></svg>
+              </button>
+            </div>
+          </div>
+        </form>
+        <p class="disclaimer">Careva AI runs on free open-source models and can make mistakes. Double-check important info.</p>
+      </div>
+    </main>
+  </div>
+
+  <div id="model-menu" class="popover" role="listbox" hidden></div>
+
+  <dialog id="settings">
+    <form method="dialog" class="dialog-body">
+      <header class="dialog-head">
+        <h2>Settings</h2>
+        <button class="icon-btn" value="close" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </header>
+
+      <section class="card">
+        <h3>OpenRouter connection</h3>
+        <p class="muted small" id="key-status">Not connected.</p>
+        <div class="row">
+          <button type="button" class="btn primary" id="oauth-connect">Connect with OpenRouter</button>
+          <button type="button" class="btn" id="disconnect" hidden>Disconnect</button>
+        </div>
+        <details>
+          <summary>Or paste an API key</summary>
+          <div class="row">
+            <input id="key-input" type="password" placeholder="sk-or-v1-…" autocomplete="off" spellcheck="false" />
+            <button type="button" class="btn" id="save-key">Save</button>
+          </div>
+          <p class="muted small">Create one at <a href="https://openrouter.ai/settings/keys" target="_blank" rel="noopener">openrouter.ai/settings/keys</a>. Your key stays in this browser and is sent only to OpenRouter.</p>
+        </details>
+      </section>
+
+      <section class="card">
+        <h3>Personalization</h3>
+        <label class="field">What should Careva AI call you?
+          <input id="user-name" type="text" maxlength="40" placeholder="Your name" />
+        </label>
+        <label class="field">Custom instructions
+          <textarea id="instructions" rows="4" placeholder="e.g. Keep answers concise. I'm a nurse running a home-care business in India."></textarea>
+        </label>
+      </section>
+
+      <section class="card">
+        <h3>Models</h3>
+        <label class="field">Council size (models consulted in Council mode)
+          <input id="council-size" type="range" min="2" max="6" step="1" /> <span id="council-size-val"></span>
+        </label>
+        <label class="field">Creativity (temperature)
+          <input id="temperature" type="range" min="0" max="1.5" step="0.1" /> <span id="temperature-val"></span>
+        </label>
+        <label class="check"><input id="show-thinking" type="checkbox" /> Show model thinking when available</label>
+        <button type="button" class="btn" id="refresh-models">Refresh free model list</button>
+      </section>
+
+      <section class="card">
+        <h3>Appearance &amp; data</h3>
+        <label class="field">Theme
+          <select id="theme">
+            <option value="system">Match system</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </label>
+        <button type="button" class="btn danger" id="clear-chats">Delete all chats</button>
+      </section>
+    </form>
+  </dialog>
+
+  <dialog id="welcome">
+    <div class="dialog-body welcome">
+      <img src="icons/icon.svg" alt="" width="56" height="56" />
+      <h2>Welcome to Careva AI</h2>
+      <p>A free assistant that routes every message to the strongest open-source models on OpenRouter, with automatic fallback and a multi-model <b>Council</b> mode for hard questions.</p>
+      <button class="btn primary big" id="welcome-connect">Connect with OpenRouter</button>
+      <p class="muted small">Free account, no card needed. Free models allow about 50 messages a day (1,000/day after a one-time $10 credit top-up).</p>
+      <button class="link" id="welcome-later">I'll paste a key in Settings</button>
+    </div>
+  </dialog>
+
+  <div id="toast" role="status" hidden></div>
+</body>
+</html>
