@@ -1,6 +1,10 @@
-# Deploy this folder as a static site (no build step).
+# Careva AI: React + TypeScript app built with Vite.
 [build]
-  publish = "."
+  command = "npm ci && npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
 
 [[headers]]
   for = "/*"
@@ -12,6 +16,11 @@
   for = "/sw.js"
   [headers.values]
     Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
 
 [[headers]]
   for = "/.well-known/assetlinks.json"

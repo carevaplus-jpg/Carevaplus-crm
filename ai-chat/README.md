@@ -55,50 +55,73 @@ The key is only ever sent to `openrouter.ai`.
 1,000 per day once you've bought $10 of credits at any point. Council mode uses
 (council size + 1) requests per message. Check current limits on OpenRouter.
 
-## Run locally
+## Architecture
 
-It's plain HTML/CSS/JS, with no build step:
+Careva AI uses the same front-end stack as claude.ai: **React + TypeScript + Tailwind CSS**. Motion
+comes from **Framer Motion** and state lives in **Zustand**. Vite builds it into a static site. (Claude
+itself uses Next.js, which needs a server; this app is a pure client that talks to OpenRouter.)
+
+```
+src/
+├── main.tsx, App.tsx      app shell: layout, boot, shortcuts, the composer's shared-layout glide
+├── index.css              design tokens (light/dark), prose and syntax themes, Tailwind
+├── lib/                   framework-free logic
+│   ├── openrouter.ts      free-model discovery + ranking, streaming, transcription, OAuth (PKCE)
+│   ├── engine.ts          Auto / Council / single-model generation, fallback, titles
+│   ├── artifacts.ts       artifact detection, versions, sandboxed preview documents (HTML, SVG, React, Mermaid)
+│   ├── voice.ts           dictation: browser speech recognition + AI transcription fallback
+│   ├── highlight.ts       syntax highlighting split into lines
+│   ├── prompts.ts, db.ts (IndexedDB), types.ts, utils.ts
+├── stores/                Zustand: settings (persisted), models, chat, ui
+├── hooks/                 useSmoothText (steady streaming), useDictation, useMediaQuery
+└── components/
+    ├── layout/            Sidebar (icon rail + mobile drawer), TopBar, chat menus
+    ├── chat/              Thread, messages, Markdown + KaTeX, CodeBlock, Disclosure, Welcome
+    ├── composer/          Composer, ModelPicker, VoiceBar
+    ├── artifacts/         ArtifactPanel, ArtifactCard, CodeView
+    ├── dialogs/           Settings, Welcome, rename/confirm
+    └── ui/                Icon, Logo, Menu, Dialog, Toaster, Button, CopyButton
+```
+
+**Artifacts.** Big or renderable code blocks become cards that open in a resizable side panel:
+- **Live previews** for HTML, SVG, **React components** (Tailwind and lucide-react available) and
+  **Mermaid diagrams**.
+- A line-numbered code view with syntax highlighting and wrap toggle.
+- **Version history** when the AI revises the same artifact.
+- Copy, download, open in a new tab and full screen.
+- When a preview throws an error, an **"Ask Careva to fix"** bar appears.
+
+Previews run in an iframe sandbox **without** same-origin access, so generated code can never read
+your API key or chats.
+
+**Motion.**
+- The message box glides from the center to the bottom when a chat starts.
+- Streamed text is revealed at a steady pace.
+- Panels, menus and dialogs use springs.
+- The logo turns only while the AI is working.
+- Everything respects the system "reduce motion" setting.
+
+## Run locally
 
 ```bash
 cd ai-chat
-python3 -m http.server 8080
-# open http://localhost:8080
+npm install
+npm run dev        # http://localhost:5173
+npm run build      # type-check + production build into dist/
 ```
 
 ## Deploy to the cloud (free)
 
-Any static host works. The folder is the whole site.
+**Netlify** (already configured in `netlify.toml`): connect the repo with *Base directory* `ai-chat`.
+It runs `npm ci && npm run build` and publishes `dist/`. Vercel and Cloudflare Pages work the same
+way: build command `npm run build`, output directory `dist`.
 
-- **Netlify:** drag the `ai-chat` folder onto <https://app.netlify.com/drop>, or connect the repo
-  and set *Base directory* to `ai-chat` (the included `netlify.toml` needs no build command).
-- **Vercel / Cloudflare Pages / GitHub Pages:** set the root or output directory to `ai-chat`, with
-  no build command.
-
-It must be served over HTTPS (or localhost) for "Connect with OpenRouter", installing as an
-app, and voice input to work.
+It must be served over HTTPS (or localhost) for "Connect with OpenRouter", installing as an app,
+and voice input to work.
 
 ## Customizing
 
-- App name: `APP_NAME` in `js/openrouter.js`, plus the text in `index.html` and `manifest.webmanifest`.
-- Assistant personality: `systemPrompt()` in `js/prompts.js`.
-- Model ranking: `FAMILY_SCORES` in `js/openrouter.js`. Higher scores are tried first.
-- Colors and fonts: CSS variables at the top of `styles.css`.
-
-## Files
-
-```
-ai-chat/
-├── index.html            app shell
-├── styles.css            styling (light/dark)
-├── js/app.js             UI, chat flow, Auto/Council modes, menus, attachments, settings
-├── js/voice.js           mic dictation: live browser speech + AI transcription fallback
-├── js/artifacts.js       side panel with code / live preview
-├── js/markdown.js        Markdown + KaTeX math + code blocks / artifact cards
-├── js/icons.js           the app's single icon set
-├── js/openrouter.js      OpenRouter API: free models + ranking, streaming, OAuth connect
-├── js/prompts.js         system prompt, council merge prompt, suggestions
-├── js/store.js           IndexedDB chats + settings
-├── sw.js                 offline app shell (PWA)
-├── manifest.webmanifest  install metadata
-└── icons/                app icons
-```
+- App name: `APP_NAME` in `src/lib/openrouter.ts`, plus `index.html` and `public/manifest.webmanifest`.
+- Assistant personality and artifact rules: `systemPrompt()` in `src/lib/prompts.ts`.
+- Model ranking: `FAMILY_SCORES` in `src/lib/openrouter.ts`. Higher scores are tried first.
+- Colors, fonts and syntax colors: tokens at the top of `src/index.css`.

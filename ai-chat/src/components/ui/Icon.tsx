@@ -1,5 +1,7 @@
-// One consistent stroke icon set (24px grid, 1.8 stroke), so every control speaks the same visual language.
-const P = {
+// One consistent stroke icon set (24px grid).
+import type { SVGProps } from 'react';
+
+const P: Record<string, string> = {
   plus: '<path d="M12 5v14M5 12h14"/>',
   panel: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9.5 4v16"/>',
   menu: '<path d="M4 7h16M4 12h16M4 17h10"/>',
@@ -38,16 +40,23 @@ const P = {
   external: '<path d="M14 4h6v6M20 4l-9 9M18 14v4.5A1.5 1.5 0 0 1 16.5 20h-11A1.5 1.5 0 0 1 4 18.5v-11A1.5 1.5 0 0 1 5.5 6H10"/>',
   layers: '<path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/>',
   scale: '<path d="M12 4v16M7 20h10M5 8h14M5 8l-2.5 6a3 3 0 0 0 5 0zM19 8l-2.5 6a3 3 0 0 0 5 0z"/>',
+  maximize: '<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>',
+  minimize: '<path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/>',
+  wrap: '<path d="M3 6h18M3 12h15a3 3 0 0 1 0 6h-4M3 18h7M14 15l-3 3 3 3"/>',
+  history: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 3"/>',
+  alert: '<path d="M12 3 2 20h20zM12 10v4M12 17.5v.01"/>',
+  wand: '<path d="M15 4V2M15 10V8M11 6h2M17 6h2M4 20 14 10M18 13l1 1M20 11h1"/>',
+  playCircle: '<circle cx="12" cy="12" r="9"/><path d="m10 8.5 5.5 3.5-5.5 3.5z"/>',
 };
 
-export function icon(name, cls = '') {
-  return `<svg class="i${cls ? ' ' + cls : ''}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${P[name] || ''}</svg>`;
-}
+export type IconName = keyof typeof P | string;
 
-// Replace <… data-icon="name"> placeholders in static HTML.
-export function hydrateIcons(root = document) {
-  root.querySelectorAll('[data-icon]').forEach((el) => {
-    if (el.querySelector(':scope > svg.i')) return;
-    el.insertAdjacentHTML('afterbegin', icon(el.dataset.icon));
-  });
+export function Icon({ name, size = 20, className = '', strokeWidth = 1.8, ...rest }: { name: IconName; size?: number; strokeWidth?: number } & SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth={strokeWidth}
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false"
+      className={`shrink-0 ${className}`} dangerouslySetInnerHTML={{ __html: P[name] || '' }} {...rest}
+    />
+  );
 }
