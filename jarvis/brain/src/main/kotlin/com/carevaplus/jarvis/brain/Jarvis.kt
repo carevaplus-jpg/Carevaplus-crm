@@ -48,7 +48,13 @@ class Jarvis(
     var imageStudio: ImageStudio? = null
 
     /** Runs a request end to end, reporting progress through [emit]. */
-    suspend fun run(text: String, history: List<Msg> = emptyList(), images: List<String> = emptyList(), screen: String? = null, emit: (Event) -> Unit): Unit = withContext(Dispatchers.IO) {
+    suspend fun run(text: String, history: List<Msg> = emptyList(), images: List<String> = emptyList(), screen: String? = null, emit: (Event) -> Unit) {
+        try { runInner(text, history, images, screen, emit) }
+        catch (e: kotlinx.coroutines.CancellationException) { throw e }
+        catch (e: Exception) { emit(Event.Failed("Something went wrong: ${e.message ?: e.javaClass.simpleName}")) }
+    }
+
+    private suspend fun runInner(text: String, history: List<Msg>, images: List<String>, screen: String?, emit: (Event) -> Unit): Unit = withContext(Dispatchers.IO) {
         val t0 = System.currentTimeMillis()
         val studio = imageStudio
         if (studio != null && images.isEmpty() && ImageStudio.isImageRequest(text)) {
@@ -61,7 +67,10 @@ class Jarvis(
             return@withContext
         }
         if (usable.isEmpty()) { emit(Event.Failed("Add an API key first (OpenRouter, DeepSeek or NVIDIA).")); return@withContext }
-        if (router.all.isEmpty()) router.refresh(providers())
+        if (router.all.isEmpty()) {
+            val errs = router.refresh(providers())
+            if (router.all.isEmpty()) { emit(Event.Failed("Couldn't load any models. " + (errs.entries.joinToString("; ") { "${it.key}: ${it.value}" }.ifBlank { "Your providers returned no chat models." }) + " Check the key in Settings.")); return@withContext }
+        }
         var tokens = 0
 
         val request = buildString {

@@ -30,3 +30,6 @@ Silence is the default. Gated by a daily cap, minimum gap, per-app cooldown, qui
 
 ## Image generation (v1.1)
 Say "draw me a logo…" or "generate an image of…". Jarvis generates with FLUX via Hugging Face, then sends the image to your own safety-check Space (`hf-space/`, wraps `Freepik/nsfw_image_detector`). The image is shown only if the check passes; if the checker is unreachable the image is withheld. Setup: deploy `hf-space/` as a Docker Space, then add the HF token, Space URL and Space token in Settings. Generated images appear in the Chat tab (the orb card shows text only).
+
+## "Hey Jarvis" (v1.2)
+While the orb is shown, Jarvis listens in short windows with the phone's speech recogniser for the phrase "Hey Jarvis" (or "Jarvis"). It answers "Yes?" in its voice and listens; "Hey Jarvis, what's the weather" runs the request directly. Toggle on the Home tab. Needs the microphone permission granted before you tap Summon. Limits: it is a recogniser loop, not an on-device wake-word engine, so it uses battery, depends on the phone's speech service, and some phones click when each window starts.

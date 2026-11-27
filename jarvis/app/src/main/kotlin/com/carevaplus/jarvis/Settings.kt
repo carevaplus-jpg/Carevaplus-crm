@@ -23,6 +23,7 @@ class Settings(private val s: Store) {
     var dailyBudget: Int get() = int("budget", 12); set(v) = s.put("budget", v.toString())
     var quietStart: Int get() = int("quiet.start", 23); set(v) = s.put("quiet.start", v.toString())
     var quietEnd: Int get() = int("quiet.end", 7); set(v) = s.put("quiet.end", v.toString())
+    var wakeWord: Boolean get() = bool("wake", true); set(v) = s.put("wake", v.toString())
     var deepVoice: Boolean get() = bool("voice.deep", true); set(v) = s.put("voice.deep", v.toString())
     var voiceLang: String get() = s.get("voice.lang").orEmpty(); set(v) = s.put("voice.lang", v)
     var orbSide: Int get() = int("orb.side", 1); set(v) = s.put("orb.side", v.toString())

@@ -13,6 +13,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedTextField
@@ -83,13 +85,17 @@ fun ChatScreen() {
 
     Column(Modifier.fillMaxSize().imePadding()) {
         if (lines.isEmpty()) {
-            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                Text("Ask me anything.\nI pick the best model you can use for each part.", color = J.muted, fontSize = 15.sp, modifier = Modifier.padding(32.dp))
+            Column(Modifier.weight(1f).fillMaxWidth().padding(24.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("How can I help?", color = J.text, fontSize = 24.sp)
+                Text("I pick the best model you can use for each part of the job.", color = J.muted, fontSize = 14.sp, modifier = Modifier.padding(top = 6.dp, bottom = 20.dp))
+                listOf("Plan my day in 5 steps", "Explain quantum computing simply", "Draw me a logo for a coffee shop", "Write a polite reply to a late invoice").forEach { s ->
+                    Text(s, color = J.cyan, fontSize = 14.sp, modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp).background(J.surface, RoundedCornerShape(14.dp)).clickable { send(s) }.padding(14.dp))
+                }
             }
         } else LazyColumn(Modifier.weight(1f).fillMaxWidth(), state = list, contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             items(lines) { l ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = if (l.mine) Arrangement.End else Arrangement.Start) {
-                    Column(Modifier.background(if (l.mine) J.raised else J.surface, RoundedCornerShape(16.dp)).padding(12.dp).fillMaxWidth(if (l.mine) 0.85f else 0.95f)) {
+                    Column(Modifier.background(if (l.mine) J.raised else J.surface, RoundedCornerShape(16.dp)).border(1.dp, if (l.mine) J.line else androidx.compose.ui.graphics.Color(0x334DE8FF), RoundedCornerShape(16.dp)).padding(12.dp).fillMaxWidth(if (l.mine) 0.85f else 0.95f)) {
                         l.image?.let { b -> androidx.compose.foundation.Image(b.asImageBitmap(), contentDescription = "Generated image", modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp).clip(RoundedCornerShape(12.dp))) }
                         Text(l.text.ifBlank { "…" }, color = J.text, fontSize = 15.sp)
                         if (l.meta.isNotBlank()) Text(l.meta, color = J.muted, fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp))
@@ -104,6 +110,23 @@ fun ChatScreen() {
                 shape = RoundedCornerShape(16.dp),
                 colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = J.cyan, unfocusedBorderColor = J.line, focusedTextColor = J.text, unfocusedTextColor = J.text, cursorColor = J.cyan),
             )
+            var listening by remember { mutableStateOf(false) }
+            Button(
+                onClick = {
+                    if (listening) { g.voice.stopListening(); listening = false } else {
+                        listening = true; status = "Listening…"
+                        g.voice.listen(object : com.carevaplus.jarvis.voice.SpeechIO.Listener {
+                            override fun onPartial(text: String) { input = text }
+                            override fun onFinal(text: String) { listening = false; input = ""; send(text) }
+                            override fun onLevel(level: Float) {}
+                            override fun onError(message: String) { listening = false; status = message }
+                            override fun onListeningEnded() { listening = false }
+                        })
+                    }
+                },
+                modifier = Modifier.padding(start = 8.dp), shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = if (listening) J.amber else J.raised, contentColor = if (listening) androidx.compose.ui.graphics.Color(0xFF2A1A00) else J.cyan),
+            ) { Text(if (listening) "●" else "🎤") }
             Button(
                 onClick = { if (busy) { job?.cancel(); busy = false; status = "" } else send(input.trim()) },
                 modifier = Modifier.padding(start = 8.dp), shape = RoundedCornerShape(14.dp),

@@ -42,6 +42,7 @@ import com.carevaplus.jarvis.brain.Suggestion
 import com.carevaplus.jarvis.service.JarvisAccessibilityService
 import com.carevaplus.jarvis.ui.MainActivity
 import com.carevaplus.jarvis.voice.SpeechIO
+import com.carevaplus.jarvis.voice.WakeWord
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -96,7 +97,13 @@ class OverlayService : Service() {
         instance = this
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
         speech = SpeechIO(this, { g.settings.voiceLang }, { g.settings.deepVoice }).also { sp -> sp.onProblem = { m -> main.post { status.text = m.uppercase().take(60) } } }
-        startForeground(1, notification())
+        val micOk = androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (Build.VERSION.SDK_INT >= 29) {
+            val type = android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE or (if (micOk && Build.VERSION.SDK_INT >= 30) android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE else 0)
+            startForeground(1, notification(), type)
+        } else startForeground(1, notification())
+        wake = WakeWord(this, { g.settings.voiceLang }) { rest -> main.post { onWake(rest) } }
+        main.postDelayed(wakeTick, 1500)
         buildOrb()
     }
 
@@ -108,6 +115,7 @@ class OverlayService : Service() {
 
     override fun onDestroy() {
         instance = null
+        main.removeCallbacks(wakeTick); wake.stop()
         job?.cancel(); scope.cancel(); speech.release()
         main.removeCallbacksAndMessages(null)
         runCatching { wm.removeViewImmediate(orb) }
@@ -278,9 +286,36 @@ class OverlayService : Service() {
         ask(if (clar != null) "$clar\n(My answer: $t)" else t)
     }
 
+    // ---------- hands-free "Hey Jarvis" ----------
+    private lateinit var wake: WakeWord
+    @Volatile private var speaking = false
+    private var speakingSince = 0L
+    private val wakeTick = object : Runnable {
+        override fun run() {
+            val micOk = androidx.core.content.ContextCompat.checkSelfPermission(this@OverlayService, android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            val busy = speech.listening || (speaking && System.currentTimeMillis() - speakingSince < 40_000) || job?.isActive == true
+            if (g.settings.wakeWord && micOk && !busy) wake.start() else if (!g.settings.wakeWord || busy) wake.stop()
+            main.postDelayed(this, 1500)
+        }
+    }
+
+    private fun speakAloud(text: String, then: () -> Unit = {}) {
+        speaking = true; speakingSince = System.currentTimeMillis()
+        speech.speak(text, onStart = {}, onPulse = { main.post { orb.level = it } },
+            onDone = { main.post { speaking = false; orb.level = 0f; if (orb.state == OrbState.SPEAKING || orb.state == OrbState.ALERT) orb.state = OrbState.IDLE; then() } })
+    }
+
+    /** Heard "Hey Jarvis". Answer straight away, then listen. If a command came with it, just do it. */
+    private fun onWake(rest: String) {
+        if (rest.isNotBlank()) { ask(rest); return }
+        showPanel(listen = false)
+        orb.state = OrbState.ALERT; status.text = "YES?"; answer.setTextColor(Color.parseColor("#E6F6FF")); answer.text = "Yes? I'm listening."
+        speakAloud("Yes?") { startListening() }
+    }
+
     // ---------- voice ----------
     private fun startListening() {
-        speech.stopSpeaking()
+        wake.stop(); speech.stopSpeaking()
         orb.state = OrbState.LISTENING; status.text = "LISTENING…"; chips.removeAllViews()
         speech.listen(object : SpeechIO.Listener {
             override fun onPartial(text: String) { input.setText(text); input.setSelection(text.length) }
@@ -295,7 +330,7 @@ class OverlayService : Service() {
     fun ask(text: String, screenOverride: String? = null, images: List<String> = emptyList()) {
         main.removeCallbacks(autoDismiss)
         if (mode != Mode.PANEL) showPanel(listen = false)
-        speech.stopSpeaking(); job?.cancel()
+        wake.stop(); speech.stopSpeaking(); job?.cancel()
         answerBuf.clear(); feedback.visibility = View.GONE; chips.removeAllViews()
         val shown = text.substringBefore("\n(My answer")
         answer.text = "▸ $shown"; answer.setTextColor(Color.parseColor("#7FA3B5"))
@@ -334,13 +369,14 @@ class OverlayService : Service() {
                 setChips(listOf("Go deeper", "Shorter", "Translate"))
                 if (g.settings.speakReplies && !ev.answer.isBlank()) {
                     orb.state = OrbState.SPEAKING
-                    speech.speak(ev.answer, onStart = {}, onPulse = { main.post { orb.level = it } }, onDone = { main.post { orb.level = 0f; if (orb.state == OrbState.SPEAKING) orb.state = OrbState.IDLE } })
+                    speakAloud(ev.answer)
                 } else { orb.level = 0f; orb.state = OrbState.IDLE }
             }
             is Event.Image -> JarvisApp.graph.lastImage = ev.bytes
             is Event.Failed -> {
                 answer.setTextColor(Color.parseColor("#FF8A80")); answer.text = ev.message; status.text = "COULDN'T FINISH"; orb.level = 0f; orb.state = OrbState.IDLE
                 setChips(listOf("Try again")) { ask(userText) }
+                if (g.settings.speakReplies) speakAloud("Sorry, I couldn't get an answer. The reason is on screen.")
             }
         }
     }

@@ -16,8 +16,8 @@ android {
         applicationId = "com.carevaplus.jarvis"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.1.1"
+        versionCode = 4
+        versionName = "1.2.0"
     }
     signingConfigs {
         if (keyProps.isNotEmpty()) create("release") {

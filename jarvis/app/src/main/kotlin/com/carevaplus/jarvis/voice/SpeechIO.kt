@@ -77,6 +77,7 @@ class SpeechIO(private val ctx: Context, private val language: () -> String, pri
                 t.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                     override fun onStart(id: String?) { onStart() }
                     override fun onDone(id: String?) { onPulse(0f); onDone() }
+                    override fun onStop(id: String?, interrupted: Boolean) { onPulse(0f); onDone() }
                     @Deprecated("deprecated") override fun onError(id: String?) { onPulse(0f); onDone() }
                     override fun onRangeStart(id: String?, start: Int, end: Int, frame: Int) { onPulse(0.55f + 0.45f * ((end - start) % 5) / 5f) }
                 })

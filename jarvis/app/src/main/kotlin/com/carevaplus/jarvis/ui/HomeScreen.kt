@@ -9,6 +9,8 @@ import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -69,6 +71,7 @@ fun HomeScreen(tick: Int, goTo: (Int) -> Unit) {
     val micLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { local++ }
     val notifLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { local++ }
 
+    Box(Modifier.fillMaxWidth().background(androidx.compose.ui.graphics.Brush.radialGradient(listOf(Color(0x334DE8FF), Color.Transparent), center = androidx.compose.ui.geometry.Offset(540f, 380f), radius = 900f))) {
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         AndroidView(factory = { OrbView(it).apply { state = OrbState.IDLE } }, update = { it.state = if (running) OrbState.IDLE else OrbState.IDLE }, modifier = Modifier.size(210.dp))
         Text("JARVIS", color = J.cyan, fontSize = 28.sp, fontWeight = FontWeight.Light, letterSpacing = 8.sp)
@@ -103,7 +106,17 @@ fun HomeScreen(tick: Int, goTo: (Int) -> Unit) {
             }
             Switch(checked = pro && eyesOk, enabled = eyesOk, onCheckedChange = { pro = it; g.settings.proactive = it })
         }
-        Text("Tip: long-press the orb to talk straight away. Drag it anywhere; it snaps to the edge.", color = J.muted, fontSize = 12.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 14.dp, bottom = 24.dp))
+        Spacer(Modifier.height(12.dp))
+        var wakeOn by remember { mutableStateOf(g.settings.wakeWord) }
+        Row(Modifier.fillMaxWidth().panel().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Say \"Hey Jarvis\"", color = J.text, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                Text(if (micOk) "Hands-free: Jarvis answers \"Yes?\" and listens. Uses the microphone while the orb is shown, so it costs some battery." else "Needs the microphone permission above.", color = J.muted, fontSize = 13.sp, modifier = Modifier.padding(top = 2.dp))
+            }
+            Switch(checked = wakeOn && micOk, enabled = micOk, onCheckedChange = { wakeOn = it; g.settings.wakeWord = it })
+        }
+        Text("Tip: long-press the orb to talk straight away. Drag it anywhere; it snaps to the edge. If \"Hey Jarvis\" misses, say it a little slower, or turn Jarvis off and on again after granting the microphone.", color = J.muted, fontSize = 12.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 14.dp, bottom = 24.dp))
+    }
     }
 }
 
