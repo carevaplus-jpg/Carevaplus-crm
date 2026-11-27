@@ -61,6 +61,23 @@ fun ModelsScreen() {
                 }
             }) { Text("Test my models") }
         }
+        Button(enabled = providers.isNotEmpty() && !busy, colors = btn, shape = RoundedCornerShape(12.dp), onClick = {
+            busy = true; msg = "Asking a model…"
+            scope.launch {
+                var out = ""; val t0 = System.currentTimeMillis()
+                withContext(Dispatchers.IO) {
+                    g.jarvis.run("Say hello in five words.") { ev ->
+                        when (ev) {
+                            is com.carevaplus.jarvis.brain.Event.TaskStart -> msg = "Asking ${ev.model.short}…"
+                            is com.carevaplus.jarvis.brain.Event.Done -> out = "Works. ${ev.model?.short} answered in ${(System.currentTimeMillis() - t0) / 1000.0}s: \"${ev.answer.take(80)}\""
+                            is com.carevaplus.jarvis.brain.Event.Failed -> out = "Failed: ${ev.message}"
+                            else -> {}
+                        }
+                    }
+                }
+                msg = out.ifBlank { "No reply came back." }; busy = false; rev++
+            }
+        }) { Text("Test an answer") }
         if (msg.isNotBlank()) Text(msg, color = J.amber, fontSize = 12.sp)
         if (providers.isEmpty()) Text("Add a DeepSeek, NVIDIA or OpenRouter key in Settings first.", color = J.muted, fontSize = 14.sp)
 

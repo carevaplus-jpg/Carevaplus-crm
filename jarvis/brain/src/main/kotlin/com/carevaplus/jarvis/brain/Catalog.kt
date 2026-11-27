@@ -62,16 +62,21 @@ object Catalog {
             Regex("nemotron-3-nano|nemotron-3\\.5-lightning|gpt-oss-20b|gemma-3").containsMatchIn(id) -> 76.0
             else -> 55.0 + minOf(20.0, sizeB(id) / 10.0)
         }
+        // slow "thinking" models (can spend a minute or more before the first word) are kept for deep-reasoning jobs only
+        val thinker = m.reasoning || heavyThinker(id)
+        val slow = if (heavyThinker(id)) 45 else 0
         val small = Regex("(^|[-/])(1b|3b|4b|7b|8b|mini|tiny|bolt|lightning|flash|nano|e4b|lite)([-_./]|$)").containsMatchIn(id)
         return when (role) {
-            Role.PLAN -> strong + (if (m.reasoning) 3 else 0) - (if (small) 20 else 0)
-            Role.REASON -> strong + (if (m.reasoning) 8 else -6) - (if (small) 25 else 0)
-            Role.CODE -> strong + (if (Regex("coder|devstral|deepseek|codestral|qwen3").containsMatchIn(id)) 5 else 0) - (if (small) 15 else 0)
-            Role.WRITE, Role.CHAT -> strong - (if (m.reasoning && role == Role.CHAT) 2 else 0) - (if (small) 10 else 0)
+            Role.PLAN -> strong - slow - (if (small) 20 else 0)
+            Role.REASON -> strong + (if (thinker) 8 else -6) - (if (small) 25 else 0)
+            Role.CODE -> strong - slow + (if (Regex("coder|devstral|deepseek|codestral|qwen3").containsMatchIn(id)) 5 else 0) - (if (small) 15 else 0)
+            Role.WRITE, Role.CHAT -> strong - slow - (if (m.reasoning && role == Role.CHAT) 2 else 0) - (if (small) 10 else 0)
             Role.VISION -> if (m.vision) strong + 10 else 0.0
-            Role.FAST -> (if (small) 85.0 else strong * 0.8) + (if (m.reasoning) -10 else 0)
+            Role.FAST -> (if (small) 85.0 else strong * 0.8) - slow + (if (m.reasoning) -10 else 0)
         }
     }
+
+    fun heavyThinker(id: String) = Regex("reasoner|deepseek-r1|(^|[-/])r1([-_.]|$)|thinking|qwq|-r2").containsMatchIn(id.lowercase())
 
     private fun sizeB(id: String): Double =
         Regex("(\\d+(?:\\.\\d+)?)b(?![a-z])").findAll(id).mapNotNull { it.groupValues[1].toDoubleOrNull() }.maxOrNull()?.coerceAtMost(1000.0) ?: 0.0

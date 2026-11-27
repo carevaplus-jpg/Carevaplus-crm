@@ -7,7 +7,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /** Minimal, dependency-free chat client (works on Android and the JVM). Blocking: call from Dispatchers.IO. */
-class LlmClient(private val connectTimeoutMs: Int = 15_000, private val readTimeoutMs: Int = 120_000) {
+class LlmClient(private val connectTimeoutMs: Int = 15_000, private val readTimeoutMs: Int = 60_000, private val firstTokenMs: Long = 45_000) {
 
     private fun open(p: Provider, path: String, post: Boolean): HttpURLConnection {
         val c = URL(p.baseUrl.trimEnd('/') + path).openConnection() as HttpURLConnection
@@ -67,6 +67,7 @@ class LlmClient(private val connectTimeoutMs: Int = 15_000, private val readTime
             c.inputStream.bufferedReader().use { r: BufferedReader ->
                 while (true) {
                     val line = r.readLine() ?: break
+                    if (sb.isEmpty() && System.currentTimeMillis() - t0 > firstTokenMs) throw LlmException(0, "$model took too long to start answering")
                     if (!line.startsWith("data:")) continue
                     val data = line.removePrefix("data:").trim()
                     if (data == "[DONE]") break

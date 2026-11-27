@@ -77,11 +77,11 @@ class BrainTest {
         assertEquals(1, again.statOf(top)!!.fail)
     }
 
-    @Test fun probeVerifiesWorkingModelsAndMarksBrokenOnes() = FakeServer(models) { m, _ -> if (m == "deepseek-reasoner") Reply(401, "bad key") else Reply(content = "OK") }.use { s ->
+    @Test fun probeVerifiesWorkingModelsAndMarksBrokenOnes() = FakeServer(models) { m, _ -> if (m == "deepseek-chat") Reply(401, "bad key") else Reply(content = "OK") }.use { s ->
         val (_, r, ps) = jarvis(s)
         r.probe(ps, perRole = 3)
         assertTrue(r.all.any { r.statOf(it)?.verified == true })
-        val broken = r.all.first { it.id == "deepseek-reasoner" }
+        val broken = r.all.first { it.id == "deepseek-chat" }
         assertEquals(1, r.statOf(broken)!!.fail)
         assertTrue(r.score(broken, Role.PLAN) < 0, "an auth-failing model drops out")
     }
