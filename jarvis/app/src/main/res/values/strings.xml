@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Jarvis</string>
+    <string name="accessibility_description">Lets Jarvis read the text on your screen when you ask for help, and — if you turn proactive mode on — notice when it can help. Text is sent only to the AI provider you configured. Password fields and banking apps are never read.</string>
+    <string name="notif_channel">Jarvis is active</string>
+</resources>

@@ -1,0 +1,89 @@
+package com.carevaplus.jarvis.voice
+
+import android.content.Context
+import android.content.Intent
+import android.os.Bundle
+import android.speech.RecognitionListener
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
+import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
+import java.util.Locale
+
+/** Ears and voice. Recogniser and TTS are the phone's own, so audio never goes to us. Call on the main thread. */
+class SpeechIO(private val ctx: Context, private val language: () -> String) {
+    interface Listener {
+        fun onPartial(text: String)
+        fun onFinal(text: String)
+        fun onLevel(level: Float)
+        fun onError(message: String)
+        fun onListeningEnded()
+    }
+
+    private var recognizer: SpeechRecognizer? = null
+    private var tts: TextToSpeech? = null
+    private var ttsReady = false
+    var listening = false; private set
+
+    val available get() = SpeechRecognizer.isRecognitionAvailable(ctx)
+
+    fun listen(l: Listener) {
+        if (!available) { l.onError("This phone has no speech recognition service."); return }
+        stopListening()
+        val r = SpeechRecognizer.createSpeechRecognizer(ctx)
+        recognizer = r
+        r.setRecognitionListener(object : RecognitionListener {
+            override fun onReadyForSpeech(p: Bundle?) { listening = true }
+            override fun onBeginningOfSpeech() {}
+            override fun onRmsChanged(rms: Float) { l.onLevel(((rms + 2f) / 12f).coerceIn(0f, 1f)) }
+            override fun onBufferReceived(b: ByteArray?) {}
+            override fun onEndOfSpeech() { listening = false; l.onLevel(0f) }
+            override fun onError(code: Int) {
+                listening = false; l.onLevel(0f); l.onListeningEnded()
+                when (code) {
+                    SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> l.onError("I didn't catch that.")
+                    SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> l.onError("Microphone permission is off. Allow it in Jarvis.")
+                    SpeechRecognizer.ERROR_NETWORK, SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> l.onError("Speech recognition needs a connection.")
+                    SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> {}
+                    else -> l.onError("Speech recognition error ($code).")
+                }
+            }
+            override fun onResults(res: Bundle?) {
+                listening = false; l.onLevel(0f); l.onListeningEnded()
+                res?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()?.takeIf { it.isNotBlank() }?.let(l::onFinal)
+            }
+            override fun onPartialResults(p: Bundle?) { p?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()?.let(l::onPartial) }
+            override fun onEvent(t: Int, p: Bundle?) {}
+        })
+        val lang = language().ifBlank { Locale.getDefault().toLanguageTag() }
+        r.startListening(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, lang)
+            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+            putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, ctx.packageName)
+        })
+    }
+
+    fun stopListening() { runCatching { recognizer?.cancel(); recognizer?.destroy() }; recognizer = null; listening = false }
+
+    fun speak(text: String, onStart: () -> Unit, onPulse: (Float) -> Unit, onDone: () -> Unit) {
+        val clean = text.replace(Regex("[*_`#>]+"), "").replace(Regex("\\[(.*?)]\\(.*?\\)"), "$1").replace(Regex("\\s+"), " ").trim().take(1800)
+        if (clean.isBlank()) { onDone(); return }
+        val go = {
+            tts?.let { t ->
+                t.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                    override fun onStart(id: String?) { onStart() }
+                    override fun onDone(id: String?) { onPulse(0f); onDone() }
+                    @Deprecated("deprecated") override fun onError(id: String?) { onPulse(0f); onDone() }
+                    override fun onRangeStart(id: String?, start: Int, end: Int, frame: Int) { onPulse(0.55f + 0.45f * ((end - start) % 5) / 5f) }
+                })
+                t.language = Locale.forLanguageTag(language().ifBlank { Locale.getDefault().toLanguageTag() }).takeIf { t.isLanguageAvailable(it) >= TextToSpeech.LANG_AVAILABLE } ?: Locale.getDefault()
+                t.speak(clean, TextToSpeech.QUEUE_FLUSH, null, "jarvis")
+            }
+        }
+        if (ttsReady) go() else tts = TextToSpeech(ctx) { s -> if (s == TextToSpeech.SUCCESS) { ttsReady = true; go() } else onDone() }.also { }
+    }
+
+    fun stopSpeaking() { runCatching { tts?.stop() } }
+    fun release() { stopListening(); runCatching { tts?.stop(); tts?.shutdown() }; tts = null; ttsReady = false }
+}
