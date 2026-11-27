@@ -52,6 +52,11 @@ fun SettingsScreen() {
         KeyField("NVIDIA key (Nemotron and more)", "build.nvidia.com → get API key (nvapi-…)", s.nvidiaKey) { s.nvidiaKey = it }
         KeyField("OpenRouter key (free models)", "openrouter.ai/keys", s.openRouterKey) { s.openRouterKey = it }
 
+        Text("Image generation: needs a Hugging Face token (huggingface.co/settings/tokens) and your safety-check Space (see hf-space/README.md). Images are only shown if the check passes.", color = J.muted, fontSize = 13.sp)
+        KeyField("Hugging Face token", "Used for image generation", s.hfToken) { s.hfToken = it }
+        KeyField("Safety Space URL", "https://you-space.hf.space", s.safetyUrl) { s.safetyUrl = it }
+        KeyField("Safety Space token", "The SPACE_TOKEN secret", s.safetyToken) { s.safetyToken = it }
+
         Row(Modifier.fillMaxWidth().panel().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text("Speak replies aloud", color = J.text, fontSize = 15.sp)

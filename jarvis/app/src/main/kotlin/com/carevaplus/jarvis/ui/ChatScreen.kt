@@ -29,6 +29,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.sp
 import com.carevaplus.jarvis.JarvisApp
 import com.carevaplus.jarvis.brain.Event
@@ -38,7 +40,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private data class Line(val mine: Boolean, val text: String, val meta: String = "")
+private data class Line(val mine: Boolean, val text: String, val meta: String = "", val image: android.graphics.Bitmap? = null)
 
 @Composable
 fun ChatScreen() {
@@ -59,13 +61,15 @@ fun ChatScreen() {
         input = ""; busy = true; status = "Thinking…"
         job = scope.launch {
             var acc = ""
-            fun set(t: String, meta: String = "") { lines[lines.lastIndex] = Line(false, t, meta) }
+            var img: android.graphics.Bitmap? = null
+            fun set(t: String, meta: String = "") { lines[lines.lastIndex] = Line(false, t, meta, img) }
             withContext(Dispatchers.IO) {
                 g.jarvis.run(text, history) { ev ->
                     when (ev) {
                         is Event.Stage -> status = ev.name + if (ev.detail.isNotBlank()) ": ${ev.detail}" else ""
                         is Event.Clarify -> { acc = ev.question + if (ev.options.isNotEmpty()) "\n\n" + ev.options.joinToString("\n") { "• $it" } else ""; set(acc) }
                         is Event.TaskStart -> status = "${ev.role.label} → ${ev.model.short}"
+                        is Event.Image -> { img = android.graphics.BitmapFactory.decodeByteArray(ev.bytes, 0, ev.bytes.size); g.lastImage = ev.bytes }
                         is Event.Token -> { acc += ev.text; set(acc) }
                         is Event.Done -> { set(ev.answer, "${ev.model?.short ?: ""} · ${ev.ms / 1000.0}s"); status = "" }
                         is Event.Failed -> { set(ev.message); status = "" }
@@ -86,6 +90,7 @@ fun ChatScreen() {
             items(lines) { l ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = if (l.mine) Arrangement.End else Arrangement.Start) {
                     Column(Modifier.background(if (l.mine) J.raised else J.surface, RoundedCornerShape(16.dp)).padding(12.dp).fillMaxWidth(if (l.mine) 0.85f else 0.95f)) {
+                        l.image?.let { b -> androidx.compose.foundation.Image(b.asImageBitmap(), contentDescription = "Generated image", modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp).clip(RoundedCornerShape(12.dp))) }
                         Text(l.text.ifBlank { "…" }, color = J.text, fontSize = 15.sp)
                         if (l.meta.isNotBlank()) Text(l.meta, color = J.muted, fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp))
                     }

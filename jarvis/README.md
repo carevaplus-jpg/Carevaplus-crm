@@ -27,3 +27,6 @@ Silence is the default. Gated by a daily cap, minimum gap, per-app cooldown, qui
 - The `brain` module has 20 passing JVM tests. The Android UI, overlay, accessibility and voice code compiles but **has not been run on a device** in the build environment.
 - Free tiers rate-limit (OpenRouter ≈ 50 requests/day without credit).
 - No wake word; long-press or tap the orb.
+
+## Image generation (v1.1)
+Say "draw me a logo…" or "generate an image of…". Jarvis generates with FLUX via Hugging Face, then sends the image to your own safety-check Space (`hf-space/`, wraps `Freepik/nsfw_image_detector`). The image is shown only if the check passes; if the checker is unreachable the image is withheld. Setup: deploy `hf-space/` as a Docker Space, then add the HF token, Space URL and Space token in Settings. Generated images appear in the Chat tab (the orb card shows text only).

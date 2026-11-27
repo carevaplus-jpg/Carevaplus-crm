@@ -29,6 +29,9 @@ class Graph(app: Application) {
     val memory = Memory(store)
     @Volatile var voiceReplies = settings.speakReplies
     val jarvis = Jarvis(router, client, memory, { settings.providers() }, { voiceReplies })
+    /** Latest generated image (already passed the safety check). Shown in the Chat tab. */
+    @Volatile var lastImage: ByteArray? = null
+    init { jarvis.imageStudio = com.carevaplus.jarvis.brain.ImageStudio { settings.imageConfig() } }
     val proactive = ProactiveEngine(router, client, memory, store, { settings.providers() }, { settings.policy() })
 
     /** Only attach screen text when the request is about the screen. Everything else stays private. */

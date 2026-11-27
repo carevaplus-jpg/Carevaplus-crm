@@ -20,6 +20,7 @@ sealed interface Event {
     data class Token(val text: String) : Event
     data class Done(val answer: String, val model: ModelInfo?, val tokens: Int, val ms: Long, val tasks: Int) : Event
     data class Failed(val message: String) : Event
+    class Image(val bytes: ByteArray) : Event
 }
 
 /**
@@ -44,9 +45,21 @@ class Jarvis(
         return "You are Jarvis, a sharp, warm, quietly witty personal AI assistant living on the user's phone. Be direct and useful. Never invent facts; say when you are unsure. Today is ${java.time.LocalDate.now()}.$voice" + if (mem.isNotBlank()) "\n\n$mem" else ""
     }
 
+    var imageStudio: ImageStudio? = null
+
     /** Runs a request end to end, reporting progress through [emit]. */
     suspend fun run(text: String, history: List<Msg> = emptyList(), images: List<String> = emptyList(), screen: String? = null, emit: (Event) -> Unit): Unit = withContext(Dispatchers.IO) {
         val t0 = System.currentTimeMillis()
+        val studio = imageStudio
+        if (studio != null && images.isEmpty() && ImageStudio.isImageRequest(text)) {
+            emit(Event.Stage("executing", "image"))
+            when (val r = studio.generate(text)) {
+                is ImageResult.Ok -> { emit(Event.Image(r.bytes)); emit(Event.Done("Here you go. It's saved in the Chat tab of the Jarvis app.", null, 0, System.currentTimeMillis() - t0, 1)) }
+                is ImageResult.Blocked -> emit(Event.Done("I generated that but the safety check blocked it (${r.label}), so I'm not showing it. Try a different idea.", null, 0, System.currentTimeMillis() - t0, 1))
+                is ImageResult.Failed -> emit(Event.Failed(r.message))
+            }
+            return@withContext
+        }
         if (usable.isEmpty()) { emit(Event.Failed("Add an API key first (OpenRouter, DeepSeek or NVIDIA).")); return@withContext }
         if (router.all.isEmpty()) router.refresh(providers())
         var tokens = 0

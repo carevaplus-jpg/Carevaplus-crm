@@ -337,6 +337,7 @@ class OverlayService : Service() {
                     speech.speak(ev.answer, onStart = {}, onPulse = { main.post { orb.level = it } }, onDone = { main.post { orb.level = 0f; if (orb.state == OrbState.SPEAKING) orb.state = OrbState.IDLE } })
                 } else { orb.level = 0f; orb.state = OrbState.IDLE }
             }
+            is Event.Image -> JarvisApp.graph.lastImage = ev.bytes
             is Event.Failed -> {
                 answer.setTextColor(Color.parseColor("#FF8A80")); answer.text = ev.message; status.text = "COULDN'T FINISH"; orb.level = 0f; orb.state = OrbState.IDLE
                 setChips(listOf("Try again")) { ask(userText) }

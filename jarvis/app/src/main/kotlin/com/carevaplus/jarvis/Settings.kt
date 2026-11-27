@@ -10,6 +10,11 @@ class Settings(private val s: Store) {
     var deepSeekKey: String get() = s.get("key.deepseek").orEmpty(); set(v) = s.put("key.deepseek", v.trim())
     var nvidiaKey: String get() = s.get("key.nvidia").orEmpty(); set(v) = s.put("key.nvidia", v.trim())
 
+    var hfToken: String get() = s.get("key.hf").orEmpty(); set(v) = s.put("key.hf", v.trim())
+    var safetyUrl: String get() = s.get("safety.url").orEmpty(); set(v) = s.put("safety.url", v.trim())
+    var safetyToken: String get() = s.get("safety.token").orEmpty(); set(v) = s.put("safety.token", v.trim())
+    fun imageConfig() = com.carevaplus.jarvis.brain.ImageConfig(hfToken = hfToken, spaceUrl = safetyUrl, spaceToken = safetyToken)
+
     private fun bool(k: String, d: Boolean) = s.get(k)?.toBooleanStrictOrNull() ?: d
     private fun int(k: String, d: Int) = s.get(k)?.toIntOrNull() ?: d
 
