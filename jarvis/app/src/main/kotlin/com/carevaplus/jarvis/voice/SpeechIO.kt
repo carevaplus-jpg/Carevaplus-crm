@@ -8,10 +8,13 @@ import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
+import android.speech.tts.Voice
 import java.util.Locale
 
 /** Ears and voice. Recogniser and TTS are the phone's own, so audio never goes to us. Call on the main thread. */
-class SpeechIO(private val ctx: Context, private val language: () -> String) {
+class SpeechIO(private val ctx: Context, private val language: () -> String, private val deepMale: () -> Boolean = { true }) {
+    /** Set to be told why speech failed (no engine, no voice data...). Called on any thread. */
+    var onProblem: ((String) -> Unit)? = null
     interface Listener {
         fun onPartial(text: String)
         fun onFinal(text: String)
@@ -77,11 +80,21 @@ class SpeechIO(private val ctx: Context, private val language: () -> String) {
                     @Deprecated("deprecated") override fun onError(id: String?) { onPulse(0f); onDone() }
                     override fun onRangeStart(id: String?, start: Int, end: Int, frame: Int) { onPulse(0.55f + 0.45f * ((end - start) % 5) / 5f) }
                 })
-                t.language = Locale.forLanguageTag(language().ifBlank { Locale.getDefault().toLanguageTag() }).takeIf { t.isLanguageAvailable(it) >= TextToSpeech.LANG_AVAILABLE } ?: Locale.getDefault()
-                t.speak(clean, TextToSpeech.QUEUE_FLUSH, null, "jarvis")
+                val loc = Locale.forLanguageTag(language().ifBlank { Locale.getDefault().toLanguageTag() }).takeIf { t.isLanguageAvailable(it) >= TextToSpeech.LANG_AVAILABLE } ?: Locale.getDefault()
+                t.language = loc
+                if (deepMale()) { pickMale(t, loc)?.let { v -> runCatching { t.voice = v } }; t.setPitch(0.62f); t.setSpeechRate(0.92f) } else { t.setPitch(1f); t.setSpeechRate(1f) }
+                if (t.speak(clean, TextToSpeech.QUEUE_FLUSH, null, "jarvis") != TextToSpeech.SUCCESS) { onProblem?.invoke("Couldn't speak. Check media volume and that Speech Services by Google is installed."); onDone() }
             }
         }
-        if (ttsReady) go() else tts = TextToSpeech(ctx) { s -> if (s == TextToSpeech.SUCCESS) { ttsReady = true; go() } else onDone() }.also { }
+        if (ttsReady) go() else tts = TextToSpeech(ctx) { s -> if (s == TextToSpeech.SUCCESS) { ttsReady = true; go() } else { onProblem?.invoke("No text-to-speech engine found. Install \"Speech Services by Google\" from the Play Store, then set it as the default engine in Settings → Text-to-speech."); onDone() } }
+    }
+
+    /** Best-effort deep male voice: known Google male voice ids first, then anything the engine labels male. */
+    private fun pickMale(t: TextToSpeech, loc: Locale): Voice? {
+        val all = runCatching { t.voices }.getOrNull()?.filter { it.locale.language == loc.language && !it.features.contains("notInstalled") } ?: return null
+        fun male(v: Voice) = v.name.contains("male", true) && !v.name.contains("female", true)
+        val known = Regex("-x-(iol|iom|tpd|gbd|rjs|ahp|ene|eac|hfh)-|-x-(m\\d|male)", RegexOption.IGNORE_CASE)
+        return all.filter { male(it) || known.containsMatchIn(it.name) }.sortedByDescending { it.quality + (if (it.isNetworkConnectionRequired) 0 else 50) + (if (it.locale == loc) 100 else 0) }.firstOrNull()
     }
 
     fun stopSpeaking() { runCatching { tts?.stop() } }

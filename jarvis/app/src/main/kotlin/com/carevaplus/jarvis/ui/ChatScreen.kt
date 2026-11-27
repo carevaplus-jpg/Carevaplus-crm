@@ -71,7 +71,7 @@ fun ChatScreen() {
                         is Event.TaskStart -> status = "${ev.role.label} → ${ev.model.short}"
                         is Event.Image -> { img = android.graphics.BitmapFactory.decodeByteArray(ev.bytes, 0, ev.bytes.size); g.lastImage = ev.bytes }
                         is Event.Token -> { acc += ev.text; set(acc) }
-                        is Event.Done -> { set(ev.answer, "${ev.model?.short ?: ""} · ${ev.ms / 1000.0}s"); status = "" }
+                        is Event.Done -> { set(ev.answer, "${ev.model?.short ?: ""} · ${ev.ms / 1000.0}s"); status = ""; if (g.settings.speakReplies) android.os.Handler(android.os.Looper.getMainLooper()).post { g.voice.speak(ev.answer, {}, {}, {}) } }
                         is Event.Failed -> { set(ev.message); status = "" }
                         else -> {}
                     }

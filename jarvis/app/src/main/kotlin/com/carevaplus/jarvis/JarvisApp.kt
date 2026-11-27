@@ -30,6 +30,8 @@ class Graph(app: Application) {
     @Volatile var voiceReplies = settings.speakReplies
     val jarvis = Jarvis(router, client, memory, { settings.providers() }, { voiceReplies })
     /** Latest generated image (already passed the safety check). Shown in the Chat tab. */
+    /** Shared voice for the in-app Chat tab and the voice test. */
+    val voice by lazy { com.carevaplus.jarvis.voice.SpeechIO(app, { settings.voiceLang }, { settings.deepVoice }) }
     @Volatile var lastImage: ByteArray? = null
     init { jarvis.imageStudio = com.carevaplus.jarvis.brain.ImageStudio { settings.imageConfig() } }
     val proactive = ProactiveEngine(router, client, memory, store, { settings.providers() }, { settings.policy() })

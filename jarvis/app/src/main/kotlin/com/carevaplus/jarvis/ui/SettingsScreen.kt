@@ -65,6 +65,18 @@ fun SettingsScreen() {
             Switch(checked = speak, onCheckedChange = { speak = it; s.speakReplies = it; g.voiceReplies = it })
         }
 
+        var deep by remember { mutableStateOf(s.deepVoice) }
+        var voiceMsg by remember { mutableStateOf("") }
+        Column(Modifier.fillMaxWidth().panel().padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) { Text("Deep male voice", color = J.text, fontSize = 15.sp); Text("Lower pitch, slower pace. Uses the best male voice your phone has.", color = J.muted, fontSize = 12.sp) }
+                Switch(checked = deep, onCheckedChange = { deep = it; s.deepVoice = it })
+            }
+            TextButton(onClick = { voiceMsg = ""; g.voice.onProblem = { m -> voiceMsg = m }; g.voice.speak("Good evening. All systems are online, and ready when you are.", {}, {}, {}) }) { Text("Test voice", color = J.cyan) }
+            if (voiceMsg.isNotBlank()) Text(voiceMsg, color = J.amber, fontSize = 12.sp)
+            Text("Want a deeper or different voice? Phone Settings → Text-to-speech → Google → Language/voice, and download a male English voice.", color = J.muted, fontSize = 11.sp)
+        }
+
         Column(Modifier.fillMaxWidth().panel().padding(16.dp)) {
             Text("Proactive nudges per day: $budget", color = J.text, fontSize = 15.sp)
             Text("Hard cap. Quiet hours ${s.quietStart}:00–${s.quietEnd}:00. Banking, password and system apps are never read.", color = J.muted, fontSize = 12.sp)

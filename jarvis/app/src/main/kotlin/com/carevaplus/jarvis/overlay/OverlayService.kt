@@ -95,7 +95,7 @@ class OverlayService : Service() {
         if (!Settings.canDrawOverlays(this)) { stopSelf(); return }
         instance = this
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
-        speech = SpeechIO(this) { g.settings.voiceLang }
+        speech = SpeechIO(this, { g.settings.voiceLang }, { g.settings.deepVoice }).also { sp -> sp.onProblem = { m -> main.post { status.text = m.uppercase().take(60) } } }
         startForeground(1, notification())
         buildOrb()
     }
