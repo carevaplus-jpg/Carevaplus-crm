@@ -1,0 +1,171 @@
+@import "tailwindcss";
+@import "katex/dist/katex.min.css";
+
+/* =========================================================
+   Tokens. Light by default; dark via system or [data-theme].
+   Tailwind utilities (bg-paper, text-ink, border-line…) map onto these.
+   ========================================================= */
+:root {
+  --paper: #f7f5ef;
+  --raised: #ffffff;
+  --side: #f0ede4;
+  --hover: rgb(105 85 45 / .07);
+  --hover-strong: rgb(105 85 45 / .12);
+  --ink: #29261f;
+  --ink-2: #57534a;
+  --muted: #7d786c;
+  --line: #e4dfd2;
+  --line-strong: #d2cbbb;
+  --accent: #c25f37;
+  --accent-hover: #ad5230;
+  --accent-soft: #f6e6dc;
+  --accent-ink: #a84d2a;
+  --bubble: #ece8dd;
+  --code: #faf9f6;
+  --code-panel: #fbfaf7;
+  --danger: #b3261e;
+  --rec: #d63a2f;
+  --ok: #3d7f4d;
+  --shadow-sm: 0 1px 2px rgb(40 30 10 / .05);
+  --shadow: 0 1px 2px rgb(40 30 10 / .04), 0 6px 24px rgb(40 30 10 / .07);
+  --shadow-pop: 0 2px 6px rgb(40 30 10 / .06), 0 16px 48px rgb(40 30 10 / .16);
+  /* syntax */
+  --hl-kw: #a3420f; --hl-str: #3d7f4d; --hl-num: #8a4fb8; --hl-fn: #1f5f9e; --hl-com: #9a9487;
+  --hl-type: #996a0a; --hl-attr: #9a3f6b; --hl-var: #29261f; --hl-meta: #6b6658;
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --paper: #262522; --raised: #302f2b; --side: #1f1e1b; --hover: rgb(255 245 225 / .06); --hover-strong: rgb(255 245 225 / .1);
+  --ink: #ece9e1; --ink-2: #c7c2b7; --muted: #9b968a; --line: #3b3a35; --line-strong: #4d4b44;
+  --accent: #d97650; --accent-hover: #e5875f; --accent-soft: #48332a; --accent-ink: #eb9b78;
+  --bubble: #3a3934; --code: #1e1d1b; --code-panel: #1b1a18; --danger: #f2867e; --rec: #f0645a; --ok: #78c08a;
+  --shadow: 0 1px 2px rgb(0 0 0 / .3), 0 8px 28px rgb(0 0 0 / .28); --shadow-pop: 0 4px 12px rgb(0 0 0 / .3), 0 20px 50px rgb(0 0 0 / .45);
+  --hl-kw: #f0956a; --hl-str: #9fd39a; --hl-num: #c9a2f0; --hl-fn: #82b8ec; --hl-com: #7c786d;
+  --hl-type: #e8c36a; --hl-attr: #ef9cc2; --hl-var: #ece9e1; --hl-meta: #a8a397;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #262522; --raised: #302f2b; --side: #1f1e1b; --hover: rgb(255 245 225 / .06); --hover-strong: rgb(255 245 225 / .1);
+    --ink: #ece9e1; --ink-2: #c7c2b7; --muted: #9b968a; --line: #3b3a35; --line-strong: #4d4b44;
+    --accent: #d97650; --accent-hover: #e5875f; --accent-soft: #48332a; --accent-ink: #eb9b78;
+    --bubble: #3a3934; --code: #1e1d1b; --code-panel: #1b1a18; --danger: #f2867e; --rec: #f0645a; --ok: #78c08a;
+    --shadow: 0 1px 2px rgb(0 0 0 / .3), 0 8px 28px rgb(0 0 0 / .28); --shadow-pop: 0 4px 12px rgb(0 0 0 / .3), 0 20px 50px rgb(0 0 0 / .45);
+    --hl-kw: #f0956a; --hl-str: #9fd39a; --hl-num: #c9a2f0; --hl-fn: #82b8ec; --hl-com: #7c786d;
+    --hl-type: #e8c36a; --hl-attr: #ef9cc2; --hl-var: #ece9e1; --hl-meta: #a8a397;
+    color-scheme: dark;
+  }
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-raised: var(--raised);
+  --color-side: var(--side);
+  --color-hover: var(--hover);
+  --color-hover-strong: var(--hover-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-ink: var(--accent-ink);
+  --color-bubble: var(--bubble);
+  --color-code: var(--code);
+  --color-code-panel: var(--code-panel);
+  --color-danger: var(--danger);
+  --color-rec: var(--rec);
+  --color-ok: var(--ok);
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --shadow-soft: var(--shadow);
+  --shadow-pop: var(--shadow-pop);
+  --shadow-hair: var(--shadow-sm);
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* ---------- Base ---------- */
+html, body, #root { height: 100%; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink);
+  font: 15px/1.55 var(--font-sans); -webkit-font-smoothing: antialiased; overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+button { -webkit-user-select: none; user-select: none; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+/* text fields show focus through their own border instead */
+textarea:focus-visible, input:not([type=checkbox]):not([type=range]):focus-visible, select:focus-visible { outline: none; }
+::selection { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+* { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+
+/* ---------- Assistant prose ---------- */
+.prose-careva { font: 16.5px/1.72 var(--font-serif); color: var(--ink); overflow-wrap: anywhere; }
+.prose-careva > :first-child { margin-top: 0; }
+.prose-careva > :last-child { margin-bottom: 0; }
+.prose-careva p, .prose-careva ul, .prose-careva ol, .prose-careva blockquote, .prose-careva table { margin: 0 0 .9em; }
+.prose-careva h1, .prose-careva h2, .prose-careva h3, .prose-careva h4 { font-weight: 600; line-height: 1.3; margin: 1.35em 0 .5em; text-wrap: balance; }
+.prose-careva h1 { font-size: 1.4em; } .prose-careva h2 { font-size: 1.24em; } .prose-careva h3 { font-size: 1.1em; }
+.prose-careva ul { list-style: disc; padding-left: 1.5em; }
+.prose-careva ol { list-style: decimal; padding-left: 1.5em; }
+.prose-careva li { margin: .3em 0; }
+.prose-careva li::marker { color: var(--muted); }
+.prose-careva li > p { margin: 0 0 .3em; }
+.prose-careva a { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 2px; }
+.prose-careva strong { font-weight: 600; }
+.prose-careva blockquote { border-left: 3px solid var(--line-strong); padding-left: 14px; color: var(--ink-2); }
+.prose-careva hr { border: 0; border-top: 1px solid var(--line); margin: 1.5em 0; }
+.prose-careva table { border-collapse: collapse; display: block; overflow-x: auto; font: 14px/1.5 var(--font-sans); }
+.prose-careva th, .prose-careva td { border: 1px solid var(--line); padding: 7px 11px; text-align: left; vertical-align: top; }
+.prose-careva th { background: var(--code); font-weight: 600; }
+.prose-careva :not(pre) > code { font: .84em var(--font-mono); background: var(--code); border: 1px solid var(--line); padding: .1em .36em; border-radius: 6px; color: var(--accent-ink); }
+.prose-careva .katex-display { overflow-x: auto; overflow-y: hidden; padding: 4px 0; margin: 0 0 .9em; }
+.prose-careva img { max-width: 100%; border-radius: 10px; }
+.prose-careva.small { font-size: 15px; }
+
+/* streaming caret, attached to the last block */
+.caret > :last-child:not(ol):not(ul)::after, .caret > :is(ol, ul):last-child > li:last-child::after, .caret.empty::after {
+  content: ""; display: inline-block; width: .5em; height: 1.05em; margin-left: 3px; vertical-align: -.16em;
+  background: var(--accent); border-radius: 2px; animation: caret 1s steps(2) infinite;
+}
+@keyframes caret { 50% { opacity: 0; } }
+
+/* ---------- Syntax highlighting (warm, token-driven) ---------- */
+.hljs { color: var(--hl-var); background: transparent; }
+.hljs-keyword, .hljs-selector-tag, .hljs-built_in, .hljs-literal, .hljs-doctag { color: var(--hl-kw); }
+.hljs-string, .hljs-regexp, .hljs-addition, .hljs-template-tag, .hljs-template-variable { color: var(--hl-str); }
+.hljs-number, .hljs-symbol, .hljs-bullet { color: var(--hl-num); }
+.hljs-title, .hljs-title.function_, .hljs-section { color: var(--hl-fn); }
+.hljs-comment, .hljs-quote { color: var(--hl-com); font-style: italic; }
+.hljs-type, .hljs-title.class_, .hljs-class .hljs-title { color: var(--hl-type); }
+.hljs-attr, .hljs-attribute, .hljs-name, .hljs-tag, .hljs-selector-class, .hljs-selector-id, .hljs-property { color: var(--hl-attr); }
+.hljs-meta, .hljs-params, .hljs-variable, .hljs-punctuation { color: var(--hl-meta); }
+.hljs-deletion { color: var(--danger); }
+.hljs-emphasis { font-style: italic; } .hljs-strong { font-weight: 600; }
+
+/* ---------- Processing ring: a light sweeps the composer border while a request runs ---------- */
+@property --sweep { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+.compute-live::before {
+  content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 1.5px; pointer-events: none;
+  background: conic-gradient(from var(--sweep), transparent 0deg, transparent 250deg, color-mix(in srgb, var(--accent) 55%, transparent) 310deg, var(--accent) 350deg, transparent 360deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  animation: sweep 1.8s linear infinite;
+}
+@keyframes sweep { to { --sweep: 360deg; } }
+@media (prefers-reduced-motion: reduce) { .compute-live::before { animation: none; background: color-mix(in srgb, var(--accent) 45%, transparent); } }
+
+/* ---------- Shimmer text (status lines) ---------- */
+.shimmer {
+  background: linear-gradient(90deg, var(--muted) 30%, var(--ink) 50%, var(--muted) 70%);
+  background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: shimmer 2.2s linear infinite;
+}
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
